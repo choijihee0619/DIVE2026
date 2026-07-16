@@ -16,6 +16,14 @@ class ContractRepository(BaseRepository):
             query = {"$and": [query, {"contract_status": contract_status}]}
         return await self.list_paginated(query, skip, limit, sort=[("created_at", -1)])
 
+    async def list_all(
+        self, skip: int, limit: int, contract_status: str | None = None
+    ) -> tuple[list[dict[str, Any]], int]:
+        query: dict[str, Any] = {}
+        if contract_status:
+            query["contract_status"] = contract_status
+        return await self.list_paginated(query, skip, limit, sort=[("created_at", -1)])
+
     async def find_duplicate(self, tenant_user_id: str, property_id: str, contract_start_date: str) -> dict[str, Any] | None:
         return await self.collection.find_one(
             {

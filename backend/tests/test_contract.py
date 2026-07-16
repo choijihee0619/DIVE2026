@@ -66,3 +66,34 @@ async def test_duplicate_contract_conflicts(client):
     assert first.status_code == 201
     second = await client.post("/api/v1/contracts", json=payload, headers=auth_headers(token))
     assert second.status_code == 409
+
+
+async def test_hug_admin_lists_all_contracts(client):
+    tenant_token = await signup_and_login(client, "tenant_huglist@example.com")
+    property_id = await _create_property(client, tenant_token)
+    create_resp = await client.post(
+        "/api/v1/contracts",
+        json={
+            "property_id": property_id,
+            "deposit": 300000000,
+            "contract_start_date": "2026-09-01",
+            "contract_end_date": "2028-08-31",
+            "landlord_type": "INDIVIDUAL",
+            "housing_type": "MULTI_HOUSEHOLD",
+        },
+        headers=auth_headers(tenant_token),
+    )
+    assert create_resp.status_code == 201, create_resp.text
+
+    hug_token = await signup_and_login(client, "hug_list@example.com", role="hug_admin")
+    list_resp = await client.get("/api/v1/contracts", headers=auth_headers(hug_token))
+    assert list_resp.status_code == 200, list_resp.text
+    data = list_resp.json()["data"]
+    assert data["pagination"]["total_elements"] >= 1
+    assert any(item["contract_status"] == "Draft" for item in data["items"])
+
+    filtered = await client.get(
+        "/api/v1/contracts?contract_status=Monitoring", headers=auth_headers(hug_token)
+    )
+    assert filtered.status_code == 200
+    assert all(item["contract_status"] == "Monitoring" for item in filtered.json()["data"]["items"])

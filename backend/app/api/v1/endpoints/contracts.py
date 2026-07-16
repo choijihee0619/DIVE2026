@@ -27,11 +27,16 @@ async def list_contracts(
     contract_status: str | None = None,
     page: int = Query(1, ge=1),
     size: int = Query(20, ge=1, le=100),
-    current_user: CurrentUser = Depends(require_roles("tenant", "landlord")),
+    current_user: CurrentUser = Depends(require_roles("tenant", "landlord", "hug_admin", "system_admin")),
     db: AsyncIOMotorDatabase = Depends(get_db),
     request_id: str = Depends(get_request_id),
 ):
-    items, pagination = await ContractService(db).list_for_user(current_user.user_id, page, size, contract_status)
+    service = ContractService(db)
+    if current_user.role in ("hug_admin", "system_admin"):
+        # 관리 역할은 소유 여부와 무관하게 전체 계약을 조회한다(HUG-01 채권관리 대시보드).
+        items, pagination = await service.list_all(page, size, contract_status)
+    else:
+        items, pagination = await service.list_for_user(current_user.user_id, page, size, contract_status)
     return success_response({"items": items, "pagination": pagination.model_dump()}, request_id)
 
 

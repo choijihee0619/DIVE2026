@@ -102,6 +102,10 @@ class ContractService:
         items, total = await self._contracts.list_for_user(user_id, (page - 1) * size, size, contract_status)
         return [_to_response(i) for i in items], build_pagination(page, size, total)
 
+    async def list_all(self, page: int, size: int, contract_status: str | None):
+        items, total = await self._contracts.list_all((page - 1) * size, size, contract_status)
+        return [_to_response(i) for i in items], build_pagination(page, size, total)
+
     async def mark_diagnosed(self, contract_id: str, risk_assessment_id: str) -> None:
         contract = await self._contracts.get_by_id(contract_id)
         if not contract:
