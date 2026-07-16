@@ -26,7 +26,8 @@
       "Bash(curl -sS -m 5 http://127.0.0.1:8000/health)",
       "Bash(pip show *)",
       "Bash(ps -o pid,time,stat,%cpu -p 74178)",
-      "Bash(sort -rk3)"
+      "Bash(sort -rk3)",
+      "Bash(ls -la /Users/choijihee/Projects/DIVE2026 2>&1 || echo \"TARGET_NOT_EXISTS\")"
     ]
   }
 }
