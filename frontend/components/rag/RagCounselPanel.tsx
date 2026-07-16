@@ -147,15 +147,15 @@ export function RagCounselPanel() {
             <div className="flex flex-col gap-3">
               <h3 className="text-sm font-medium">참고 자료 {result.sources.length}건</h3>
               {result.sources.map((source) => (
-                <div key={source.chunk_id} className="rounded-lg border border-border p-3">
+                <div key={source.label} className="rounded-lg border border-border p-3">
                   <div className="mb-1.5 flex items-center gap-2 text-xs text-muted-foreground">
-                    <span className="font-mono">{source.chunk_id}</span>
+                    <span className="font-medium text-foreground">{source.label}</span>
                     {source.topic ? <Badge variant="outline">{source.topic}</Badge> : null}
                     {typeof source.score === "number" ? (
                       <span>유사도 {(source.score * 100).toFixed(1)}%</span>
                     ) : null}
                   </div>
-                  <p className="text-sm text-muted-foreground whitespace-pre-wrap">{source.excerpt}</p>
+                  <p className="text-sm text-muted-foreground whitespace-pre-wrap">{source.summary}</p>
                 </div>
               ))}
             </div>

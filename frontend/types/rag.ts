@@ -1,13 +1,12 @@
 /** backend/app/schemas/rag.py 그대로. */
 
-export interface RagChunk {
-  chunk_id: string;
-  source: string | null;
+/** 답변 화면용 참고 사례 — 내부 저장명 없이 LLM이 질문 맥락으로 변환한 요약만 담긴다. */
+export interface RagSource {
+  label: string;
   topic: string | null;
   consultation_stage: string | null;
   region: string | null;
-  excerpt: string;
-  pii_removed: boolean;
+  summary: string;
   score: number | null;
 }
 
@@ -22,7 +21,7 @@ export interface RagAnswerRequest {
 export interface RagAnswerData {
   answer: string;
   is_mock: boolean;
-  sources: RagChunk[];
+  sources: RagSource[];
   disclaimer: string;
   rag_search_log_id: string;
 }
