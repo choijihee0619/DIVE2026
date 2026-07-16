@@ -82,6 +82,7 @@ class RagService:
                 consultation_stage=d.get("consultation_stage"),
                 region=d.get("region_sido") or d.get("region_sigungu"),
                 excerpt=truncate_snippet(d.get("text")),
+                transcript=truncate_snippet(d.get("text"), max_len=2000),
                 pii_removed=bool(d.get("metadata", {}).get("pii_removed", False)),
                 score=d.get("score"),
             )
@@ -151,7 +152,10 @@ class RagService:
         self, question: str, chunks: list[RagChunkResponse]
     ) -> tuple[str, list[str] | None]:
         """답변과 사례별 요약을 한 번의 호출로 생성한다. 요약 파싱 실패 시 (원문 답변, None)을 반환한다."""
-        numbered_cases = "\n\n".join(f"[사례 {i}]\n{c.excerpt}" for i, c in enumerate(chunks, start=1))
+        # LLM 컨텍스트에는 160자 발췌 대신 마스킹된 원문(최대 2000자)을 넣어 답변 근거를 넓힌다.
+        numbered_cases = "\n\n".join(
+            f"[사례 {i}]\n{c.transcript or c.excerpt}" for i, c in enumerate(chunks, start=1)
+        )
         try:
             resp = await self._client.chat.completions.create(
                 model="gpt-4.1-mini",
@@ -215,6 +219,7 @@ def _build_sources(chunks: list[RagChunkResponse], summaries: list[str] | None) 
             consultation_stage=c.consultation_stage,
             region=c.region,
             summary=summaries[i - 1] if summaries else c.excerpt,
+            transcript=c.transcript,
             score=c.score,
         )
         for i, c in enumerate(chunks, start=1)

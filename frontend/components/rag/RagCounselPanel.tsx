@@ -8,10 +8,17 @@ import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Separator } from "@/components/ui/separator";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { ragService } from "@/services/ragService";
 import { ApiError } from "@/services/apiClient";
 import { useSessionStore } from "@/stores/useSessionStore";
-import type { RagAnswerData } from "@/types/rag";
+import type { RagAnswerData, RagSource } from "@/types/rag";
 
 /** rag_chunks 컬렉션에 실재하는 토픽 목록(backend 데이터 기준). */
 const TOPICS = [
@@ -35,6 +42,7 @@ export function RagCounselPanel() {
   const [isLoading, setIsLoading] = useState(false);
   const [result, setResult] = useState<RagAnswerData | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [openedSource, setOpenedSource] = useState<RagSource | null>(null);
 
   const canSubmit = question.trim().length > 0 && !isLoading;
 
@@ -154,6 +162,16 @@ export function RagCounselPanel() {
                     {typeof source.score === "number" ? (
                       <span>유사도 {(source.score * 100).toFixed(1)}%</span>
                     ) : null}
+                    {source.transcript ? (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="ml-auto h-6 px-2 text-xs"
+                        onClick={() => setOpenedSource(source)}
+                      >
+                        원문 보기
+                      </Button>
+                    ) : null}
                   </div>
                   <p className="text-sm text-muted-foreground whitespace-pre-wrap">{source.summary}</p>
                 </div>
@@ -163,6 +181,23 @@ export function RagCounselPanel() {
           </CardContent>
         </Card>
       ) : null}
+
+      <Dialog open={openedSource !== null} onOpenChange={(open) => !open && setOpenedSource(null)}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>
+              {openedSource?.label} 상담 원문
+              {openedSource?.topic ? ` — ${openedSource.topic}` : ""}
+            </DialogTitle>
+            <DialogDescription>
+              개인정보가 마스킹된 과거 상담 기록 원문입니다.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="max-h-[60vh] overflow-y-auto rounded-lg bg-muted/50 p-4">
+            <p className="text-sm leading-relaxed whitespace-pre-wrap">{openedSource?.transcript}</p>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

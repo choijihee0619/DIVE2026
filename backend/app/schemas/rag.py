@@ -20,6 +20,7 @@ class RagChunkResponse(BaseModel):
     consultation_stage: str | None = None
     region: str | None = None
     excerpt: str
+    transcript: str = Field(default="", description="PII 마스킹된 상담 원문(팝업·LLM 컨텍스트용, 최대 2000자)")
     pii_removed: bool
     score: float | None = None
 
@@ -48,6 +49,7 @@ class RagSourceResponse(BaseModel):
     consultation_stage: str | None = None
     region: str | None = None
     summary: str
+    transcript: str = Field(default="", description="PII 마스킹된 상담 원문(팝업 확인용)")
     score: float | None = None
 
 

@@ -7,6 +7,8 @@ export interface RagSource {
   consultation_stage: string | null;
   region: string | null;
   summary: string;
+  /** PII 마스킹된 상담 원문(팝업 확인용). */
+  transcript: string;
   score: number | null;
 }
 
