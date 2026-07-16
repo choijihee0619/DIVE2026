@@ -49,3 +49,14 @@ async def test_rag_answer_without_evidence_does_not_hallucinate(client):
     data = resp.json()["data"]
     assert "근거" in data["answer"] or "찾지 못" in data["answer"]
     assert data["disclaimer"]
+
+
+async def test_rag_search_accepts_question_field(client):
+    token = await signup_and_login(client, "advisor_rag4@example.com", role="advisor")
+    resp = await client.post(
+        "/api/v1/rag/search",
+        json={"topic": "보증금미반환", "question": "보증금을 못 받고 있어요", "top_k": 3},
+        headers=auth_headers(token),
+    )
+    assert resp.status_code == 200, resp.text
+    assert resp.json()["data"]["is_mock"] is True

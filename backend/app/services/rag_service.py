@@ -57,12 +57,20 @@ class RagService:
             ) from exc
 
     async def search(self, user_id: str | None, payload: RagSearchRequest) -> RagSearchResponse:
-        query_text = " ".join(filter(None, [payload.topic, payload.region, payload.consultation_stage]))
+        # 질문 원문이 있으면 임베딩 질의에 포함해 의미 기반 유사도를 높인다.
+        query_text = " ".join(
+            filter(None, [payload.topic, payload.question, payload.region, payload.consultation_stage])
+        )
         vector = await self._embed_query(query_text)
 
         is_mock = vector is None
         if vector is not None:
-            docs = await self._chunks.vector_search(vector, payload.top_k, region=payload.region)
+            docs = await self._chunks.vector_search(
+                vector, payload.top_k, topic=payload.topic, region=payload.region
+            )
+            if not docs and payload.topic:
+                # 선택한 주제가 실제 데이터 주제와 다르면 필터 없이 전체에서 재검색한다.
+                docs = await self._chunks.vector_search(vector, payload.top_k, region=payload.region)
         else:
             docs = await self._chunks.keyword_fallback_search(payload.topic, payload.region, payload.top_k)
 
@@ -106,6 +114,7 @@ class RagService:
             user_id,
             RagSearchRequest(
                 topic=payload.topic,
+                question=payload.question,
                 region=payload.region,
                 consultation_stage=payload.consultation_stage,
                 top_k=payload.top_k,

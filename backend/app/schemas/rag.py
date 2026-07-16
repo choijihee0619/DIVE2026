@@ -7,6 +7,7 @@ from pydantic import BaseModel, Field
 
 class RagSearchRequest(BaseModel):
     topic: str = Field(min_length=1)
+    question: str | None = Field(default=None, description="임베딩 질의에 포함할 질문 원문(유사도 향상용)")
     region: str | None = None
     consultation_stage: Literal["계약전", "계약중", "사고후"] | None = None
     top_k: int = Field(default=3, ge=1, le=10)
