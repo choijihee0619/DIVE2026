@@ -1,7 +1,11 @@
 "use client";
 
 import { useMemo } from "react";
+import Link from "next/link";
+import { MessageCircleQuestion } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { buttonVariants } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
 import { ContractTable } from "@/components/contracts/ContractTable";
 import { useContractList } from "@/hooks/useContractList";
 import { ATTENTION_STATUSES } from "@/lib/contract-labels";
@@ -36,6 +40,17 @@ export default function TenantHomePage() {
             ) : (
               "—"
             )}
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm text-muted-foreground">AI 전세 상담</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <Link href="/tenant/counsel" className={cn(buttonVariants({ variant: "outline", size: "sm" }))}>
+              <MessageCircleQuestion size={14} />
+              질문하러 가기
+            </Link>
           </CardContent>
         </Card>
       </div>

@@ -13,6 +13,7 @@ interface SidebarItem {
 const SIDEBAR_ITEMS: Record<string, SidebarItem[]> = {
   [UserRole.ADVISOR]: [
     { href: "/advisor", label: "상담 큐" },
+    { href: "/advisor/counsel", label: "AI 상담 지원" },
   ],
   [UserRole.HUG_ADMIN]: [
     { href: "/hug/dashboard", label: "채권관리 대시보드" },
