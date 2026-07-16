@@ -1,0 +1,211 @@
+# API 엔드포인트 레지스트리
+# 작성일: 2026-07-14
+# 인증키는 이 파일에 넣지 않음 → backend/.env (또는 backend_env_설정_260714.txt)
+
+application:
+  name: HUG보증관리시스템
+  purpose: 주택도시보증공사×아이엔 발제 해커톤 솔루션 개발
+  service_targets:
+    - 임대인
+    - 임차인
+    - 아이엔(기업)
+    - 주택도시보증공사
+
+# 가이드 4장 연동 순서: 주소 → 등기 → 건축물 → 실거래가 → 공시가격 → 사업자/DART
+orchestration_order:
+  - juso
+  - codef
+  - building
+  - rtms
+  - official_price
+  - business_status
+  - dart
+
+apis:
+  juso:
+    id: 1
+    name: 도로명주소 상세검색
+    provider: 행정안전부 주소기반산업지원서비스
+    env_key: JUSO_API_KEY
+    method: GET
+    base_url: https://business.juso.go.kr
+    endpoint: /addrlink/addrLinkApi.do
+    auth: confmKey (query)
+    raw_save_dir: raw/address
+    params:
+      - confmKey
+      - keyword
+      - currentPage
+      - countPerPage
+      - resultType
+    notes: 승인키 30일 유효. resultType=json 권장.
+
+  rtms_apt_trade:
+    id: 2
+    name: 국토교통부 아파트 매매 실거래가
+    provider: 국토교통부 / 공공데이터포털
+    env_key: DATA_GO_KR_API_KEY
+    method: GET
+    base_url: https://apis.data.go.kr
+    endpoint: /1613000/RTMSDataSvcAptTrade/getRTMSDataSvcAptTrade
+    auth: serviceKey (query)
+    raw_save_dir: raw/rtms
+    params:
+      - serviceKey
+      - LAWD_CD
+      - DEAL_YMD
+      - pageNo
+      - numOfRows
+    notes: 사용자가 확인한 공공데이터포털 서비스정보 기준. 데이터포맷 XML.
+
+  building_registry:
+    id: 3
+    name: 건축HUB 건축물대장정보 서비스 (표제부)
+    provider: 국토교통부 / 공공데이터포털
+    env_key: DATA_GO_KR_API_KEY
+    method: GET
+    base_url: https://apis.data.go.kr
+    endpoint_env_key: BUILDING_REGISTRY_ENDPOINT
+    endpoint: /1613000/BldRgstHubService/getBrTitleInfo
+    auth: serviceKey (query)
+    raw_save_dir: raw/building
+    params:
+      - serviceKey
+      - sigunguCd
+      - bjdongCd
+      - bun
+      - ji
+      - pageNo
+      - numOfRows
+      - _type
+    notes: 사용자가 확인한 건축HUB 건축물대장정보 서비스 기준. JSON 응답을 위해 _type=json 사용.
+
+  business_status:
+    id: 4
+    name: 사업자등록정보 진위확인 및 상태조회
+    provider: 국세청 / 공공데이터포털
+    env_key: DATA_GO_KR_API_KEY
+    method: POST
+    base_url: https://api.odcloud.kr
+    endpoint: /api/nts-businessman/v1/status
+    auth: serviceKey (query)
+    raw_save_dir: raw/business_status
+    body: '{"b_no":["사업자등록번호"]}'
+    content_type: application/json
+
+  codef_registry:
+    id: 5
+    name: CODEF 인터넷등기소 (부동산 등기부등본)
+    provider: CODEF
+    env_keys:
+      client_id: CODEF_{ENV}_CLIENT_ID  # ENV = DEMO | SANDBOX
+      client_secret: CODEF_{ENV}_CLIENT_SECRET
+      public_key: CODEF_PUBLIC_KEY_PATH
+    method: POST
+    base_urls:
+      oauth: https://oauth.codef.io/oauth/token
+      demo: https://development.codef.io
+      sandbox: https://sandbox.codef.io
+      production: https://api.codef.io
+    endpoint: /v1/kr/public/ck/real-estate-register/status  # 콘솔에서 최종 확인 필요
+    auth: OAuth2 (client_id + client_secret → access_token)
+    raw_save_dir: raw/codef
+    notes: OAuth 토큰 서버는 CODEF_OAUTH_URL로 분리. access_token 값은 raw 파일에 저장하지 않음. 상품 endpoint는 CODEF 콘솔에서 재확인.
+
+  dart_list:
+    id: 8
+    name: OpenDART 공시목록
+    provider: 금융감독원
+    env_key: DART_API_KEY
+    method: GET
+    base_url: https://opendart.fss.or.kr
+    endpoint: /api/list.json
+    auth: crtfc_key (query)
+    raw_save_dir: raw/dart
+    params:
+      - crtfc_key
+      - corp_code
+      - bgn_de
+      - end_de
+      - page_no
+
+  official_price_apt:
+    id: 9
+    name: 공동주택가격 (디지털트윈국토/VWorld)
+    provider: 디지털트윈국토 / VWorld
+    env_key: OFFICIAL_PRICE_APT_API_KEY
+    method: GET
+    base_url: 확인 필요
+    endpoint: 확인 필요
+    auth: VWorld 인증키 + 등록 서비스 URL
+    raw_save_dir: raw/official_price
+    manual_config_required: true
+    manual_config_reason: 디지털트윈국토/VWorld 인증키는 등록 서비스 URL과 실제 API URL/레이어명이 맞아야 하므로 현재 apis.data.go.kr NSDI endpoint로 호출하지 않음.
+    required_config:
+      - registered_service_url=https://www.khug.or.kr/index.jsp
+      - official VWorld/API URL
+      - request parameter name for API key/domain/referer
+      - 공동주택가격 레이어명 또는 상세기능 URL
+    params:
+      - key
+      - serviceUrl/domain
+      - 기준연도
+      - 주소/법정동/지번
+      - 동/호 또는 레이어별 필수값
+    notes: 서비스 URL은 호출 endpoint가 아니라 인증키 사용 허용 URL. 현재 등록값은 https://www.khug.or.kr/index.jsp.
+
+  official_price_house:
+    id: 10
+    name: 개별주택가격 (디지털트윈국토/VWorld)
+    provider: 디지털트윈국토 / VWorld
+    env_key: OFFICIAL_PRICE_HOUSE_API_KEY
+    method: GET
+    base_url: 확인 필요
+    endpoint: 확인 필요
+    auth: VWorld 인증키 + 등록 서비스 URL
+    raw_save_dir: raw/official_price
+    manual_config_required: true
+    manual_config_reason: 디지털트윈국토/VWorld 인증키는 등록 서비스 URL과 실제 API URL/레이어명이 맞아야 하므로 현재 apis.data.go.kr NSDI endpoint로 호출하지 않음.
+    required_config:
+      - registered_service_url=https://www.khug.or.kr/index.jsp
+      - official VWorld/API URL
+      - request parameter name for API key/domain/referer
+      - 개별주택가격 레이어명 또는 상세기능 URL
+    params:
+      - key
+      - serviceUrl/domain
+      - 기준연도
+      - 주소/법정동/지번
+    notes: 서비스 URL은 호출 endpoint가 아니라 인증키 사용 허용 URL. 현재 등록값은 https://www.khug.or.kr/index.jsp.
+
+  official_price_land:
+    id: 13
+    name: 개별공시지가 (디지털트윈국토/VWorld)
+    provider: 디지털트윈국토 / VWorld
+    env_key: OFFICIAL_PRICE_LAND_API_KEY
+    method: GET
+    base_url: 확인 필요
+    endpoint: 확인 필요
+    auth: VWorld 인증키 + 등록 서비스 URL
+    raw_save_dir: raw/official_price
+    manual_config_required: true
+    manual_config_reason: 디지털트윈국토/VWorld 인증키는 등록 서비스 URL과 실제 API URL/레이어명이 맞아야 하므로 현재 apis.data.go.kr NSDI endpoint로 호출하지 않음.
+    required_config:
+      - registered_service_url=https://www.khug.or.kr/index.jsp
+      - official VWorld/API URL
+      - request parameter name for API key/domain/referer
+      - 개별공시지가 레이어명 또는 상세기능 URL
+    params:
+      - key
+      - serviceUrl/domain
+      - 기준연도
+      - 주소/법정동/지번
+    notes: 서비스 URL은 호출 endpoint가 아니라 인증키 사용 허용 URL. 현재 등록값은 https://www.khug.or.kr/index.jsp.
+
+  onbid:
+    id: onbid
+    name: 온비드 공매정보
+    status: 미발급
+    fallback: mock/mock_onbid_active.json
+
+mock_fallback_dir: mock

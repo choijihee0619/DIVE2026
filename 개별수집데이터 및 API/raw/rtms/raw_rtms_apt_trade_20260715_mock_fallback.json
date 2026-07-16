@@ -1,0 +1,40 @@
+{
+  "api": "rtms_apt_trade",
+  "source_system": "mock",
+  "requested_at": "2026-07-15T09:36:43.168071+09:00",
+  "request": {
+    "base_url": "https://apis.data.go.kr",
+    "endpoint": "/1613000/RTMSDataSvcAptTrade/getRTMSDataSvcAptTrade",
+    "method": "GET",
+    "params": {
+      "LAWD_CD": "11680",
+      "DEAL_YMD": "202506",
+      "pageNo": "1",
+      "numOfRows": "1"
+    },
+    "key_param": "serviceKey",
+    "key_masked": "5c50…06de"
+  },
+  "live_call_ok": false,
+  "http_status": null,
+  "response_body": "",
+  "error_class": "connection_error",
+  "error_message": "[Errno 8] nodename nor servname provided, or not known",
+  "fallback_mock_file": "mock_transaction_empty.json",
+  "response": {
+    "case_id": "case_mock_006",
+    "source": "mock_transaction_empty",
+    "lawd_cd": "11710",
+    "deal_ymd_range": [
+      "202503",
+      "202506"
+    ],
+    "transactions": [],
+    "fallback": {
+      "used": true,
+      "reason": "no_transaction_in_range",
+      "action": "지역 평균 Mock 또는 최근 6개월 확대 조회 필요"
+    }
+  },
+  "note": "실 API 호출 실패로 가이드 5장 Fallback 정책에 따라 mock 데이터로 대체 저장. 실제 서비스 배포 전 아웃바운드 네트워크가 열린 환경에서 재실행하여 교체 필요."
+}

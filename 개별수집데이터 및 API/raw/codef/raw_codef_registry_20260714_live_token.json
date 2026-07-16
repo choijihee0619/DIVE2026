@@ -1,0 +1,20 @@
+{
+  "api": "codef_registry",
+  "source_system": "api_live",
+  "requested_at": "2026-07-14T18:07:01.106516+09:00",
+  "request": {
+    "base_url": "https://sandbox.codef.io",
+    "oauth_url": "https://oauth.codef.io/oauth/token",
+    "env": "sandbox",
+    "client_id_masked": "ef27…73f9"
+  },
+  "live_call_ok": true,
+  "http_status": 200,
+  "token": {
+    "token_issued": true,
+    "token_type": "bearer",
+    "expires_in": 604799,
+    "scope": "read"
+  },
+  "note": "CODEF OAuth 토큰 값은 보안상 raw 파일에 저장하지 않고 실행 메모리에서만 사용한다."
+}

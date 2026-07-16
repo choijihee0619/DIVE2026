@@ -1,0 +1,13 @@
+{
+  "case_id": "case_mock_009",
+  "source": "mock_dart_not_found",
+  "dart": {
+    "status": "013",
+    "message": "조회된 데이터가 없습니다",
+    "list": []
+  },
+  "label": {
+    "dart_disclosure_flag": false,
+    "dart_exists": false
+  }
+}

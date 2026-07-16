@@ -1,0 +1,27 @@
+{
+  "case_id": "case_mock_001",
+  "source": "mock_registry_normal",
+  "address": {
+    "road_address": "서울특별시 마포구 월드컵로 120",
+    "adm_cd": "1144012700"
+  },
+  "registry": {
+    "owner_type": "individual",
+    "rights": []
+  },
+  "price": {
+    "deposit": 350000000,
+    "recent_trade_price": 550000000,
+    "official_price": 470000000
+  },
+  "features": {
+    "jeonse_ratio": 0.636,
+    "mortgage_ratio": 0.0,
+    "rights_burden_ratio": 0.636,
+    "has_seizure": false
+  },
+  "label": {
+    "risk_grade": "LOW",
+    "risk_reasons": []
+  }
+}

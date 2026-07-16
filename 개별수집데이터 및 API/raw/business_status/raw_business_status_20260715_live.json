@@ -1,0 +1,35 @@
+{
+  "api": "business_status",
+  "source_system": "api_live",
+  "requested_at": "2026-07-15T09:37:23.859862+09:00",
+  "request": {
+    "base_url": "https://api.odcloud.kr",
+    "endpoint": "/api/nts-businessman/v1/status",
+    "method": "POST",
+    "params": {},
+    "key_param": "serviceKey",
+    "key_masked": "5c50…06de"
+  },
+  "live_call_ok": true,
+  "http_status": 200,
+  "response": {
+    "request_cnt": 1,
+    "match_cnt": 1,
+    "status_code": "OK",
+    "data": [
+      {
+        "b_no": "1248100998",
+        "b_stt": "계속사업자",
+        "b_stt_cd": "01",
+        "tax_type": "부가가치세 일반과세자",
+        "tax_type_cd": "01",
+        "end_dt": "",
+        "utcc_yn": "N",
+        "tax_type_change_dt": "",
+        "invoice_apply_dt": "",
+        "rbf_tax_type": "해당없음",
+        "rbf_tax_type_cd": "99"
+      }
+    ]
+  }
+}

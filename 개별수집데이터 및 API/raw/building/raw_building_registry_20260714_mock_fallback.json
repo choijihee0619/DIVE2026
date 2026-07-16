@@ -1,0 +1,62 @@
+{
+  "api": "building_registry",
+  "source_system": "mock",
+  "requested_at": "2026-07-14T18:07:02.702501+09:00",
+  "request": {
+    "base_url": "https://apis.data.go.kr",
+    "endpoint": "/1613000/BldRgstService_v2/getBrTitleInfo",
+    "method": "GET",
+    "params": {
+      "sigunguCd": "11680",
+      "bjdongCd": "10300",
+      "bun": "0012",
+      "ji": "0000",
+      "pageNo": "1",
+      "numOfRows": "1",
+      "_type": "json"
+    },
+    "key_param": "serviceKey",
+    "key_masked": "5c50…06de"
+  },
+  "live_call_ok": false,
+  "http_status": 500,
+  "response_body": "Unexpected errors\n",
+  "error_class": "http_error_500",
+  "error_message": "HTTP Error 500: Internal Server Error",
+  "fallback_mock_file": "mock_building_fallback.json",
+  "response": {
+    "response": {
+      "header": {
+        "resultCode": "00",
+        "resultMsg": "NORMAL SERVICE."
+      },
+      "body": {
+        "items": {
+          "item": [
+            {
+              "platPlc": "서울특별시 강남구 역삼동 737",
+              "bldNm": "OO빌딩",
+              "mainPurpsCdNm": "공동주택",
+              "etcPurps": null,
+              "strctCdNm": "철근콘크리트구조",
+              "totArea": "5423.12",
+              "platArea": "1200.5",
+              "useAprDay": "20190101",
+              "violationDesc": null
+            }
+          ]
+        },
+        "totalCount": "1",
+        "pageNo": "1",
+        "numOfRows": "1"
+      }
+    },
+    "_mock_meta": {
+      "source": "mock_building_fallback",
+      "created_at": "2026-07-14",
+      "reason": "데이터수집_및_API가이드_260714.md 5장 Fallback 표는 건축물대장을 '건축물 Mock'으로만 지칭하고 6.1절 Mock 11종 목록에는 대응 파일이 없어 이번에 추가했다.",
+      "note": "DATA_GO_KR_API_KEY로 실제 호출이 가능한 네트워크 환경에서 scripts/collect_raw_data.py를 재실행하면 이 파일 대신 실 응답이 raw/building/ 에 저장된다."
+    }
+  },
+  "note": "실 API 호출 실패로 가이드 5장 Fallback 정책에 따라 mock 데이터로 대체 저장. 실제 서비스 배포 전 아웃바운드 네트워크가 열린 환경에서 재실행하여 교체 필요."
+}

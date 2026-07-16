@@ -1,0 +1,73 @@
+[2026-07-15 갱신] Swagger로 엔드포인트 동작 확인 이후 상태 정리
+
+===================================================
+1. 백엔드 완료된 것
+===================================================
+
+- FastAPI 앱 구조 완성 (main.py, core/db/models/schemas/repositories/services/api/middleware/utils 계층 분리).
+  Beanie 대신 Motor 직접 사용(Repository 패턴) — 계약/데이터모델과 무관한 구현 선택.
+- 라우터 8개 도메인 연결·동작 확인됨: health, auth, users, properties, landlords, contracts, evidence, risk, rag, blockchain
+  - auth: signup(계약에 없던 추가 엔드포인트)/login/me/logout
+  - contracts: CRUD + timeline + return-plan
+  - evidence: evidence-requests + evidence 업로드 + verifications(+decision)
+  - risk: /risk/diagnose(즉시 200 응답, 계약의 202 비동기 폴링과 다르게 구현) + /risk/{case_id}
+  - rag: /rag/search, /rag/answer — Atlas Vector Search 실제 구현, OpenAI 키 없으면 키워드 fallback(is_mock=true)
+  - blockchain: /blockchain/anchor + 조회 — MockBlockchainAdapter가 tx_hash 즉시 발급(기본값 BLOCKCHAIN_MODE=mock)
+- pytest 31건 전량 통과(mongomock 기준 검증). 실제 Atlas 연결은 이번 개발 세션 샌드박스에서 TLS 아웃바운드가 막혀 끝까지 확인 못함
+  → 사용자가 로컬에서 Swagger로 직접 확인 완료했다고 하니 이 항목은 해소된 것으로 간주.
+- 위험진단은 ML이 아니라 rule-based fallback(등기부/공시가격이 여전히 mock이라 jeonse_ratio 등 핵심 feature 계산 불가 —
+  data_completeness < 0.4면 무조건 최소 MEDIUM 등급으로 처리, "위험 낮음"으로 착시 안 나게 방어).
+- 데모 계정 5종 시드 완료(tenant01/landlord01/advisor01/hugadmin01/sysadmin01@example.com, 공통 PW: P@ssw0rd!).
+
+===================================================
+2. 백엔드에서 더 남은 것
+===================================================
+
+API_Contract_260714.yaml 기준으로 아직 라우터가 없는 것들 (임차인/임대인 핵심 플로우 밖):
+
+- /address/normalize
+- /admin/blockchain-logs, /admin/model-status, /admin/system-logs (관리자 대시보드 계열)
+- /counsel-queue, /counsel/{counsel_id} (상담원 큐)
+- /entity-risk-groups/{id}
+- /hug/dashboard
+- /incidents, /incidents/{id} (사고 접수)
+- /ml/risk/predict, /ml/recovery/predict, /ml/duration/predict, /ml/counsel/predict
+  → 지금 risk/diagnose와는 별개로, "진짜 학습된 ML 모델" 전용 엔드포인트. ML feature 테이블이 없어서 당연히 아직 없음.
+- /notifications, /notifications/{id}/read
+- /recovery-predictions/{id}, /recovery-predictions/{id}/similar
+- /referrals
+
+즉 정리하면: 임차인·임대인 중심의 계약/증빙/위험진단/RAG상담/블록체인 앵커링 — 이 핵심 데모 플로우는 백엔드가 다 커버함.
+HUG·관리자·아이엔 상담원 쪽 대시보드성/통계성/알림 API와 "진짜 ML 모델" 엔드포인트는 미구현 상태.
+
+기타 남은 이슈:
+- CODEF 등기부, 공시가격 3종(VWorld), 온비드 — 여전히 mock. 실연동 전환 시 risk_engine.py의 source_status 분기 로직 그대로 재사용 가능.
+- processed_risk_features_v1.parquet 없음 → 정식 ML 모델 학습 금지 상태 유지.
+- Polygon Amoy 실연동 — PolygonBlockchainAdapter는 스켈레톤(에러 반환)만 있음.
+- RAG pii_removed가 데이터 전체 false. 데모 노출 전 무작위 30건 표본 검수 권장.
+
+===================================================
+3. 다음 개발 단계 (추천 순서)
+===================================================
+
+1. 데모 시나리오 확정 — 발표에 HUG/관리자 대시보드 화면을 넣을지부터 결정. 안 넣으면 2번 항목의 미구현
+   엔드포인트는 이번 해커톤 범위에서 제외해도 됨(시간 아끼는 선택).
+2. (필요시만) 위 1번에서 넣기로 한 화면에 대응하는 엔드포인트만 최소로 추가 — 특히 /incidents, /hug/dashboard,
+   /notifications 정도가 데모 스토리에 자주 들어감.
+3. 여기서 프론트 진입 — 지금 시점에 Swagger(openapi.json)로 실제 구현된 8개 도메인 스키마를 뽑아서
+   UI 생성 프롬프트에 그대로 넣는 걸 권장(문서상 계약과 실제 구현 사이에 3장 "의도적 차이" 5건이 있으므로
+   문서만 보고 프론트를 만들면 어긋남 — 반드시 실제 openapi.json 기준으로 작업).
+4. 프론트는 Mock 서버 없이 바로 실제 백엔드(로컬 uvicorn)에 붙여도 됨 — 8개 도메인은 이미 동작 확인됨.
+5. 블록체인 mock → Polygon Amoy 테스트넷 전환은 프론트 붙인 뒤 여유 있으면 진행(데모에는 mock tx_hash로도 충분).
+6. 통합 테스트 → 정상/위험 케이스 3개 시나리오 고정 → API 장애 시 offline demo mode 확인.
+
+===================================================
+데모 계정 (seed_demo_users.py 결과)
+===================================================
+created: tenant01@example.com (tenant)
+created: landlord01@example.com (landlord)
+created: advisor01@example.com (advisor)
+created: hugadmin01@example.com (hug_admin)
+created: sysadmin01@example.com (system_admin)
+
+Demo password for all accounts: P@ssw0rd!

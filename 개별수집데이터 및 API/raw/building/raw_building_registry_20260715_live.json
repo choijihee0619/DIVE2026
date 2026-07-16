@@ -1,0 +1,24 @@
+{
+  "api": "building_registry",
+  "source_system": "api_live",
+  "requested_at": "2026-07-15T09:37:23.172289+09:00",
+  "request": {
+    "base_url": "https://apis.data.go.kr",
+    "endpoint": "/1613000/BldRgstHubService/getBrTitleInfo",
+    "method": "GET",
+    "params": {
+      "sigunguCd": "11680",
+      "bjdongCd": "10300",
+      "bun": "0012",
+      "ji": "0000",
+      "pageNo": "1",
+      "numOfRows": "1",
+      "_type": "json"
+    },
+    "key_param": "serviceKey",
+    "key_masked": "5c50…06de"
+  },
+  "live_call_ok": true,
+  "http_status": 200,
+  "response": ""
+}

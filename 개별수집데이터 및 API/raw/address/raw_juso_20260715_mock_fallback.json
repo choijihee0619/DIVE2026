@@ -1,0 +1,53 @@
+{
+  "api": "juso",
+  "source_system": "mock",
+  "requested_at": "2026-07-15T09:36:39.793720+09:00",
+  "request": {
+    "base_url": "https://business.juso.go.kr",
+    "endpoint": "/addrlink/addrLinkApi.do",
+    "method": "GET",
+    "params": {
+      "keyword": "서울특별시 강남구 테헤란로 152",
+      "currentPage": "1",
+      "countPerPage": "1",
+      "resultType": "json"
+    },
+    "key_param": "confmKey",
+    "key_masked": "devU…MjE="
+  },
+  "live_call_ok": false,
+  "http_status": null,
+  "response_body": "",
+  "error_class": "connection_error",
+  "error_message": "[Errno 8] nodename nor servname provided, or not known",
+  "fallback_mock_file": "mock_address_fallback.json",
+  "response": {
+    "results": {
+      "common": {
+        "errorCode": "0",
+        "errorMessage": "정상",
+        "totalCount": "1",
+        "currentPage": "1",
+        "countPerPage": "1"
+      },
+      "juso": [
+        {
+          "roadAddr": "서울특별시 강남구 테헤란로 152",
+          "roadAddrPart1": "서울특별시 강남구 테헤란로 152",
+          "jibunAddr": "서울특별시 강남구 역삼동 737",
+          "admCd": "1168010100",
+          "rnMgtSn": "116803122024",
+          "bdMgtSn": "1168010100108370000000001",
+          "zipNo": "06236"
+        }
+      ]
+    },
+    "_mock_meta": {
+      "source": "mock_address_fallback",
+      "created_at": "2026-07-14",
+      "reason": "데이터수집_및_API가이드_260714.md 5장은 도로명주소 API의 최종 Fallback을 mock_address.json으로 지정하지만 6.1절 Mock 11종 목록에는 대응 파일이 없어 이번에 추가했다.",
+      "note": "JUSO_API_KEY로 실제 호출이 가능한 네트워크 환경에서 scripts/collect_raw_data.py를 재실행하면 이 파일 대신 실 응답이 raw/address/ 에 저장된다."
+    }
+  },
+  "note": "실 API 호출 실패로 가이드 5장 Fallback 정책에 따라 mock 데이터로 대체 저장. 실제 서비스 배포 전 아웃바운드 네트워크가 열린 환경에서 재실행하여 교체 필요."
+}

@@ -1,0 +1,38 @@
+{
+  "case_id": "case_mock_002",
+  "source": "mock_registry_mortgage",
+  "address": {
+    "road_address": "서울특별시 강남구 테헤란로 152",
+    "adm_cd": "1168010100"
+  },
+  "registry": {
+    "owner_type": "individual",
+    "rights": [
+      {
+        "type": "mortgage",
+        "holder": "OO은행",
+        "amount": 180000000,
+        "registered_at": "2024-03-11",
+        "is_cancelled": false
+      }
+    ]
+  },
+  "price": {
+    "deposit": 400000000,
+    "recent_trade_price": 620000000,
+    "official_price": 510000000
+  },
+  "features": {
+    "jeonse_ratio": 0.645,
+    "mortgage_ratio": 0.29,
+    "rights_burden_ratio": 0.935,
+    "has_seizure": false
+  },
+  "label": {
+    "risk_grade": "HIGH",
+    "risk_reasons": [
+      "근저당 설정",
+      "전세가율 높음"
+    ]
+  }
+}

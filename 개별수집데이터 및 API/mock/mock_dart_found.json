@@ -1,0 +1,24 @@
+{
+  "case_id": "case_mock_008",
+  "source": "mock_dart_found",
+  "dart": {
+    "corp_name": "OO자산관리(주)",
+    "corp_code": "00000001",
+    "status": "000",
+    "list": [
+      {
+        "report_nm": "사업보고서",
+        "rcept_no": "20260315000001",
+        "rcept_dt": "2026-03-15"
+      },
+      {
+        "report_nm": "감사보고서",
+        "rcept_no": "20260320000002",
+        "rcept_dt": "2026-03-20"
+      }
+    ]
+  },
+  "label": {
+    "dart_disclosure_flag": true
+  }
+}

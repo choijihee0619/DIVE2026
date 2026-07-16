@@ -1,0 +1,33 @@
+{
+  "api": "business_status",
+  "source_system": "mock",
+  "requested_at": "2026-07-15T09:36:44.244926+09:00",
+  "request": {
+    "base_url": "https://api.odcloud.kr",
+    "endpoint": "/api/nts-businessman/v1/status",
+    "method": "POST",
+    "params": {},
+    "key_param": "serviceKey",
+    "key_masked": "5c50…06de"
+  },
+  "live_call_ok": false,
+  "http_status": null,
+  "response_body": "",
+  "error_class": "connection_error",
+  "error_message": "[Errno 8] nodename nor servname provided, or not known",
+  "fallback_mock_file": "mock_business_closed.json",
+  "response": {
+    "case_id": "case_mock_007",
+    "source": "mock_business_closed",
+    "business_status": {
+      "b_no_hash": "sha256:0000000000000000000000000000000000000000000000000000000000000000",
+      "status": "폐업자",
+      "tax_type": null,
+      "closed_date": "2025-12-31"
+    },
+    "label": {
+      "business_closed_flag": true
+    }
+  },
+  "note": "실 API 호출 실패로 가이드 5장 Fallback 정책에 따라 mock 데이터로 대체 저장. 실제 서비스 배포 전 아웃바운드 네트워크가 열린 환경에서 재실행하여 교체 필요."
+}

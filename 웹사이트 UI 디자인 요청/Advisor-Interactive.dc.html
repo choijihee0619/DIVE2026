@@ -1,0 +1,231 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet data-dc-atomics>
+  <link rel="stylesheet" href="ds/styles.css">
+  <style>
+    body { margin: 0; }
+    .win { width: 100%; max-width: 1160px; border-radius: var(--radius-lg); background: var(--color-surface); box-shadow: var(--shadow-lg); overflow: hidden; }
+    .winbar { display: flex; align-items: center; gap: var(--space-2); padding: var(--space-2) var(--space-3); background: var(--color-neutral-200); font-size: 11px; }
+    .dot { width: 9px; height: 9px; border-radius: 50%; background: var(--color-neutral-400); }
+    .body-row { display: flex; min-height: 640px; }
+    .side { width: 200px; flex: none; padding: var(--space-4) var(--space-2); border-right: 1px solid var(--color-divider); }
+    .side .navlink { display: block; padding: 7px var(--space-2); font-size: 13px; border-radius: var(--radius-md); text-decoration: none; color: var(--color-text); margin-bottom: 2px; cursor: pointer; }
+    .side .navlink.on { background: var(--color-accent-2); color: var(--color-bg); }
+    .side .navlink:hover:not(.on) { background: var(--color-accent-2-100); }
+    .content { flex: 1; padding: var(--space-6); overflow-y: auto; }
+    button.btn { border: none; cursor: pointer; }
+    .fadein { animation: fadein 0.3s ease; }
+    @keyframes fadein { from { opacity:0; transform:translateY(6px); } to { opacity:1; transform:translateY(0); } }
+    .toast { position: absolute; right: var(--space-6); top: 64px; background: var(--color-text); color: var(--color-bg); padding: var(--space-2) var(--space-4); border-radius: var(--radius-md); font-size: 13px; box-shadow: var(--shadow-md); animation: toastin 0.25s ease; z-index: 5; }
+    @keyframes toastin { from { opacity:0; transform:translateY(-8px); } to { opacity:1; transform:translateY(0); } }
+    .table tbody tr { cursor: pointer; }
+    .table tbody tr:hover { background: var(--color-accent-2-100); }
+  </style>
+</helmet>
+
+<div style="min-height:100vh;background:var(--color-bg);padding:var(--space-8) var(--space-8) 100px;">
+  <div style="max-width:1160px;margin:0 auto var(--space-6);">
+    <a href="Index.dc.html" style="font-size:12px;">← 전체 화면 목록</a>
+    <h1 style="margin-top:var(--space-2);">아이엔 상담·검증 (advisor) · 인터랙티브 프로토타입</h1>
+    <p class="text-muted" style="max-width:640px;">상담 분류부터 증빙 검토, 전문가 이관까지 실제 동작하는 업무 콘솔로 직접 체험해보세요.</p>
+  </div>
+
+  <div style="display:flex;justify-content:center;position:relative;">
+    <sc-if value="{{ showToast }}"><div class="toast">{{ toastText }}</div></sc-if>
+
+    <div class="win"><div class="winbar"><span class="dot"></span><span class="dot"></span><span class="dot"></span><span style="margin-left:var(--space-2);">app.hugansim.com{{ urlPath }}</span></div>
+      <div class="body-row">
+        <div class="side">
+          <div class="nav-brand" style="font-size:15px;padding:0 var(--space-2) var(--space-3);">아이엔 콘솔</div>
+          <div class="navlink {{ navQueueClass }}" onClick="{{ goToQueue }}">상담 큐</div>
+          <div class="navlink {{ navVerificationClass }}" onClick="{{ goToVerification }}">증빙 검토</div>
+          <div class="navlink {{ navReferralClass }}" onClick="{{ goToReferral }}">전문가 이관</div>
+        </div>
+
+        <!-- ADV-00 Queue -->
+        <sc-if value="{{ isQueue }}" hint-placeholder-val="{{ true }}">
+          <div class="content fadein">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:var(--space-4);">
+              <h3 style="margin:0;">상담 큐</h3>
+              <div style="display:flex;gap:var(--space-2);"><span class="tag tag-outline">지역 ▾</span><span class="tag tag-outline">분쟁유형 ▾</span><span class="tag tag-outline">이관필요 ▾</span></div>
+            </div>
+            <table class="table">
+              <thead><tr><th>상담 요약</th><th>분쟁유형</th><th>진행단계</th><th>상태</th></tr></thead>
+              <tbody>
+                <tr onClick="{{ openCase1 }}"><td>서울 강서구 · 보증금 미반환 문의</td><td>보증금미반환 71%</td><td>소송제기 64%</td><td><span class="tag {{ case1TagClass }}">{{ case1TagText }}</span></td></tr>
+                <tr><td>경기 부천시 · 계약갱신 거절 문의</td><td>갱신거절 58%</td><td>상담단계 80%</td><td><span class="tag tag-neutral">이관불필요</span></td></tr>
+                <tr><td>인천 남동구 · 근저당 관련 문의</td><td>근저당분쟁 66%</td><td>보완요청 55%</td><td><span class="tag tag-neutral">이관불필요</span></td></tr>
+              </tbody>
+            </table>
+          </div>
+        </sc-if>
+
+        <!-- ADV-01 Detail -->
+        <sc-if value="{{ isDetail }}">
+          <div style="flex:1;display:flex;flex-direction:column;">
+            <div class="content fadein" style="flex:1;display:flex;gap:var(--space-5);">
+              <div style="flex:1.3;">
+                <p class="card-meta">서울 강서구 · 보증금 3억원대 · 아파트</p>
+                <div class="card" style="margin-bottom:var(--space-4);"><p style="margin:0;">임대인이 연락을 받지 않고 계약 만료가 한 달 남았는데 보증금 반환 계획을 전혀 알려주지 않고 있습니다. 어떻게 대응해야 하나요.</p></div>
+                <div class="card elev-sm">
+                  <div style="display:flex;justify-content:space-between;align-items:center;"><span class="card-title">상담 분류 모델 결과</span><span class="tag tag-outline">model v0.9</span></div>
+                  <p style="margin:0;">분쟁유형: <b>보증금미반환</b> (71%) · 진행단계: <b>소송제기</b> (64%)</p>
+                  <span class="tag tag-accent-2" style="width:fit-content;">전문가 이관 필요</span>
+                </div>
+              </div>
+              <div style="flex:1;">
+                <h6>RAG 유사 상담사례</h6>
+                <div style="display:flex;flex-direction:column;gap:var(--space-2);">
+                  <div class="card"><div class="card-body">임대인 연락두절 시 내용증명 발송 절차</div><div class="card-meta">사례 #3390 · chunk_12</div></div>
+                  <div class="card"><div class="card-body">전세보증금반환보증 이행청구 요건</div><div class="card-meta">제도문서 · chunk_04</div></div>
+                  <div class="card"><div class="card-body">임차권등기명령 신청 사례</div><div class="card-meta">사례 #2277 · chunk_09</div></div>
+                </div>
+              </div>
+            </div>
+            <div style="display:flex;justify-content:flex-end;gap:var(--space-2);padding:var(--space-3) var(--space-6);border-top:1px solid var(--color-divider);">
+              <button class="btn btn-secondary" onClick="{{ saveNote }}">메모 저장</button>
+              <button class="btn btn-ghost" style="border:1px solid var(--color-accent-2);color:var(--color-accent-2-700);" onClick="{{ goToVerification }}">검증요청</button>
+              <button class="btn" style="background:var(--color-accent-2);color:var(--color-bg);" onClick="{{ goToReferral }}">이관 처리 &gt;</button>
+            </div>
+          </div>
+        </sc-if>
+
+        <!-- ADV-02 Verification -->
+        <sc-if value="{{ isVerification }}">
+          <div style="flex:1;display:flex;flex-direction:column;">
+            <div class="content fadein" style="flex:1;display:flex;gap:var(--space-5);">
+              <div style="flex:1;display:flex;align-items:center;justify-content:center;"><div style="width:100%;height:300px;border:1px dashed var(--color-divider);border-radius:var(--radius-md);display:flex;align-items:center;justify-content:center;" class="text-muted">말소확인서.pdf 미리보기</div></div>
+              <div style="flex:1;">
+                <h6>외부 API 조회 결과 비교</h6>
+                <div class="card" style="margin-bottom:var(--space-4);">
+                  <div style="display:flex;justify-content:space-between;"><span class="text-muted">등기부 근저당 상태</span><span style="font-weight:600;">말소 확인</span></div>
+                  <div style="display:flex;justify-content:space-between;"><span class="text-muted">조회시각</span><span>2026-07-14 09:20 · CODEF</span></div>
+                </div>
+                <h6>검토 코멘트</h6>
+                <p class="text-muted">{{ verifComment }}</p>
+              </div>
+            </div>
+            <div style="display:flex;justify-content:flex-end;gap:var(--space-2);padding:var(--space-3) var(--space-6);border-top:1px solid var(--color-divider);">
+              <button class="btn btn-secondary" onClick="{{ hold }}">보류</button>
+              <button class="btn btn-ghost" style="color:var(--color-accent-2-700);border:1px solid var(--color-accent-2-300);" onClick="{{ reject }}">반려</button>
+              <button class="btn btn-primary" onClick="{{ approve }}">승인</button>
+            </div>
+          </div>
+        </sc-if>
+
+        <!-- ADV-03 Referral -->
+        <sc-if value="{{ isReferral }}">
+          <div style="flex:1;display:flex;flex-direction:column;max-width:640px;">
+            <div class="content fadein">
+              <div class="field"><label>이관 사유</label><input class="input" value="중대한 계약서 불일치 · 소송 진행 가능성 높음"></div>
+              <div class="field"><label>담당 전문가 배정</label><input class="input" value="법률자문팀 · 이OO 변호사"></div>
+              <div class="field"><label>우선순위</label>
+                <div class="seg" style="width:100%;">
+                  <label class="seg-opt" style="flex:1;justify-content:center;"><input type="radio" name="pr2" checked="{{ priorityIsUrgent }}" onChange="{{ setPriorityUrgent }}"><span>긴급</span></label>
+                  <label class="seg-opt" style="flex:1;justify-content:center;"><input type="radio" name="pr2" checked="{{ priorityIsNormal }}" onChange="{{ setPriorityNormal }}"><span>일반</span></label>
+                </div>
+              </div>
+            </div>
+            <div style="display:flex;justify-content:flex-end;gap:var(--space-2);padding:var(--space-3) var(--space-6);border-top:1px solid var(--color-divider);">
+              <button class="btn btn-secondary" onClick="{{ goToQueue }}">취소</button>
+              <button class="btn" style="background:var(--color-accent-2);color:var(--color-bg);" onClick="{{ confirmReferral }}">이관 확정</button>
+            </div>
+          </div>
+        </sc-if>
+
+        <!-- Done -->
+        <sc-if value="{{ isDone }}">
+          <div class="content fadein" style="display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;">
+            <div style="font-size:52px;color:var(--color-accent-700);margin-bottom:var(--space-3);">✓</div>
+            <h3 style="margin-bottom:var(--space-2);">{{ doneTitle }}</h3>
+            <p class="text-muted" style="margin-bottom:var(--space-6);">상담 큐로 돌아가 다음 건을 처리할 수 있습니다</p>
+            <button class="btn btn-primary" onClick="{{ goToQueue }}">상담 큐로 돌아가기</button>
+          </div>
+        </sc-if>
+
+      </div>
+    </div>
+  </div>
+
+  <div style="max-width:1160px;margin:var(--space-6) auto 0;"><a href="Advisor.dc.html">전체 화면 와이어프레임 보기 →</a></div>
+</div>
+
+</x-dc>
+<script type="text/x-dc" data-dc-script>
+const PATHS = {
+  queue: '/advisor', detail: '/advisor/counsel/4821', verification: '/advisor/verification/9931',
+  referral: '/advisor/referral/4821', done: '/advisor',
+};
+
+class Component extends DCLogic {
+  state = {
+    screen: 'queue',
+    case1Status: 'open', // open -> verified -> referred
+    priority: 'urgent',
+    toast: null,
+    _toastTimer: null,
+  };
+
+  go(screen) { this.setState({ screen }); }
+
+  flashToast(text) {
+    if (this.state._toastTimer) clearTimeout(this.state._toastTimer);
+    const t = setTimeout(() => this.setState({ toast: null, _toastTimer: null }), 1800);
+    this.setState({ toast: text, _toastTimer: t });
+  }
+
+  renderVals() {
+    const s = this.state;
+    const navClass = (list) => list.includes(s.screen) ? 'on' : '';
+
+    return {
+      urlPath: PATHS[s.screen] || '/advisor',
+      isQueue: s.screen === 'queue',
+      isDetail: s.screen === 'detail',
+      isVerification: s.screen === 'verification',
+      isReferral: s.screen === 'referral',
+      isDone: s.screen === 'done',
+
+      showToast: !!s.toast,
+      toastText: s.toast || '',
+
+      navQueueClass: navClass(['queue']),
+      navVerificationClass: navClass(['verification']),
+      navReferralClass: navClass(['referral']),
+
+      goToQueue: () => this.go('queue'),
+      goToVerification: () => this.go('verification'),
+      goToReferral: () => this.go('referral'),
+
+      openCase1: () => this.go('detail'),
+      case1TagClass: s.case1Status === 'open' ? 'tag-accent-2' : 'tag-accent',
+      case1TagText: s.case1Status === 'open' ? '이관필요' : s.case1Status === 'verified' ? '검증완료' : '이관완료',
+
+      saveNote: () => this.flashToast('메모가 저장되었습니다'),
+
+      verifComment: '등기부 조회 결과와 제출 서류가 일치합니다.',
+      hold: () => this.flashToast('보류 처리되었습니다'),
+      reject: () => this.flashToast('반려 처리되었습니다'),
+      approve: () => { this.setState({ case1Status: 'verified' }); this.go('detail'); this.flashToast('검증이 승인되었습니다'); },
+
+      priorityIsUrgent: s.priority === 'urgent',
+      priorityIsNormal: s.priority === 'normal',
+      setPriorityUrgent: () => this.setState({ priority: 'urgent' }),
+      setPriorityNormal: () => this.setState({ priority: 'normal' }),
+      confirmReferral: () => { this.setState({ case1Status: 'referred' }); this.go('done'); },
+
+      doneTitle: '전문가 이관이 확정되었습니다',
+    };
+  }
+}
+
+</script>
+</body>
+</html>

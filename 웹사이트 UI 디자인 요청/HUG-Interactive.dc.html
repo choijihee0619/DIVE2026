@@ -1,0 +1,211 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet data-dc-atomics>
+  <link rel="stylesheet" href="ds/styles.css">
+  <style>
+    body { margin: 0; }
+    .win { width: 100%; max-width: 1160px; border-radius: var(--radius-lg); background: var(--color-surface); box-shadow: var(--shadow-lg); overflow: hidden; }
+    .winbar { display: flex; align-items: center; gap: var(--space-2); padding: var(--space-2) var(--space-3); background: var(--color-neutral-200); font-size: 11px; }
+    .dot { width: 9px; height: 9px; border-radius: 50%; background: var(--color-neutral-400); }
+    .body-row { display: flex; min-height: 640px; }
+    .side { width: 200px; flex: none; padding: var(--space-4) var(--space-2); border-right: 1px solid var(--color-divider); }
+    .side .navlink { display: block; padding: 7px var(--space-2); font-size: 13px; border-radius: var(--radius-md); text-decoration: none; color: var(--color-text); margin-bottom: 2px; cursor: pointer; }
+    .side .navlink.on { background: var(--color-accent); color: var(--color-bg); }
+    .side .navlink:hover:not(.on) { background: var(--color-accent-100); }
+    .content { flex: 1; padding: var(--space-6); overflow-y: auto; }
+    .bar { width: 26px; border-radius: 2px 2px 0 0; }
+    button.btn { border: none; cursor: pointer; }
+    .fadein { animation: fadein 0.3s ease; }
+    @keyframes fadein { from { opacity:0; transform:translateY(6px); } to { opacity:1; transform:translateY(0); } }
+    .toast { position: absolute; right: var(--space-6); top: 64px; background: var(--color-text); color: var(--color-bg); padding: var(--space-2) var(--space-4); border-radius: var(--radius-md); font-size: 13px; box-shadow: var(--shadow-md); animation: toastin 0.25s ease; z-index: 5; }
+    @keyframes toastin { from { opacity:0; transform:translateY(-8px); } to { opacity:1; transform:translateY(0); } }
+    .table tbody tr { cursor: pointer; }
+    .table tbody tr:hover { background: var(--color-accent-100); }
+  </style>
+</helmet>
+
+<div style="min-height:100vh;background:var(--color-bg);padding:var(--space-8) var(--space-8) 100px;">
+  <div style="max-width:1160px;margin:0 auto var(--space-6);">
+    <a href="Index.dc.html" style="font-size:12px;">← 전체 화면 목록</a>
+    <h1 style="margin-top:var(--space-2);">HUG 채권관리 (hug_admin) · 인터랙티브 프로토타입</h1>
+    <p class="text-muted" style="max-width:640px;">사건 우선순위 확인부터 유사사건 비교, 법인 집단위험까지 실제 동작하는 업무 콘솔로 직접 체험해보세요.</p>
+  </div>
+
+  <div style="display:flex;justify-content:center;position:relative;">
+    <sc-if value="{{ showToast }}"><div class="toast">{{ toastText }}</div></sc-if>
+
+    <div class="win"><div class="winbar"><span class="dot"></span><span class="dot"></span><span class="dot"></span><span style="margin-left:var(--space-2);">app.hugansim.com{{ urlPath }}</span></div>
+      <div class="body-row">
+        <div class="side">
+          <div class="nav-brand" style="font-size:15px;padding:0 var(--space-2) var(--space-3);">HUG 채권관리</div>
+          <div class="navlink {{ navDashboardClass }}" onClick="{{ goToDashboard }}">대시보드</div>
+          <div class="navlink {{ navCaseClass }}" onClick="{{ openCase123 }}">사건 상세</div>
+          <div class="navlink {{ navEntityClass }}" onClick="{{ goToEntity }}">법인 집단위험</div>
+        </div>
+
+        <!-- HUG-01 Dashboard -->
+        <sc-if value="{{ isDashboard }}" hint-placeholder-val="{{ true }}">
+          <div class="content fadein">
+            <div style="display:flex;gap:var(--space-4);margin-bottom:var(--space-4);">
+              <div class="card" style="flex:1;">
+                <div class="card-kicker">회수등급 분포</div>
+                <div style="display:flex;align-items:flex-end;gap:var(--space-2);height:70px;">
+                  <div class="bar" style="height:70%;background:var(--color-accent);"></div>
+                  <div class="bar" style="height:100%;background:var(--color-neutral-500);"></div>
+                  <div class="bar" style="height:45%;background:var(--color-accent-2);"></div>
+                </div>
+                <div style="display:flex;gap:var(--space-2);font-size:10px;" class="text-muted"><span style="width:26px;text-align:center;">HIGH</span><span style="width:26px;text-align:center;">MED</span><span style="width:26px;text-align:center;">LOW</span></div>
+              </div>
+              <div class="card" style="flex:1;">
+                <div class="card-kicker">처리기간 분포 (일)</div>
+                <div style="display:flex;align-items:flex-end;gap:var(--space-2);height:70px;">
+                  <div class="bar" style="height:40%;background:var(--color-accent-700);"></div>
+                  <div class="bar" style="height:90%;background:var(--color-accent-700);"></div>
+                  <div class="bar" style="height:65%;background:var(--color-accent-700);"></div>
+                </div>
+                <div style="display:flex;gap:var(--space-2);font-size:10px;" class="text-muted"><span style="width:26px;text-align:center;">~60</span><span style="width:26px;text-align:center;">~120</span><span style="width:26px;text-align:center;">120+</span></div>
+              </div>
+            </div>
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:var(--space-3);">
+              <div style="display:flex;gap:var(--space-2);"><span class="tag tag-outline">지역 ▾</span><span class="tag tag-outline">회수등급 ▾</span><span class="tag tag-outline">처리기간구간 ▾</span></div>
+              <button class="btn btn-secondary" onClick="{{ exportCsv }}">CSV 내보내기</button>
+            </div>
+            <table class="table">
+              <thead><tr><th>사건</th><th>지연 위험</th><th>회수등급</th><th>예상 처리기간</th></tr></thead>
+              <tbody>
+                <tr onClick="{{ openCase123 }}"><td>사건#123 · 서울 마포구</td><td><span class="tag tag-accent-2">HIGH</span></td><td>MEDIUM</td><td>145일</td></tr>
+                <tr><td>사건#124 · 인천 남동구</td><td><span class="tag tag-neutral">MEDIUM</span></td><td>HIGH</td><td>88일</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </sc-if>
+
+        <!-- HUG-02 Case detail -->
+        <sc-if value="{{ isCase }}">
+          <div style="flex:1;display:flex;flex-direction:column;">
+            <div class="content fadein" style="flex:1;">
+              <div class="card" style="margin-bottom:var(--space-4);">
+                <div style="display:flex;justify-content:space-between;"><span class="card-title">사건 #123 · 서울 마포구 OO아파트</span><span class="card-meta">접수 2026-06-20</span></div>
+                <div class="card-body">사고사유: 보증금 미반환 · 계약만료 경과 32일</div>
+              </div>
+              <div style="display:flex;gap:var(--space-4);">
+                <div class="card elev-sm" style="flex:1;">
+                  <div class="card-kicker">회수 예측</div>
+                  <div style="font-size:10px;" class="text-muted">예상 회수율</div>
+                  <div style="font-size:24px;font-weight:700;font-family:var(--font-heading);">72%</div>
+                  <span class="tag tag-neutral" style="width:fit-content;">회수등급 MEDIUM</span>
+                  <div class="card-kicker" style="margin-top:var(--space-2);">주요 근거 (SHAP)</div>
+                  <div class="card-body">경매 진행단계, 담보순위, 지역 낙찰가율</div>
+                </div>
+                <div class="card elev-sm" style="flex:1;">
+                  <div class="card-kicker" style="color:var(--color-accent-2-700);">처리기간 예측</div>
+                  <div style="font-size:10px;" class="text-muted">예상 처리기간</div>
+                  <div style="font-size:24px;font-weight:700;font-family:var(--font-heading);">145일</div>
+                  <span class="tag tag-accent-2" style="width:fit-content;">delay_risk HIGH</span>
+                  <div class="card-kicker" style="margin-top:var(--space-2);color:var(--color-accent-2-700);">주요 근거 (SHAP)</div>
+                  <div class="card-body">채권규모, 물건특성, 절차 지연 이력</div>
+                </div>
+              </div>
+            </div>
+            <div style="display:flex;justify-content:flex-end;gap:var(--space-2);padding:var(--space-3) var(--space-6);border-top:1px solid var(--color-divider);">
+              <button class="btn btn-secondary" onClick="{{ logAction }}">담당자 액션 기록</button>
+              <button class="btn btn-primary" onClick="{{ goToSimilar }}">유사사건 비교 &gt;</button>
+            </div>
+          </div>
+        </sc-if>
+
+        <!-- HUG-03 Similar -->
+        <sc-if value="{{ isSimilar }}">
+          <div class="content fadein">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:var(--space-3);">
+              <div style="display:flex;gap:var(--space-2);"><span class="tag" style="background:var(--color-accent);color:var(--color-bg);">지역</span><span class="tag tag-outline">주택유형</span><span class="tag tag-outline">절차유형</span></div>
+              <span class="tag tag-neutral">표본 12건 · 참고용</span>
+            </div>
+            <table class="table">
+              <thead><tr><th>사건</th><th>회수등급</th><th>처리기간</th><th>지역</th></tr></thead>
+              <tbody>
+                <tr style="background:var(--color-accent-100);"><td><b>사건#123 (현재)</b></td><td>MEDIUM</td><td>145일</td><td>마포구</td></tr>
+                <tr><td>사건#098</td><td>MEDIUM</td><td>132일</td><td>서대문구</td></tr>
+                <tr><td>사건#071</td><td>LOW</td><td>168일</td><td>은평구</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </sc-if>
+
+        <!-- HUG-04 Entity -->
+        <sc-if value="{{ isEntity }}">
+          <div style="flex:1;display:flex;flex-direction:column;">
+            <div class="content fadein" style="flex:1;">
+              <div class="card" style="background:var(--color-accent-2-100);margin-bottom:var(--space-4);"><div class="card-body">비식별 법인키가 없어 개별 법인 추적은 제공하지 않습니다. 아래는 지역·주택유형 집단 단위 신호입니다.</div></div>
+              <div style="display:flex;gap:var(--space-4);">
+                <div class="card" style="flex:1;"><div class="card-kicker">DART 공시 여부</div><div style="font-size:18px;font-weight:700;font-family:var(--font-heading);">공시 없음 38%</div></div>
+                <div class="card" style="flex:1;"><div class="card-kicker">사업자 상태 분포</div><div style="font-size:18px;font-weight:700;font-family:var(--font-heading);">폐업 9% · 정상 91%</div></div>
+              </div>
+            </div>
+            <div style="display:flex;justify-content:flex-end;gap:var(--space-2);padding:var(--space-3) var(--space-6);border-top:1px solid var(--color-divider);"><button class="btn btn-primary" onClick="{{ goToDashboard }}">상세 사건 목록 보기</button></div>
+          </div>
+        </sc-if>
+
+      </div>
+    </div>
+  </div>
+
+  <div style="max-width:1160px;margin:var(--space-6) auto 0;"><a href="HUG.dc.html">전체 화면 와이어프레임 보기 →</a></div>
+</div>
+
+</x-dc>
+<script type="text/x-dc" data-dc-script>
+const PATHS = {
+  dashboard: '/hug/dashboard', case: '/hug/case/123', similar: '/hug/case/123/similar', entity: '/hug/entity/gr-04',
+};
+
+class Component extends DCLogic {
+  state = { screen: 'dashboard', toast: null, _toastTimer: null };
+
+  go(screen) { this.setState({ screen }); }
+
+  flashToast(text) {
+    if (this.state._toastTimer) clearTimeout(this.state._toastTimer);
+    const t = setTimeout(() => this.setState({ toast: null, _toastTimer: null }), 1800);
+    this.setState({ toast: text, _toastTimer: t });
+  }
+
+  renderVals() {
+    const s = this.state;
+    const navClass = (list) => list.includes(s.screen) ? 'on' : '';
+
+    return {
+      urlPath: PATHS[s.screen] || '/hug/dashboard',
+      isDashboard: s.screen === 'dashboard',
+      isCase: s.screen === 'case',
+      isSimilar: s.screen === 'similar',
+      isEntity: s.screen === 'entity',
+
+      showToast: !!s.toast,
+      toastText: s.toast || '',
+
+      navDashboardClass: navClass(['dashboard']),
+      navCaseClass: navClass(['case', 'similar']),
+      navEntityClass: navClass(['entity']),
+
+      goToDashboard: () => this.go('dashboard'),
+      openCase123: () => this.go('case'),
+      goToEntity: () => this.go('entity'),
+      goToSimilar: () => this.go('similar'),
+
+      exportCsv: () => this.flashToast('CSV로 내보냈습니다'),
+      logAction: () => this.flashToast('액션이 기록되었습니다'),
+    };
+  }
+}
+
+</script>
+</body>
+</html>

@@ -1,0 +1,13 @@
+{
+  "case_id": "case_mock_007",
+  "source": "mock_business_closed",
+  "business_status": {
+    "b_no_hash": "sha256:0000000000000000000000000000000000000000000000000000000000000000",
+    "status": "폐업자",
+    "tax_type": null,
+    "closed_date": "2025-12-31"
+  },
+  "label": {
+    "business_closed_flag": true
+  }
+}

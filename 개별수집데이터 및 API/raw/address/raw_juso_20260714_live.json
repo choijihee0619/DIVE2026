@@ -1,0 +1,32 @@
+{
+  "api": "juso",
+  "source_system": "api_live",
+  "requested_at": "2026-07-14T18:07:00.875441+09:00",
+  "request": {
+    "base_url": "https://business.juso.go.kr",
+    "endpoint": "/addrlink/addrLinkApi.do",
+    "method": "GET",
+    "params": {
+      "keyword": "서울특별시 강남구 테헤란로 152",
+      "currentPage": "1",
+      "countPerPage": "1",
+      "resultType": "json"
+    },
+    "key_param": "confmKey",
+    "key_masked": "devU…MjE="
+  },
+  "live_call_ok": true,
+  "http_status": 200,
+  "response": {
+    "results": {
+      "common": {
+        "countPerPage": "1",
+        "errorMessage": "승인되지 않은 KEY 입니다.",
+        "errorCode": "E0001",
+        "totalCount": "0",
+        "currentPage": "1"
+      },
+      "juso": null
+    }
+  }
+}

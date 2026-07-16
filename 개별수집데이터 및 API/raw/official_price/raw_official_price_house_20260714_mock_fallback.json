@@ -1,0 +1,40 @@
+{
+  "api": "official_price_house",
+  "source_system": "mock",
+  "requested_at": "2026-07-14T18:07:05.504665+09:00",
+  "request": {
+    "base_url": "https://apis.data.go.kr",
+    "endpoint": "/1611000/nsdi/IndvdHousingPriceService/attr/getIndvdHousingPriceAttr",
+    "method": "GET",
+    "params": {
+      "pnu": "1168010300100120000",
+      "stdrYear": "2024",
+      "format": "json",
+      "pageNo": "1",
+      "numOfRows": "1"
+    },
+    "key_param": "serviceKey",
+    "key_masked": "4E77…F796"
+  },
+  "live_call_ok": false,
+  "http_status": 500,
+  "response_body": "Unexpected errors\n",
+  "error_class": "http_error_500",
+  "error_message": "HTTP Error 500: Internal Server Error",
+  "fallback_mock_file": "mock_official_price_success.json",
+  "response": {
+    "case_id": "case_mock_005",
+    "source": "mock_official_price_success",
+    "official_price": 620000000,
+    "base_year": 2026,
+    "address": {
+      "road_address": "서울특별시 송파구 올림픽로 300",
+      "adm_cd": "1171010100"
+    },
+    "complex_name": "OO단지",
+    "dong": "101",
+    "ho": "1502",
+    "exclusive_area_sqm": 84.9
+  },
+  "note": "실 API 호출 실패로 가이드 5장 Fallback 정책에 따라 mock 데이터로 대체 저장. 실제 서비스 배포 전 아웃바운드 네트워크가 열린 환경에서 재실행하여 교체 필요."
+}

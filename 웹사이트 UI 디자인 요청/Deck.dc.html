@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet data-dc-atomics>
+  <link href="https://fonts.googleapis.com/css2?family=Source+Serif+4:wght@400;600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    body { margin: 0; }
+    :root {
+      --type-title: 64px; --type-subtitle: 40px; --type-body: 30px; --type-small: 24px;
+      --pad-top: 100px; --pad-bottom: 80px; --pad-x: 110px; --gap-title: 44px; --gap-item: 24px;
+      --navy: #1E4C8C; --ink: #16202E; --muted: #5B6472; --paper: #F2F4F7;
+    }
+  </style>
+</helmet>
+
+<x-import component-from-global-scope="deck-stage" from="./deck-stage.js" width="1920" height="1080" hint-size="100%,100%">
+
+  <section data-label="Title" data-speaker-notes="HUG 안심전세 체인 Frontend UI/UX 디자인 발표를 시작합니다. 개발설계보고서와 Frontend UI/UX 명세서를 기준으로 4개 사용자군의 20개 화면을 구현했습니다." style="background:var(--navy);color:#fff;display:flex;flex-direction:column;justify-content:center;padding:0 var(--pad-x);font-family:'Source Serif 4',serif;">
+    <div style="font-family:'Inter',sans-serif;font-size:22px;font-weight:600;letter-spacing:0.04em;color:#AFC6E8;margin-bottom:28px;">HUG × 아이엔 안심주거 생태계</div>
+    <div style="font-size:76px;font-weight:700;line-height:1.15;max-width:1500px;">HUG 안심전세 체인<br>Frontend UI/UX 디자인</div>
+    <div style="font-family:'Inter',sans-serif;font-size:26px;color:#C7D6EC;margin-top:36px;">개발기획 및 상세설계보고서 (2026-07-14) 기준 · 임차인 · 임대인 · 아이엔 · HUG</div>
+  </section>
+
+  <section data-label="Design Principles" data-speaker-notes="설계 원칙 네 가지를 소개합니다. 근거 중심 판단, 데이터 신뢰성 표기, 단순화된 블록체인 상태, 디바이스별 최적화입니다." style="background:var(--paper);display:flex;flex-direction:column;padding:var(--pad-top) var(--pad-x) var(--pad-bottom);font-family:'Inter',sans-serif;color:var(--ink);">
+    <div style="font-family:'Source Serif 4',serif;font-size:var(--type-title);font-weight:700;margin-bottom:var(--gap-title);">설계 원칙</div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:32px;flex:1;">
+      <div style="background:#fff;border:1px solid #E1E4EA;border-radius:16px;padding:44px;">
+        <div style="font-size:var(--type-small);font-weight:700;color:var(--navy);margin-bottom:16px;">근거·다음행동 우선</div>
+        <div style="font-size:28px;color:var(--muted);line-height:1.5;">위험 점수를 단독으로 노출하지 않고, 근거와 다음 행동을 함께 제시합니다</div>
+      </div>
+      <div style="background:#fff;border:1px solid #E1E4EA;border-radius:16px;padding:44px;">
+        <div style="font-size:var(--type-small);font-weight:700;color:var(--navy);margin-bottom:16px;">데이터 신뢰성 표기</div>
+        <div style="font-size:28px;color:var(--muted);line-height:1.5;">모든 조회 결과에 조회시각·출처·모델버전을 명시합니다</div>
+      </div>
+      <div style="background:#fff;border:1px solid #E1E4EA;border-radius:16px;padding:44px;">
+        <div style="font-size:var(--type-small);font-weight:700;color:var(--navy);margin-bottom:16px;">단순화된 블록체인 상태</div>
+        <div style="font-size:28px;color:var(--muted);line-height:1.5;">Pending / Confirmed / Failed 3단계만 사용해 이해도를 높입니다</div>
+      </div>
+      <div style="background:#fff;border:1px solid #E1E4EA;border-radius:16px;padding:44px;">
+        <div style="font-size:var(--type-small);font-weight:700;color:var(--navy);margin-bottom:16px;">디바이스별 최적화</div>
+        <div style="font-size:28px;color:var(--muted);line-height:1.5;">임차인·임대인은 모바일+웹, 아이엔·HUG는 데스크톱 업무화면 중심</div>
+      </div>
+    </div>
+  </section>
+
+  <section data-label="User Groups" data-speaker-notes="네 개 사용자군과 화면 수를 정리했습니다." style="background:#fff;display:flex;flex-direction:column;padding:var(--pad-top) var(--pad-x) var(--pad-bottom);font-family:'Inter',sans-serif;color:var(--ink);">
+    <div style="font-family:'Source Serif 4',serif;font-size:var(--type-title);font-weight:700;margin-bottom:var(--gap-title);">4개 사용자군 · 20개 화면</div>
+    <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:28px;flex:1;">
+      <div style="background:var(--paper);border-radius:16px;padding:36px;display:flex;flex-direction:column;justify-content:space-between;">
+        <div style="font-size:22px;font-weight:600;color:var(--muted);">tenant</div>
+        <div><div style="font-size:64px;font-weight:700;font-family:'Source Serif 4',serif;color:var(--navy);">8</div><div style="font-size:26px;">임차인</div><div style="font-size:20px;color:var(--muted);">TEN-00 ~ TEN-07</div></div>
+      </div>
+      <div style="background:var(--paper);border-radius:16px;padding:36px;display:flex;flex-direction:column;justify-content:space-between;">
+        <div style="font-size:22px;font-weight:600;color:var(--muted);">landlord</div>
+        <div><div style="font-size:64px;font-weight:700;font-family:'Source Serif 4',serif;color:#0F766E;">4</div><div style="font-size:26px;">임대인</div><div style="font-size:20px;color:var(--muted);">LAND-00 ~ LAND-03</div></div>
+      </div>
+      <div style="background:var(--paper);border-radius:16px;padding:36px;display:flex;flex-direction:column;justify-content:space-between;">
+        <div style="font-size:22px;font-weight:600;color:var(--muted);">advisor</div>
+        <div><div style="font-size:64px;font-weight:700;font-family:'Source Serif 4',serif;color:#6D28D9;">4</div><div style="font-size:26px;">아이엔 상담·검증</div><div style="font-size:20px;color:var(--muted);">ADV-00 ~ ADV-03</div></div>
+      </div>
+      <div style="background:var(--paper);border-radius:16px;padding:36px;display:flex;flex-direction:column;justify-content:space-between;">
+        <div style="font-size:22px;font-weight:600;color:var(--muted);">hug_admin</div>
+        <div><div style="font-size:64px;font-weight:700;font-family:'Source Serif 4',serif;color:var(--navy);">4</div><div style="font-size:26px;">HUG 채권관리</div><div style="font-size:20px;color:var(--muted);">HUG-01 ~ HUG-04</div></div>
+      </div>
+    </div>
+  </section>
+
+  <section data-label="Tenant Mobile" data-speaker-notes="임차인 모바일 화면입니다. 계약 전 위험진단부터 사고접수까지 전체 여정을 다룹니다." style="background:var(--paper);display:flex;flex-direction:column;padding:64px var(--pad-x) 60px;font-family:'Inter',sans-serif;color:var(--ink);">
+    <div style="font-family:'Source Serif 4',serif;font-size:48px;font-weight:700;margin-bottom:8px;">임차인 (tenant) · 모바일</div>
+    <div style="font-size:24px;color:var(--muted);margin-bottom:28px;">TEN-00 ~ TEN-07 · 위험진단 → 증빙·검증 → 계약 타임라인 → D-90 반환계획 → 사고 접수</div>
+    <img src="deck-assets/tenant-mobile.png" style="width:100%;flex:1;object-fit:contain;border-radius:12px;border:1px solid #E1E4EA;background:#fff;">
+  </section>
+
+  <section data-label="Tenant Web" data-speaker-notes="동일한 임차인 여정을 태블릿 이상 데스크톱 웹에서 사이드바 내비게이션과 함께 제공합니다." style="background:var(--paper);display:flex;flex-direction:column;padding:64px var(--pad-x) 60px;font-family:'Inter',sans-serif;color:var(--ink);">
+    <div style="font-family:'Source Serif 4',serif;font-size:48px;font-weight:700;margin-bottom:8px;">임차인 (tenant) · 데스크톱 웹</div>
+    <div style="font-size:24px;color:var(--muted);margin-bottom:28px;">TEN-00 ~ TEN-07 · 사이드바 내비게이션 추가, 콘텐츠 폭 확장</div>
+    <img src="deck-assets/tenant-web.png" style="width:100%;flex:1;object-fit:contain;border-radius:12px;border:1px solid #E1E4EA;background:#fff;">
+  </section>
+
+  <section data-label="Landlord" data-speaker-notes="임대인 화면입니다. 보완요청 확인, 증빙 제출, 검증 상태 확인, 반환계획 제출까지 모바일과 웹 모두 제공합니다." style="background:var(--paper);display:flex;flex-direction:column;padding:64px var(--pad-x) 60px;font-family:'Inter',sans-serif;color:var(--ink);">
+    <div style="font-family:'Source Serif 4',serif;font-size:48px;font-weight:700;margin-bottom:8px;">임대인 (landlord)</div>
+    <div style="font-size:24px;color:var(--muted);margin-bottom:28px;">LAND-00 ~ LAND-03 · 보완요청 확인부터 반환계획 제출까지 · 모바일 + 데스크톱 웹</div>
+    <img src="deck-assets/landlord.png" style="width:100%;flex:1;object-fit:contain;border-radius:12px;border:1px solid #E1E4EA;background:#fff;">
+  </section>
+
+  <section data-label="Advisor" data-speaker-notes="아이엔 상담·검증 콘솔입니다. 상담 큐, RAG 근거, 증빙 검토, 전문가 이관 화면을 포함합니다." style="background:var(--paper);display:flex;flex-direction:column;padding:64px var(--pad-x) 60px;font-family:'Inter',sans-serif;color:var(--ink);">
+    <div style="font-family:'Source Serif 4',serif;font-size:48px;font-weight:700;margin-bottom:8px;">아이엔 상담·검증 (advisor)</div>
+    <div style="font-size:24px;color:var(--muted);margin-bottom:28px;">ADV-00 ~ ADV-03 · 상담 분류부터 전문가 이관까지 · 데스크톱 업무화면</div>
+    <img src="deck-assets/advisor.png" style="width:100%;flex:1;object-fit:contain;border-radius:12px;border:1px solid #E1E4EA;background:#fff;">
+  </section>
+
+  <section data-label="HUG" data-speaker-notes="HUG 채권관리 화면입니다. 대시보드, 사건 상세, 유사사건 비교, 법인 집단위험을 다룹니다." style="background:var(--paper);display:flex;flex-direction:column;padding:64px var(--pad-x) 60px;font-family:'Inter',sans-serif;color:var(--ink);">
+    <div style="font-family:'Source Serif 4',serif;font-size:48px;font-weight:700;margin-bottom:8px;">HUG 채권관리 (hug_admin)</div>
+    <div style="font-size:24px;color:var(--muted);margin-bottom:28px;">HUG-01 ~ HUG-04 · 사건 우선순위부터 법인 집단위험까지 · 데스크톱 업무화면</div>
+    <img src="deck-assets/hug.png" style="width:100%;flex:1;object-fit:contain;border-radius:12px;border:1px solid #E1E4EA;background:#fff;">
+  </section>
+
+  <section data-label="Closing" data-speaker-notes="이상으로 HUG 안심전세 체인 Frontend UI/UX 디자인 발표를 마칩니다. 문의사항은 언제든 말씀해 주세요." style="background:var(--navy);color:#fff;display:flex;flex-direction:column;justify-content:center;padding:0 var(--pad-x);font-family:'Source Serif 4',serif;">
+    <div style="font-size:56px;font-weight:700;margin-bottom:24px;">감사합니다</div>
+    <div style="font-family:'Inter',sans-serif;font-size:26px;color:#C7D6EC;">HUG × 아이엔 안심주거 생태계 · Frontend UI/UX 디자인</div>
+  </section>
+
+</x-import>
+
+</x-dc>
+</body>
+</html>

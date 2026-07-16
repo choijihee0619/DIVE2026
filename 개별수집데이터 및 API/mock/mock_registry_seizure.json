@@ -1,0 +1,38 @@
+{
+  "case_id": "case_mock_003",
+  "source": "mock_registry_seizure",
+  "address": {
+    "road_address": "인천광역시 부평구 부평문화로 153",
+    "adm_cd": "2823710100"
+  },
+  "registry": {
+    "owner_type": "individual",
+    "rights": [
+      {
+        "type": "seizure",
+        "holder": "OO세무서",
+        "amount": null,
+        "registered_at": "2025-06-02",
+        "is_cancelled": false
+      }
+    ]
+  },
+  "price": {
+    "deposit": 300000000,
+    "recent_trade_price": 420000000,
+    "official_price": 360000000
+  },
+  "features": {
+    "jeonse_ratio": 0.714,
+    "mortgage_ratio": 0.0,
+    "rights_burden_ratio": 0.714,
+    "has_seizure": true
+  },
+  "label": {
+    "risk_grade": "CRITICAL",
+    "risk_reasons": [
+      "압류 존재",
+      "임차인 대항력 우선순위 침해 가능"
+    ]
+  }
+}

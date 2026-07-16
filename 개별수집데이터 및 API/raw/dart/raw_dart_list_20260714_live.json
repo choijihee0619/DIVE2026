@@ -1,0 +1,140 @@
+{
+  "api": "dart_list",
+  "source_system": "api_live",
+  "requested_at": "2026-07-14T18:07:09.450621+09:00",
+  "request": {
+    "base_url": "https://opendart.fss.or.kr",
+    "endpoint": "/api/list.json",
+    "method": "GET",
+    "params": {
+      "corp_code": "00126380",
+      "bgn_de": "20250101",
+      "end_de": "20260714",
+      "page_no": "1"
+    },
+    "key_param": "crtfc_key",
+    "key_masked": "18c4…91b3"
+  },
+  "live_call_ok": true,
+  "http_status": 200,
+  "response": {
+    "status": "000",
+    "message": "정상",
+    "page_no": 1,
+    "page_count": 10,
+    "total_count": 2763,
+    "total_page": 277,
+    "list": [
+      {
+        "corp_code": "00126380",
+        "corp_name": "삼성전자",
+        "stock_code": "005930",
+        "corp_cls": "Y",
+        "report_nm": "임원ㆍ주요주주특정증권등소유상황보고서",
+        "rcept_no": "20260714000175",
+        "flr_nm": "얀손헨릭",
+        "rcept_dt": "20260714",
+        "rm": ""
+      },
+      {
+        "corp_code": "00126380",
+        "corp_name": "삼성전자",
+        "stock_code": "005930",
+        "corp_cls": "Y",
+        "report_nm": "주요사항보고서(자기주식처분결정)",
+        "rcept_no": "20260713000395",
+        "flr_nm": "삼성전자",
+        "rcept_dt": "20260713",
+        "rm": ""
+      },
+      {
+        "corp_code": "00126380",
+        "corp_name": "삼성전자",
+        "stock_code": "005930",
+        "corp_cls": "Y",
+        "report_nm": "임원ㆍ주요주주특정증권등소유상황보고서",
+        "rcept_no": "20260710000718",
+        "flr_nm": "전중원",
+        "rcept_dt": "20260713",
+        "rm": ""
+      },
+      {
+        "corp_code": "00126380",
+        "corp_name": "삼성전자",
+        "stock_code": "005930",
+        "corp_cls": "Y",
+        "report_nm": "주식등의대량보유상황보고서(일반)",
+        "rcept_no": "20260710000678",
+        "flr_nm": "삼성물산",
+        "rcept_dt": "20260710",
+        "rm": ""
+      },
+      {
+        "corp_code": "00126380",
+        "corp_name": "삼성전자",
+        "stock_code": "005930",
+        "corp_cls": "Y",
+        "report_nm": "자기주식처분결과보고서",
+        "rcept_no": "20260710000585",
+        "flr_nm": "삼성전자",
+        "rcept_dt": "20260710",
+        "rm": ""
+      },
+      {
+        "corp_code": "00126380",
+        "corp_name": "삼성전자",
+        "stock_code": "005930",
+        "corp_cls": "Y",
+        "report_nm": "임원ㆍ주요주주특정증권등소유상황보고서",
+        "rcept_no": "20260710000211",
+        "flr_nm": "Lee Sungki",
+        "rcept_dt": "20260710",
+        "rm": ""
+      },
+      {
+        "corp_code": "00126380",
+        "corp_name": "삼성전자",
+        "stock_code": "005930",
+        "corp_cls": "Y",
+        "report_nm": "임원ㆍ주요주주특정증권등소유상황보고서",
+        "rcept_no": "20260709000703",
+        "flr_nm": "김형수",
+        "rcept_dt": "20260710",
+        "rm": ""
+      },
+      {
+        "corp_code": "00126380",
+        "corp_name": "삼성전자",
+        "stock_code": "005930",
+        "corp_cls": "Y",
+        "report_nm": "임원ㆍ주요주주특정증권등소유상황보고서",
+        "rcept_no": "20260709000691",
+        "flr_nm": "양준철",
+        "rcept_dt": "20260709",
+        "rm": ""
+      },
+      {
+        "corp_code": "00126380",
+        "corp_name": "삼성전자",
+        "stock_code": "005930",
+        "corp_cls": "Y",
+        "report_nm": "임원ㆍ주요주주특정증권등소유상황보고서",
+        "rcept_no": "20260709000662",
+        "flr_nm": "신경섭",
+        "rcept_dt": "20260709",
+        "rm": ""
+      },
+      {
+        "corp_code": "00126380",
+        "corp_name": "삼성전자",
+        "stock_code": "005930",
+        "corp_cls": "Y",
+        "report_nm": "주요사항보고서(자기주식처분결정)",
+        "rcept_no": "20260707000403",
+        "flr_nm": "삼성전자",
+        "rcept_dt": "20260707",
+        "rm": ""
+      }
+    ]
+  }
+}

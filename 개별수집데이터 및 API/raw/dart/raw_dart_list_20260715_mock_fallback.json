@@ -1,0 +1,38 @@
+{
+  "api": "dart_list",
+  "source_system": "mock",
+  "requested_at": "2026-07-15T09:36:45.270241+09:00",
+  "request": {
+    "base_url": "https://opendart.fss.or.kr",
+    "endpoint": "/api/list.json",
+    "method": "GET",
+    "params": {
+      "corp_code": "00126380",
+      "bgn_de": "20250101",
+      "end_de": "20260715",
+      "page_no": "1"
+    },
+    "key_param": "crtfc_key",
+    "key_masked": "18c4…91b3"
+  },
+  "live_call_ok": false,
+  "http_status": null,
+  "response_body": "",
+  "error_class": "connection_error",
+  "error_message": "[Errno 8] nodename nor servname provided, or not known",
+  "fallback_mock_file": "mock_dart_not_found.json",
+  "response": {
+    "case_id": "case_mock_009",
+    "source": "mock_dart_not_found",
+    "dart": {
+      "status": "013",
+      "message": "조회된 데이터가 없습니다",
+      "list": []
+    },
+    "label": {
+      "dart_disclosure_flag": false,
+      "dart_exists": false
+    }
+  },
+  "note": "실 API 호출 실패로 가이드 5장 Fallback 정책에 따라 mock 데이터로 대체 저장. 실제 서비스 배포 전 아웃바운드 네트워크가 열린 환경에서 재실행하여 교체 필요."
+}

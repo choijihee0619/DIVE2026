@@ -1,0 +1,134 @@
+[
+  {
+    "file": "interim_hug_20260714_임대보증_대위변제.parquet",
+    "folder": "hug",
+    "rows": 23107,
+    "cols": [
+      "source_row_id",
+      "product_name",
+      "issued_at",
+      "obligor_type",
+      "subrogation_amount",
+      "housing_type",
+      "source_system"
+    ]
+  },
+  {
+    "file": "interim_hug_20260714_임대보증_사고현황.parquet",
+    "folder": "hug",
+    "rows": 25687,
+    "cols": [
+      "source_row_id",
+      "obligor_type",
+      "guarantee_end_date",
+      "incident_reason",
+      "workplace_region_detail",
+      "housing_type",
+      "deposit_amount",
+      "incident_amount_ratio",
+      "days_end_to_incident",
+      "source_system"
+    ]
+  },
+  {
+    "file": "interim_hug_20260714_전세보증_대위변제.parquet",
+    "folder": "hug",
+    "rows": 66579,
+    "cols": [
+      "source_row_id",
+      "product_name",
+      "guarantee_status",
+      "incident_received_date",
+      "subrogation_amount",
+      "region_address",
+      "source_system"
+    ]
+  },
+  {
+    "file": "interim_hug_20260714_전세사고_임대보증금대비사고금액.parquet",
+    "folder": "hug",
+    "rows": 69435,
+    "cols": [
+      "source_row_id",
+      "guarantee_end_date",
+      "region_name",
+      "housing_type",
+      "deposit_amount",
+      "incident_amount_ratio",
+      "source_system"
+    ]
+  },
+  {
+    "file": "interim_hug_20260714_전세사고_주택가액대비임대보증금.parquet",
+    "folder": "hug",
+    "rows": 69435,
+    "cols": [
+      "source_row_id",
+      "product_name",
+      "guarantee_end_date",
+      "region_name",
+      "housing_type",
+      "house_value",
+      "deposit_to_house_value_ratio",
+      "source_system"
+    ]
+  },
+  {
+    "file": "interim_auction_20260714_전세임대채무자_경매현황.parquet",
+    "folder": "auction",
+    "rows": 32542,
+    "cols": [
+      "source_row_id",
+      "product_name",
+      "auction_type",
+      "auction_filed_date",
+      "dividend_amount",
+      "subrogation_amount",
+      "property_type",
+      "property_address",
+      "source_system"
+    ]
+  },
+  {
+    "file": "interim_dividend_20260714_전세임대채무자_배당내역.parquet",
+    "folder": "dividend",
+    "rows": 28961,
+    "cols": [
+      "source_row_id",
+      "product_name",
+      "auction_filed_date",
+      "claimed_amount",
+      "claim_type",
+      "incurred_date",
+      "incurred_amount",
+      "recovery_ratio",
+      "days_filing_to_dividend",
+      "source_system"
+    ]
+  },
+  {
+    "file": "interim_in_20260714_비식별_임대차상담데이터.parquet",
+    "folder": "in",
+    "rows": 938,
+    "cols": [
+      "source_row_id",
+      "serial_no",
+      "data_group",
+      "consult_month",
+      "region_sido",
+      "region_sigungu",
+      "deposit_range",
+      "contract_status",
+      "housing_type",
+      "senior_right",
+      "guarantee_insurance",
+      "dispute_type",
+      "consultation_stage",
+      "situation_summary",
+      "manager_opinion",
+      "special_note",
+      "advisor",
+      "source_system"
+    ]
+  }
+]

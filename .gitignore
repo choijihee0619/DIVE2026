@@ -1,0 +1,11 @@
+.DS_Store
+__pycache__/
+*.pyc
+
+# Secrets and local environment
+backend/.env
+backend/.env.*
+!backend/.env.example
+backend/backend_env_설정_260714.txt
+backend/secrets/
+docs/atlas-credentials.env

@@ -1,0 +1,232 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+@import "shadcn/tailwind.css";
+
+@custom-variant dark (&:is(.dark *));
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --font-sans: var(--font-sans);
+  --font-mono: ui-monospace, "SFMono-Regular", Menlo, monospace;
+  --color-sidebar-ring: var(--sidebar-ring);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar: var(--sidebar);
+  --color-chart-5: var(--chart-5);
+  --color-chart-4: var(--chart-4);
+  --color-chart-3: var(--chart-3);
+  --color-chart-2: var(--chart-2);
+  --color-chart-1: var(--chart-1);
+  --color-ring: var(--ring);
+  --color-input: var(--input);
+  --color-border: var(--border);
+  --color-destructive: var(--destructive);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-accent: var(--accent);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-muted: var(--muted);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-secondary: var(--secondary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-primary: var(--primary);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-popover: var(--popover);
+  --color-card-foreground: var(--card-foreground);
+  --color-card: var(--card);
+  --radius-sm: calc(var(--radius) * 0.6);
+  --radius-md: calc(var(--radius) * 0.8);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) * 1.4);
+  --radius-2xl: calc(var(--radius) * 1.8);
+  --radius-3xl: calc(var(--radius) * 2.2);
+  --radius-4xl: calc(var(--radius) * 2.6);
+}
+
+/*
+ * 웹사이트 UI 디자인 요청/ds/styles.css 토큰을 그대로 이식(절대원칙 3절).
+ * --color-process-yellow와 .halftone/.cmyk* 인쇄 전용 장식 클래스는 ds/styles.css 자체 주석에
+ * "인터페이스 액센트가 아님(body copy와 chrome은 사용하지 않음)"이라고 명시돼 있어 앱 UI에 이식하지 않는다.
+ * danger/warning/success 램프는 ds에 없어 neutral-500(#9b9797)과 동일한 명도대 기준으로 사용자 확인 후
+ * 표준 red/amber/emerald(Tailwind 기본 팔레트)를 추가했다.
+ */
+@theme {
+  --color-ds-bg: #f3f2f2;
+  --color-ds-surface: #eae9e9;
+  --color-ds-text: #201e1d;
+  --color-divider: color-mix(in srgb, #201e1d 16%, transparent);
+
+  --color-neutral-100: #f8f4f4;
+  --color-neutral-200: #eae7e7;
+  --color-neutral-300: #d7d3d3;
+  --color-neutral-400: #bab6b6;
+  --color-neutral-500: #9b9797;
+  --color-neutral-600: #7d7979;
+  --color-neutral-700: #605d5d;
+  --color-neutral-800: #444141;
+  --color-neutral-900: #2d2b2b;
+
+  --color-accent-100: #e9f8ff;
+  --color-accent-200: #cbeeff;
+  --color-accent-300: #99e0ff;
+  --color-accent-400: #62c5ee;
+  --color-accent-500: #38a6cf;
+  --color-accent-600: #1186ac;
+  --color-accent-700: #006786;
+  --color-accent-800: #004961;
+  --color-accent-900: #0a303e;
+  --color-accent: #0088b0;
+
+  --color-accent2-100: #fff1f4;
+  --color-accent2-200: #ffdee6;
+  --color-accent2-300: #ffc0d0;
+  --color-accent2-400: #ff90b1;
+  --color-accent2-500: #ff458e;
+  --color-accent2-600: #d82071;
+  --color-accent2-700: #aa0b56;
+  --color-accent2-800: #790e3d;
+  --color-accent2-900: #4b1528;
+  --color-accent2: #d6006c;
+
+  /* 표준 red/amber/emerald, neutral-500와 동일 명도대 기준(사용자 확인 완료). */
+  --color-danger-100: #fee2e2;
+  --color-danger-200: #fecaca;
+  --color-danger-300: #fca5a5;
+  --color-danger-400: #f87171;
+  --color-danger-500: #ef4444;
+  --color-danger-600: #dc2626;
+  --color-danger-700: #b91c1c;
+  --color-danger-800: #991b1b;
+  --color-danger-900: #7f1d1d;
+  --color-danger: #ef4444;
+
+  --color-warning-100: #fef3c7;
+  --color-warning-200: #fde68a;
+  --color-warning-300: #fcd34d;
+  --color-warning-400: #fbbf24;
+  --color-warning-500: #f59e0b;
+  --color-warning-600: #d97706;
+  --color-warning-700: #b45309;
+  --color-warning-800: #92400e;
+  --color-warning-900: #78350f;
+  --color-warning: #f59e0b;
+
+  --color-success-100: #d1fae5;
+  --color-success-200: #a7f3d0;
+  --color-success-300: #6ee7b7;
+  --color-success-400: #34d399;
+  --color-success-500: #10b981;
+  --color-success-600: #059669;
+  --color-success-700: #047857;
+  --color-success-800: #065f46;
+  --color-success-900: #064e3b;
+  --color-success: #10b981;
+
+  --font-heading: var(--font-source-serif), Georgia, "Times New Roman", serif;
+  --font-body: var(--font-source-serif), Georgia, "Times New Roman", serif;
+  --font-sans: var(--font-source-serif), Georgia, "Times New Roman", serif;
+
+  --spacing-ds-1: 5px;
+  --spacing-ds-2: 10px;
+  --spacing-ds-3: 15px;
+  --spacing-ds-4: 20px;
+  --spacing-ds-6: 30px;
+  --spacing-ds-8: 40px;
+
+  /* ds의 sharp print 톤(반경이 아주 작음)을 shadcn 파생 스케일(sm/md/lg/xl 등)보다 우선한다. */
+  --radius-sm: 1px;
+  --radius-md: 2px;
+  --radius-lg: 4px;
+
+  --shadow-ds-sm: 0 1px 2px color-mix(in srgb, #2d2b2b 14%, transparent);
+  --shadow-ds-md: 0 3px 10px color-mix(in srgb, #2d2b2b 16%, transparent);
+  --shadow-ds-lg: 0 12px 32px color-mix(in srgb, #2d2b2b 22%, transparent);
+}
+
+:root {
+  --background: var(--color-ds-bg);
+  --foreground: var(--color-ds-text);
+  --card: var(--color-ds-surface);
+  --card-foreground: var(--color-ds-text);
+  --popover: var(--color-ds-surface);
+  --popover-foreground: var(--color-ds-text);
+  --primary: var(--color-accent);
+  --primary-foreground: var(--color-ds-bg);
+  --secondary: var(--color-neutral-200);
+  --secondary-foreground: var(--color-ds-text);
+  --muted: var(--color-neutral-200);
+  --muted-foreground: var(--color-neutral-600);
+  --accent: var(--color-accent-100);
+  --accent-foreground: var(--color-accent-800);
+  --destructive: var(--color-danger-600);
+  --destructive-foreground: var(--color-ds-bg);
+  --border: var(--color-divider);
+  --input: var(--color-divider);
+  --ring: var(--color-accent);
+  --radius: 4px;
+  --sidebar: var(--color-ds-surface);
+  --sidebar-foreground: var(--color-ds-text);
+  --sidebar-primary: var(--color-accent);
+  --sidebar-primary-foreground: var(--color-ds-bg);
+  --sidebar-accent: var(--color-accent-100);
+  --sidebar-accent-foreground: var(--color-accent-800);
+  --sidebar-border: var(--color-divider);
+  --sidebar-ring: var(--color-accent);
+}
+
+.dark {
+  --background: oklch(0.145 0 0);
+  --foreground: oklch(0.985 0 0);
+  --card: oklch(0.205 0 0);
+  --card-foreground: oklch(0.985 0 0);
+  --popover: oklch(0.205 0 0);
+  --popover-foreground: oklch(0.985 0 0);
+  --primary: oklch(0.922 0 0);
+  --primary-foreground: oklch(0.205 0 0);
+  --secondary: oklch(0.269 0 0);
+  --secondary-foreground: oklch(0.985 0 0);
+  --muted: oklch(0.269 0 0);
+  --muted-foreground: oklch(0.708 0 0);
+  --accent: oklch(0.269 0 0);
+  --accent-foreground: oklch(0.985 0 0);
+  --destructive: oklch(0.704 0.191 22.216);
+  --border: oklch(1 0 0 / 10%);
+  --input: oklch(1 0 0 / 15%);
+  --ring: oklch(0.556 0 0);
+  --chart-1: oklch(0.87 0 0);
+  --chart-2: oklch(0.556 0 0);
+  --chart-3: oklch(0.439 0 0);
+  --chart-4: oklch(0.371 0 0);
+  --chart-5: oklch(0.269 0 0);
+  --sidebar: oklch(0.205 0 0);
+  --sidebar-foreground: oklch(0.985 0 0);
+  --sidebar-primary: oklch(0.488 0.243 264.376);
+  --sidebar-primary-foreground: oklch(0.985 0 0);
+  --sidebar-accent: oklch(0.269 0 0);
+  --sidebar-accent-foreground: oklch(0.985 0 0);
+  --sidebar-border: oklch(1 0 0 / 10%);
+  --sidebar-ring: oklch(0.556 0 0);
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+  body {
+    @apply bg-background text-foreground;
+    font-family: var(--font-body);
+  }
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6 {
+    font-family: var(--font-heading);
+    font-weight: 600;
+  }
+}

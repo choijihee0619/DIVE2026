@@ -1,0 +1,28 @@
+{
+  "results": {
+    "common": {
+      "errorCode": "0",
+      "errorMessage": "정상",
+      "totalCount": "1",
+      "currentPage": "1",
+      "countPerPage": "1"
+    },
+    "juso": [
+      {
+        "roadAddr": "서울특별시 강남구 테헤란로 152",
+        "roadAddrPart1": "서울특별시 강남구 테헤란로 152",
+        "jibunAddr": "서울특별시 강남구 역삼동 737",
+        "admCd": "1168010100",
+        "rnMgtSn": "116803122024",
+        "bdMgtSn": "1168010100108370000000001",
+        "zipNo": "06236"
+      }
+    ]
+  },
+  "_mock_meta": {
+    "source": "mock_address_fallback",
+    "created_at": "2026-07-14",
+    "reason": "데이터수집_및_API가이드_260714.md 5장은 도로명주소 API의 최종 Fallback을 mock_address.json으로 지정하지만 6.1절 Mock 11종 목록에는 대응 파일이 없어 이번에 추가했다.",
+    "note": "JUSO_API_KEY로 실제 호출이 가능한 네트워크 환경에서 scripts/collect_raw_data.py를 재실행하면 이 파일 대신 실 응답이 raw/address/ 에 저장된다."
+  }
+}

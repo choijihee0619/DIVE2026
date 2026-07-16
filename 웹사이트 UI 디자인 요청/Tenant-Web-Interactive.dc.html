@@ -1,0 +1,419 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet data-dc-atomics>
+  <link rel="stylesheet" href="ds/styles.css">
+  <style>
+    body { margin: 0; }
+    .win { width: 100%; max-width: 1160px; border-radius: var(--radius-lg); background: var(--color-surface); box-shadow: var(--shadow-lg); overflow: hidden; }
+    .winbar { display: flex; align-items: center; gap: var(--space-2); padding: var(--space-2) var(--space-3); background: var(--color-neutral-200); font-size: 11px; }
+    .dot { width: 9px; height: 9px; border-radius: 50%; background: var(--color-neutral-400); }
+    .body-row { display: flex; min-height: 680px; }
+    .side { width: 210px; flex: none; padding: var(--space-4) var(--space-2); border-right: 1px solid var(--color-divider); }
+    .side .navlink { display: block; padding: 7px var(--space-2); font-size: 13px; border-radius: var(--radius-md); text-decoration: none; color: var(--color-text); margin-bottom: 2px; cursor: pointer; }
+    .side .navlink.on { background: var(--color-accent); color: var(--color-bg); }
+    .side .navlink:hover:not(.on) { background: var(--color-accent-100); }
+    .content { flex: 1; padding: var(--space-6); overflow-y: auto; }
+    button.btn { border: none; cursor: pointer; }
+    .fadein { animation: fadein 0.3s ease; }
+    @keyframes fadein { from { opacity:0; transform:translateY(6px); } to { opacity:1; transform:translateY(0); } }
+    .toast { position: absolute; right: var(--space-6); top: 64px; background: var(--color-text); color: var(--color-bg); padding: var(--space-2) var(--space-4); border-radius: var(--radius-md); font-size: 13px; box-shadow: var(--shadow-md); animation: toastin 0.25s ease; z-index: 5; }
+    @keyframes toastin { from { opacity:0; transform:translateY(-8px); } to { opacity:1; transform:translateY(0); } }
+    .progitem { display:flex; flex-direction:row; justify-content:space-between; align-items:center; }
+  </style>
+</helmet>
+
+<div style="min-height:100vh;background:var(--color-bg);padding:var(--space-8) var(--space-8) 100px;">
+  <div style="max-width:1160px;margin:0 auto var(--space-6);">
+    <a href="Index.dc.html" style="font-size:12px;">← 전체 화면 목록</a>
+    <h1 style="margin-top:var(--space-2);">임차인 (tenant) · 데스크톱 웹 · 인터랙티브 프로토타입</h1>
+    <p class="text-muted" style="max-width:680px;">실제 동작하는 하나의 웹 앱 화면입니다. 사이드바로 이동하거나 버튼을 눌러 위험진단 → 증빙·검증 → 타임라인 → D-90 반환계획 → 사고접수 흐름을 직접 체험해보세요.</p>
+  </div>
+
+  <div style="display:flex;justify-content:center;position:relative;">
+    <sc-if value="{{ showToast }}">
+      <div class="toast">{{ toastText }}</div>
+    </sc-if>
+
+    <div class="win"><div class="winbar"><span class="dot"></span><span class="dot"></span><span class="dot"></span><span style="margin-left:var(--space-2);">app.hugansim.com{{ urlPath }}</span></div>
+      <div class="body-row">
+        <div class="side">
+          <div class="nav-brand" style="font-size:15px;padding:0 var(--space-2) var(--space-3);">HUG 안심전세</div>
+          <div class="navlink {{ navHomeClass }}" onClick="{{ goHome }}">홈</div>
+          <div class="navlink {{ navDiagClass }}" onClick="{{ goToDiagnosis }}">위험진단</div>
+          <div class="navlink {{ navEvidenceClass }}" onClick="{{ goToEvidence }}">증빙·검증</div>
+          <div class="navlink {{ navTimelineClass }}" onClick="{{ goToTimeline }}">계약 타임라인</div>
+          <div class="navlink {{ navD90Class }}" onClick="{{ goToD90 }}">D-90 반환계획</div>
+          <div class="navlink {{ navIncidentClass }}" onClick="{{ goToIncident }}">사고 접수</div>
+        </div>
+
+        <!-- TEN-00 Home -->
+        <sc-if value="{{ isHome }}" hint-placeholder-val="{{ true }}">
+          <div class="content fadein">
+            <p class="text-muted" style="margin-bottom:0;">안녕하세요</p><h3>김민준님</h3>
+            <div class="card elev-sm" style="max-width:600px;margin-bottom:var(--space-4);">
+              <div style="display:flex;justify-content:space-between;align-items:center;"><span class="card-title">서울 마포구 OO아파트</span><span class="tag tag-neutral">{{ contractStatus }}</span></div>
+              <div style="display:flex;gap:var(--space-2);"><span class="tag tag-accent">LOW 위험</span><span class="card-meta">보증금 3.2억</span></div>
+              <div class="card-meta">계약 만료 2026-09-14 · D-{{ dDay }}</div>
+            </div>
+            <h6>최근 알림</h6>
+            <div style="max-width:600px;display:flex;flex-direction:column;gap:var(--space-2);margin-bottom:var(--space-4);">
+              <sc-for list="{{ notifications }}" as="note" hint-placeholder-count="2">
+                <div class="card"><div class="card-body">{{ note.text }}</div><div class="card-meta">{{ note.time }}</div></div>
+              </sc-for>
+            </div>
+            <button class="btn btn-primary" onClick="{{ startDiagnosis }}">새 위험진단 시작하기</button>
+          </div>
+        </sc-if>
+
+        <!-- TEN-01 Input -->
+        <sc-if value="{{ isInput }}">
+          <div style="flex:1;display:flex;flex-direction:column;">
+            <div class="content fadein" style="flex:1;">
+              <div style="font-size:12px;color:var(--color-accent);font-weight:700;margin-bottom:var(--space-2);">① 입력 — ② 조회 — ③ 결과 — ④ 증빙</div>
+              <h3 style="margin-bottom:var(--space-4);">계약 정보를 입력해주세요</h3>
+              <div style="max-width:520px;">
+                <div class="field"><label>주소 검색</label><input class="input" value="{{ addressValue }}" onChange="{{ onAddressChange }}"></div>
+                <div class="card" style="margin:var(--space-2) 0 var(--space-3);padding:var(--space-2);">
+                  <div style="font-size:13px;color:var(--color-accent-700);font-weight:600;">서울 마포구 성산동 128-4 OO아파트 101동 502호</div>
+                  <div style="font-size:13px;" class="text-muted">서울 마포구 성산동 128-9 OO빌라</div>
+                </div>
+                <div style="display:flex;gap:var(--space-3);">
+                  <div class="field" style="flex:1;"><label>보증금</label><input class="input" value="320,000,000 원" readonly></div>
+                  <div class="field" style="flex:1;"><label>계약기간</label><input class="input" value="2026-09-14 ~ 2028-09-13" readonly></div>
+                </div>
+                <div class="field"><label>임대인 유형</label>
+                  <div class="seg">
+                    <label class="seg-opt"><input type="radio" name="lt2" checked="{{ landlordTypeIsIndividual }}" onChange="{{ setLandlordIndividual }}"><span>개인</span></label>
+                    <label class="seg-opt"><input type="radio" name="lt2" checked="{{ landlordTypeIsCorp }}" onChange="{{ setLandlordCorp }}"><span>법인</span></label>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div style="display:flex;justify-content:flex-end;gap:var(--space-2);padding:var(--space-3) var(--space-6);border-top:1px solid var(--color-divider);">
+              <button class="btn btn-secondary" onClick="{{ saveDraft }}">임시저장</button><button class="btn btn-primary" onClick="{{ goToProgress }}">다음</button>
+            </div>
+          </div>
+        </sc-if>
+
+        <!-- TEN-02 Progress -->
+        <sc-if value="{{ isProgress }}">
+          <div class="content fadein">
+            <h3 style="margin-bottom:0;">외부 정보를 조회하고 있어요</h3>
+            <p class="text-muted" style="margin-bottom:var(--space-4);">전체 진행률 {{ progressPct }}%</p>
+            <div style="max-width:520px;display:flex;flex-direction:column;gap:var(--space-2);margin-bottom:var(--space-4);">
+              <sc-for list="{{ progressItems }}" as="item" hint-placeholder-count="5">
+                <div class="card progitem" style="background:{{ item.bg }};opacity:{{ item.opacity }};">
+                  <span>{{ item.label }}</span>
+                  <sc-if value="{{ item.showRetry }}">
+                    <div>
+                      <div style="display:flex;justify-content:flex-end;margin-bottom:4px;"><span style="color:var(--color-accent-2-700);font-weight:600;">Failed</span></div>
+                      <div style="display:flex;gap:var(--space-2);"><button class="btn btn-ghost" style="color:var(--color-accent-2-700);" onClick="{{ retryBizCheck }}">재시도</button><button class="btn btn-secondary" onClick="{{ bypassBizCheck }}">업로드로 대체</button></div>
+                    </div>
+                  </sc-if>
+                  <sc-if value="{{ item.showStatusText }}"><span style="color:{{ item.statusColor }};">{{ item.statusText }}</span></sc-if>
+                  <sc-if value="{{ item.showCheck }}"><span style="color:var(--color-accent-700);font-weight:700;">✓</span></sc-if>
+                </div>
+              </sc-for>
+            </div>
+            <sc-if value="{{ canContinueFromProgress }}" hint-placeholder-val="{{ false }}">
+              <button class="btn btn-primary" onClick="{{ goToResult }}">결과 확인하기</button>
+            </sc-if>
+            <sc-if value="{{ progressBlocked }}" hint-placeholder-val="{{ false }}">
+              <button class="btn btn-secondary" onClick="{{ goToResult }}">계속 진행 (일부 실패 허용)</button>
+            </sc-if>
+          </div>
+        </sc-if>
+
+        <!-- TEN-03 Result -->
+        <sc-if value="{{ isResult }}">
+          <div class="content fadein">
+            <div style="max-width:640px;">
+              <div class="card elev-sm" style="background:var(--color-accent-2-100);margin-bottom:var(--space-4);">
+                <div style="display:flex;justify-content:space-between;"><span class="tag tag-accent-2" style="font-weight:700;">HIGH 위험</span><span class="card-meta">2026-07-14 13:30</span></div>
+                <p style="margin:0;">근거: <b>근저당 설정</b> 확인, 전세가율 <b>92%</b>로 매매가 대비 높음</p>
+                <div class="card-meta" style="justify-content:space-between;">출처: CODEF · 실거래가<span>model v1.0</span></div>
+              </div>
+              <div style="display:flex;gap:var(--space-3);margin-bottom:var(--space-4);">
+                <div class="card" style="flex:1;"><div class="card-kicker">해결 가능</div><div class="card-body">근저당 말소 예정</div></div>
+                <div class="card" style="flex:1;"><div class="card-kicker" style="color:var(--color-accent-2-700);">해결 불가</div><div class="card-body">건물 구조적 노후</div></div>
+              </div>
+              <h6>유사 상담사례</h6>
+              <div class="card" style="margin-bottom:var(--space-4);"><div class="card-body">근저당 말소 지연 후 보증금 반환 지연 사례</div><div class="card-meta">출처: 상담사례 #4821</div></div>
+              <div style="display:flex;gap:var(--space-2);"><button class="btn btn-secondary" onClick="{{ requestConsult }}">상담 요청</button><button class="btn btn-primary" onClick="{{ goToEvidenceFromResult }}">증빙 요청 확인 &gt;</button></div>
+            </div>
+          </div>
+        </sc-if>
+
+        <!-- TEN-04 Evidence -->
+        <sc-if value="{{ isEvidence }}">
+          <div style="flex:1;display:flex;flex-direction:column;">
+            <div class="content fadein" style="flex:1;display:flex;gap:var(--space-4);">
+              <div class="card elev-sm" style="flex:1;align-self:flex-start;"><div class="card-title">근저당 말소 확인</div><span class="tag tag-neutral" style="width:fit-content;">{{ evidenceStatus }}</span><div class="card-meta">제출 파일: 말소확인서.pdf · 2026-07-14 제출</div></div>
+              <div style="flex:1;"><h6>진행 단계</h6><div style="line-height:2.2;font-size:14px;">
+                <div>● 요청 <span class="card-meta">2026-07-12</span></div>
+                <div>● 제출 <span class="card-meta">2026-07-14</span></div>
+                <div style="color:{{ evidenceStep3Color }};">● 검토중 <span class="card-meta">{{ evidenceStep3Note }}</span></div>
+                <div style="color:{{ evidenceStep4Color }};">{{ evidenceStep4Dot }} 완료</div>
+              </div></div>
+            </div>
+            <div style="display:flex;justify-content:flex-end;gap:var(--space-2);padding:var(--space-3) var(--space-6);border-top:1px solid var(--color-divider);">
+              <button class="btn btn-secondary" onClick="{{ refreshEvidence }}">새로고침</button>
+              <sc-if value="{{ evidenceNotComplete }}" hint-placeholder-val="{{ true }}">
+                <button class="btn btn-ghost" style="border:1px solid var(--color-accent);" onClick="{{ resendNotice }}">알림 재발송</button>
+              </sc-if>
+            </div>
+          </div>
+        </sc-if>
+
+        <!-- TEN-05 Timeline -->
+        <sc-if value="{{ isTimeline }}">
+          <div class="content fadein">
+            <div style="display:flex;justify-content:space-between;max-width:600px;margin-bottom:var(--space-4);"><h4 style="margin:0;">서울 마포구 OO아파트</h4><span class="tag tag-neutral">{{ contractStatus }}</span></div>
+            <div style="font-size:14px;line-height:2.4;max-width:600px;">
+              <div>● ContractCreated <span class="card-meta">2026-07-01</span> <span class="tag tag-accent">Confirmed</span></div>
+              <div>● RiskAssessed <span class="card-meta">2026-07-02</span> <span class="tag tag-accent">Confirmed</span></div>
+              <div>● EvidenceSubmitted <span class="card-meta">2026-07-05</span> <span class="tag {{ evidenceTagClass }}">{{ evidenceTagText }}</span></div>
+              <div style="color:{{ verifDotColor }};">{{ verifDot }} VerificationCompleted <span class="card-meta">{{ verifNote }}</span></div>
+            </div>
+          </div>
+        </sc-if>
+
+        <!-- TEN-06 D-90 -->
+        <sc-if value="{{ isD90 }}">
+          <div class="content fadein">
+            <div class="card elev-sm" style="max-width:400px;background:var(--color-accent-2-100);text-align:center;margin-bottom:var(--space-4);">
+              <div style="font-family:var(--font-heading);font-size:38px;font-weight:700;color:var(--color-accent-2-700);">D-{{ dDay }}</div>
+              <div class="card-meta" style="justify-content:center;">계약만료 2026-09-14</div>
+              <span class="tag tag-accent-2" style="align-self:center;">조기경보</span>
+            </div>
+            <div class="card" style="max-width:400px;flex-direction:row;justify-content:space-between;align-items:center;margin-bottom:var(--space-4);"><span>임대인 응답</span><span style="color:var(--color-accent-2-700);font-weight:600;">미응답</span></div>
+            <p class="text-muted" style="max-width:400px;font-size:13px;margin-bottom:var(--space-4);">반환계획 요청이 발송되었으나 아직 임대인의 응답이 없습니다. 미응답이 계속되면 사고 접수를 검토하세요.</p>
+            <div style="display:flex;gap:var(--space-2);"><button class="btn btn-ghost" style="border:1px solid var(--color-accent);" onClick="{{ resendD90Notice }}">알림 재발송</button><button class="btn" style="background:var(--color-accent-2);color:var(--color-bg);" onClick="{{ goToIncident }}">사고 접수</button></div>
+          </div>
+        </sc-if>
+
+        <!-- TEN-07 Incident -->
+        <sc-if value="{{ isIncident }}">
+          <div style="flex:1;display:flex;flex-direction:column;">
+            <div class="content fadein" style="flex:1;">
+              <div style="max-width:480px;">
+                <div class="field"><label>사고 사유</label>
+                  <div class="seg" style="width:100%;flex-direction:column;">
+                    <label class="seg-opt"><input type="radio" name="inc3" checked="{{ incidentReasonUnpaid }}" onChange="{{ setIncidentUnpaid }}"><span>보증금 미반환 (계약 만료 경과)</span></label>
+                    <label class="seg-opt" style="border-left:none;border-top:1px solid var(--color-divider);"><input type="radio" name="inc3" checked="{{ incidentReasonNoPlan }}" onChange="{{ setIncidentNoPlan }}"><span>반환계획 미제출</span></label>
+                  </div>
+                </div>
+                <div class="field"><label>계약 참조 (자동 연결)</label><input class="input" value="contract_id: CT-2026-08841" disabled></div>
+                <div class="field"><label>첨부 서류 (선택)</label><div style="padding:var(--space-4);border:1px dashed var(--color-divider);border-radius:var(--radius-md);text-align:center;" class="text-muted">파일을 드래그하거나 클릭하여 첨부</div></div>
+              </div>
+            </div>
+            <div style="display:flex;justify-content:flex-end;gap:var(--space-2);padding:var(--space-3) var(--space-6);border-top:1px solid var(--color-divider);">
+              <button class="btn btn-secondary" onClick="{{ goToD90 }}">취소</button><button class="btn" style="background:var(--color-accent-2);color:var(--color-bg);" onClick="{{ submitIncident }}">접수하기</button>
+            </div>
+          </div>
+        </sc-if>
+
+        <!-- Incident complete -->
+        <sc-if value="{{ isIncidentDone }}">
+          <div class="content fadein" style="display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;">
+            <div style="font-size:52px;color:var(--color-accent-700);margin-bottom:var(--space-3);">✓</div>
+            <h3 style="margin-bottom:var(--space-2);">사고 접수가 완료되었습니다</h3>
+            <p class="text-muted" style="margin-bottom:var(--space-6);">접수번호 INC-2026-0714 · 담당자가 24시간 내로 연락드립니다</p>
+            <button class="btn btn-primary" onClick="{{ resetAll }}">홈으로 돌아가기</button>
+          </div>
+        </sc-if>
+
+      </div>
+    </div>
+  </div>
+
+  <div style="max-width:1160px;margin:var(--space-6) auto 0;"><a href="Tenant-Web.dc.html">전체 화면 와이어프레임 보기 →</a> · <a href="Tenant-Mobile-Interactive.dc.html" style="margin-left:var(--space-3);">모바일 버전 보기 →</a></div>
+</div>
+
+</x-dc>
+<script type="text/x-dc" data-dc-script>
+const PATHS = {
+  home: '/tenant', input: '/tenant/check', progress: '/tenant/check/progress',
+  result: '/tenant/result/8841', evidence: '/tenant/evidence/8841', timeline: '/tenant/timeline/8841',
+  d90: '/tenant/d90/8841', incident: '/tenant/incident/new', incidentDone: '/tenant/incident/new',
+};
+
+class Component extends DCLogic {
+  state = {
+    screen: 'home',
+    address: '서울 마포구 성산동 128',
+    landlordType: 'individual',
+    progressPct: 60,
+    bizCheckFailed: true,
+    bizCheckResolved: false,
+    evidenceStep: 3,
+    incidentReason: 'unpaid',
+    toast: null,
+    _toastTimer: null,
+  };
+
+  go(screen) {
+    this.setState({ screen });
+  }
+
+  flashToast(text) {
+    if (this.state._toastTimer) clearTimeout(this.state._toastTimer);
+    const t = setTimeout(() => this.setState({ toast: null, _toastTimer: null }), 1800);
+    this.setState({ toast: text, _toastTimer: t });
+  }
+
+  renderVals() {
+    const s = this.state;
+
+    const progressItems = [
+      { label: '도로명주소 정규화', bg: 'var(--color-surface)', opacity: 1, showCheck: true, showRetry: false, showStatusText: false },
+      { label: '등기부 (CODEF)', bg: 'var(--color-surface)', opacity: 1, showCheck: true, showRetry: false, showStatusText: false },
+      s.progressPct >= 100
+        ? { label: '실거래가', bg: 'var(--color-surface)', opacity: 1, showCheck: true, showRetry: false, showStatusText: false }
+        : { label: '실거래가', bg: 'var(--color-accent-100)', opacity: 1, showCheck: false, showRetry: false, showStatusText: true, statusText: '조회중···', statusColor: 'var(--color-accent-700)' },
+      s.progressPct >= 100
+        ? { label: '건축물대장', bg: 'var(--color-surface)', opacity: 1, showCheck: true, showRetry: false, showStatusText: false }
+        : { label: '건축물대장', bg: 'var(--color-surface)', opacity: 0.6, showCheck: false, showRetry: false, showStatusText: true, statusText: '대기', statusColor: 'var(--color-text)' },
+      s.bizCheckResolved
+        ? { label: '사업자등록 상태', bg: 'var(--color-surface)', opacity: 1, showCheck: true, showRetry: false, showStatusText: false }
+        : { label: '사업자등록 상태', bg: 'var(--color-accent-2-100)', opacity: 1, showCheck: false, showRetry: true, showStatusText: false },
+    ];
+
+    const allResolved = s.progressPct >= 100 && s.bizCheckResolved;
+    const evidenceComplete = s.evidenceStep >= 4;
+    const evidenceStep3Note = evidenceComplete ? '완료' : '아이엔 확인 중';
+
+    const diagScreens = ['input', 'progress', 'result'];
+    const navClass = (matchScreens) => matchScreens.includes(s.screen) ? 'on' : '';
+
+    return {
+      urlPath: PATHS[s.screen] || '/tenant',
+
+      isHome: s.screen === 'home',
+      isInput: s.screen === 'input',
+      isProgress: s.screen === 'progress',
+      isResult: s.screen === 'result',
+      isEvidence: s.screen === 'evidence',
+      isTimeline: s.screen === 'timeline',
+      isD90: s.screen === 'd90',
+      isIncident: s.screen === 'incident',
+      isIncidentDone: s.screen === 'incidentDone',
+
+      showToast: !!s.toast,
+      toastText: s.toast || '',
+
+      navHomeClass: navClass(['home']),
+      navDiagClass: navClass(diagScreens),
+      navEvidenceClass: navClass(['evidence']),
+      navTimelineClass: navClass(['timeline']),
+      navD90Class: navClass(['d90']),
+      navIncidentClass: navClass(['incident', 'incidentDone']),
+
+      goHome: () => this.go('home'),
+      goToDiagnosis: () => this.go(diagScreens.includes(s.screen) ? s.screen : 'input'),
+      goToEvidence: () => this.go('evidence'),
+      goToTimeline: () => this.go('timeline'),
+      goToD90: () => this.go('d90'),
+      goToIncident: () => this.go('incident'),
+
+      contractStatus: 'Monitoring',
+      dDay: 62,
+      notifications: [
+        { text: 'D-90 반환계획 요청이 발송되었습니다', time: '1시간 전' },
+        { text: '증빙 검증이 완료되었습니다', time: '어제' },
+      ],
+      startDiagnosis: () => this.go('input'),
+
+      addressValue: s.address,
+      onAddressChange: (e) => this.setState({ address: e.target.value }),
+      landlordTypeIsIndividual: s.landlordType === 'individual',
+      landlordTypeIsCorp: s.landlordType === 'corp',
+      setLandlordIndividual: () => this.setState({ landlordType: 'individual' }),
+      setLandlordCorp: () => this.setState({ landlordType: 'corp' }),
+      saveDraft: () => this.flashToast('임시저장되었습니다'),
+      goToProgress: () => { this.go('progress'); this.flashToast('조회를 시작합니다'); },
+
+      progressPct: s.progressPct,
+      progressItems,
+      canContinueFromProgress: allResolved,
+      progressBlocked: !allResolved && s.progressPct >= 100,
+      retryBizCheck: () => { this.setState({ bizCheckResolved: true }); this.flashToast('재조회 성공'); },
+      bypassBizCheck: () => { this.setState({ bizCheckResolved: true }); this.flashToast('서류 업로드로 대체되었습니다'); },
+      goToResult: () => this.go('result'),
+
+      requestConsult: () => this.flashToast('상담 요청이 접수되었습니다'),
+      goToEvidenceFromResult: () => this.go('evidence'),
+
+      evidenceStatus: evidenceComplete ? 'Verified' : 'Reviewing',
+      evidenceStep3Color: 'inherit',
+      evidenceStep3Note,
+      evidenceStep4Color: evidenceComplete ? 'var(--color-accent-700)' : 'color-mix(in srgb, var(--color-text) 50%, transparent)',
+      evidenceStep4Dot: evidenceComplete ? '●' : '○',
+      evidenceComplete,
+      evidenceNotComplete: !evidenceComplete,
+      refreshEvidence: () => {
+        if (s.evidenceStep < 4) {
+          this.setState({ evidenceStep: 4 });
+          this.flashToast('검토가 완료되었습니다');
+        } else {
+          this.flashToast('최신 상태입니다');
+        }
+      },
+      resendNotice: () => this.flashToast('알림을 재발송했습니다'),
+
+      evidenceTagClass: evidenceComplete ? 'tag-accent' : 'tag-neutral',
+      evidenceTagText: evidenceComplete ? 'Confirmed' : 'Pending',
+      verifDotColor: evidenceComplete ? 'inherit' : 'color-mix(in srgb, var(--color-text) 50%, transparent)',
+      verifDot: evidenceComplete ? '●' : '○',
+      verifNote: evidenceComplete ? '2026-07-15' : '—',
+
+      resendD90Notice: () => this.flashToast('임대인에게 알림을 재발송했습니다'),
+
+      incidentReasonUnpaid: s.incidentReason === 'unpaid',
+      incidentReasonNoPlan: s.incidentReason === 'noplan',
+      setIncidentUnpaid: () => this.setState({ incidentReason: 'unpaid' }),
+      setIncidentNoPlan: () => this.setState({ incidentReason: 'noplan' }),
+      submitIncident: () => this.go('incidentDone'),
+
+      resetAll: () => this.setState({
+        screen: 'home', progressPct: 60, bizCheckResolved: false, evidenceStep: 3, incidentReason: 'unpaid',
+      }),
+    };
+  }
+
+  componentDidUpdate() {
+    const prevScreen = this._prevScreen;
+    this._prevScreen = this.state.screen;
+    if (this.state.screen === 'progress' && prevScreen !== 'progress' && !this._progTimer) {
+      this._progTimer = setInterval(() => {
+        this.setState((s) => {
+          if (s.progressPct >= 100) {
+            clearInterval(this._progTimer);
+            this._progTimer = null;
+            return {};
+          }
+          return { progressPct: Math.min(100, s.progressPct + 20) };
+        });
+      }, 700);
+    }
+    if (this.state.screen !== 'progress' && this._progTimer) {
+      clearInterval(this._progTimer);
+      this._progTimer = null;
+    }
+  }
+
+  componentWillUnmount() {
+    if (this._progTimer) clearInterval(this._progTimer);
+  }
+}
+
+</script>
+</body>
+</html>

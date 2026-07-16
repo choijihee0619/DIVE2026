@@ -1,0 +1,53 @@
+{
+  "case_id": "case_mock_004",
+  "source": "mock_registry_complex_rights",
+  "address": {
+    "road_address": "부산광역시 해운대구 센텀중앙로 90",
+    "adm_cd": "2635010600"
+  },
+  "registry": {
+    "owner_type": "corporate",
+    "rights": [
+      {
+        "type": "mortgage",
+        "holder": "OO은행",
+        "amount": 220000000,
+        "registered_at": "2023-01-15",
+        "is_cancelled": false
+      },
+      {
+        "type": "jeonse_right",
+        "holder": "기존 임차인",
+        "amount": 250000000,
+        "registered_at": "2023-05-20",
+        "is_cancelled": false
+      },
+      {
+        "type": "provisional_seizure",
+        "holder": "OO캐피탈",
+        "amount": 90000000,
+        "registered_at": "2025-11-01",
+        "is_cancelled": false
+      }
+    ]
+  },
+  "price": {
+    "deposit": 380000000,
+    "recent_trade_price": 600000000,
+    "official_price": 500000000
+  },
+  "features": {
+    "jeonse_ratio": 0.633,
+    "mortgage_ratio": 0.367,
+    "rights_burden_ratio": 0.933,
+    "has_seizure": true
+  },
+  "label": {
+    "risk_grade": "CRITICAL",
+    "risk_reasons": [
+      "선순위 전세권",
+      "가압류 존재",
+      "법인 임대인"
+    ]
+  }
+}

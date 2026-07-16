@@ -1,0 +1,45 @@
+{
+  "api": "codef_registry",
+  "source_system": "mock",
+  "requested_at": "2026-07-15T09:36:40.860906+09:00",
+  "request": {
+    "base_url": "https://sandbox.codef.io",
+    "oauth_url": "https://oauth.codef.io/oauth/token",
+    "env": "sandbox",
+    "client_id_masked": "ef27…73f9"
+  },
+  "live_call_ok": false,
+  "http_status": null,
+  "response_body": "",
+  "error_class": "connection_error",
+  "error_message": "[Errno 8] nodename nor servname provided, or not known",
+  "fallback_mock_file": "mock_registry_normal.json",
+  "response": {
+    "case_id": "case_mock_001",
+    "source": "mock_registry_normal",
+    "address": {
+      "road_address": "서울특별시 마포구 월드컵로 120",
+      "adm_cd": "1144012700"
+    },
+    "registry": {
+      "owner_type": "individual",
+      "rights": []
+    },
+    "price": {
+      "deposit": 350000000,
+      "recent_trade_price": 550000000,
+      "official_price": 470000000
+    },
+    "features": {
+      "jeonse_ratio": 0.636,
+      "mortgage_ratio": 0.0,
+      "rights_burden_ratio": 0.636,
+      "has_seizure": false
+    },
+    "label": {
+      "risk_grade": "LOW",
+      "risk_reasons": []
+    }
+  },
+  "note": "실 API 호출 실패로 가이드 5장 Fallback 정책에 따라 mock 데이터로 대체 저장. 실제 서비스 배포 전 아웃바운드 네트워크가 열린 환경에서 재실행하여 교체 필요."
+}

@@ -1,0 +1,3870 @@
+openapi: 3.1.0
+info:
+  title: HUG 안심전세 체인 API Contract
+  version: "1.0.0"
+  summary: >-
+    Frontend / Backend / ML / Blockchain 공통 계약(Single Source of Truth) 문서.
+    Backend 구현 문서가 아니며 FastAPI 코드도 아니다.
+  description: |
+    ## 문서 성격
+    본 문서는 HUG × 아이엔 안심전세 체인(HUG 안심전세 체인) 프로젝트의 **Frontend / Backend / ML / Blockchain 공통 계약**이다.
+    Backend를 새로 설계하는 문서가 아니라, 이미 확정된 4개 상위 문서(개발설계보고서, 데이터수집 및 API가이드, ML개발가이드,
+    Frontend UI/UX 명세서)를 근거로 프론트엔드가 axios 호출을 만들고, 백엔드가 FastAPI를 구현하고, ML Notebook이
+    inference endpoint를 구현할 수 있도록 하는 **OpenAPI 3.1 단일 기준선**이다.
+
+    ## 서비스 한 줄 요약
+    HUG 안심전세 체인은 위험을 점수화하는 앱이 아니라, 계약 전 위험을 발견하고 위험조건이 실제로 해소되었는지
+    증빙과 외부 API로 검증하며, 계약서·검증 이력을 블록체인에 공증하고, 계약 만료 전 D-90 반환계획 확인과
+    사고 후 HUG 채권관리 인계까지 하나의 생애주기로 연결하는 주거안전 인프라다.
+
+    ## 선행 문서와 우선순위
+    | 영역 | 기준 문서 | 충돌 시 우선순위 |
+    |---|---|---|
+    | 공통 식별자·상태 | 개발설계보고서_260714_수정보완.docx 10장, 부록 B·C | 최우선 |
+    | 외부 API/Mock | 데이터수집_및_API가이드_260714.md | 외부 API 상세 |
+    | ML 입출력 계약 | ML개발가이드_260714.md 20장, 부록 C | 모델 Request/Response |
+    | 화면·Route·API Mapping | Frontend_UIUX_명세서_260714.md 2·5·8장 | 화면-API 연결 |
+
+    본 문서(API_Contract_260714.yaml)는 위 4개 문서의 API 관련 내용을 통합한 **실행 가능한 계약**이며,
+    향후 작성될 Backend_API_명세서_260714.md, Blockchain_설계서_260714.md는 본 계약과 충돌할 수 없다.
+
+    ## 데이터 신뢰성에 대한 명시 (ML개발가이드 2·30장 계승)
+    - 정상계약(사고 없이 종료된 계약) 데이터가 없어 "실제 사고확률"을 추정하는 모델은 존재하지 않는다.
+    - HUG 사고·경매·배당 데이터 7종은 전량 합성데이터이며, 회수·처리기간 관련 응답은 "합성데이터 기준 패턴"이다.
+    - 응답 바디의 `is_mock`, `ModelResultStatus`, `APIResultStatus` 필드는 화면에서 항상 사용자에게 노출되어야 하며 숨겨서는 안 된다.
+    - 금지 표현(실제 사고확률/실제 미반환확률/인과효과 등)은 API 설명·example에도 사용하지 않는다(ML개발가이드 부록 F).
+
+    ## 온체인 금지 원칙 (개발설계보고서 8장)
+    계약서 원문, 등기부 원문, 주민등록번호, 사업자등록번호 원문, 상세주소, 예금·소득정보, 상담본문, 세금자료 원문은
+    어떤 API 응답에도 블록체인 저장 대상으로 포함하지 않는다. 블록체인에는 해시와 상태 이벤트만 기록한다.
+
+    ## 문서 요약 통계
+    본 문서 최상위 `x-contract-summary` 확장 필드 참조. API 40개, Schema 79개, Enum 14개,
+    Entity 19개, ML Endpoint 4개, Blockchain Endpoint 2개.
+  contact:
+    name: HUG 안심전세 체인 개발팀 (DIVE 2026)
+    email: heeppiness@pukyong.ac.kr
+  license:
+    name: Internal Use Only - DIVE 2026 Hackathon
+externalDocs:
+  description: >-
+    개발설계보고서_260714_수정보완.docx / 데이터수집_및_API가이드_260714.md /
+    ML개발가이드_260714.md / Frontend_UIUX_명세서_260714.md (선행 문서 4종, 동일 Google Drive 폴더)
+  url: "https://drive.google.com/drive/folders/DIVE2026"
+servers:
+  - url: "https://api.hug-anshim-jeonse.dev/api/v1"
+    description: Mock/Sandbox 서버 (해커톤 시연용, MockFallback 전면 허용)
+  - url: "https://staging-api.hug-anshim-jeonse.dev/api/v1"
+    description: Staging 서버 (외부 API 실계정 부분 연동)
+  - url: "https://api.hug-anshim-jeonse.dev/api/v1"
+    description: Production 서버 (MVP 이후, 발제사 승인 후 전환)
+  - url: "http://localhost:8000/api/v1"
+    description: 로컬 개발 서버 (FastAPI uvicorn 기본 포트)
+tags:
+  - name: Auth
+    description: 로그인, 세션 조회, 로그아웃. JWT Bearer 발급/폐기를 담당한다.
+  - name: Property-Risk
+    description: 주소 정규화, 위험진단 요청/조회, RAG 상담 근거 검색. 임차인(tenant) 계약 전 단계의 핵심 API.
+  - name: Contract
+    description: 계약 생성/조회, 계약 타임라인, D-90 반환계획 조회.
+  - name: Evidence-Verification
+    description: 보완요청 조회, 증빙 제출, 검증 상태 조회·결정, 반환계획 제출, 사고 접수, 전문가 이관.
+  - name: Advisor
+    description: 아이엔 상담 큐, 상담 상세(RAG 근거 포함).
+  - name: HUG
+    description: HUG 채권관리 대시보드, 사건 상세, 회수예측, 유사사건 비교, 법인 집단위험.
+  - name: Admin
+    description: 사용자·권한 관리, 외부 API/모델 상태, 블록체인 로그, 시스템 로그, Health check.
+  - name: Blockchain
+    description: 해시·상태 이벤트 온체인 기록(Polygon Amoy 또는 Mock chain) 및 조회.
+  - name: ML
+    description: >-
+      위험유사도(Risk), 상담분류(Counsel), 회수등급(Recovery), 처리기간(Duration) 추론 계약.
+      ML개발가이드_260714.md 20장·부록 C와 1:1 대응.
+  - name: Notification
+    description: 알림 센터 조회 및 읽음 처리.
+security:
+  - bearerAuth: []
+paths:
+  /auth/login:
+    post:
+      operationId: authLogin
+      tags: [Auth]
+      summary: 로그인
+      description: |
+        이메일/비밀번호 기반 로그인 후 JWT Access Token과 역할(role) 클레임을 발급한다.
+        발급된 role은 tenant, landlord, advisor, hug_admin, system_admin, verifier 중 하나이며
+        Frontend RoleGuard가 이 값을 기준으로 라우트 접근을 제어한다(Frontend_UIUX_명세서 3장).
+      security: []
+      x-permission: 없음 (비로그인 사용자 전용)
+      x-mock-supported: true
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LoginRequest'
+            example:
+              email: tenant01@example.com
+              password: "P@ssw0rd!"
+      responses:
+        "200":
+          description: 로그인 성공
+          headers:
+            X-Request-ID:
+              $ref: '#/components/headers/RequestIdHeader'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LoginResponse'
+              example:
+                status: Success
+                data:
+                  access_token: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+                  token_type: Bearer
+                  expires_in: 3600
+                  user:
+                    user_id: "8f14e45f-ceea-4b4f-9c1a-000000000001"
+                    role: tenant
+                    display_name: "홍길동"
+                request_id: "req_20260714_0001"
+        "422":
+          $ref: '#/components/responses/ValidationError'
+        "401":
+          $ref: '#/components/responses/Unauthorized'
+        "408":
+          $ref: '#/components/responses/Timeout'
+  /auth/me:
+    get:
+      operationId: authMe
+      tags: [Auth]
+      summary: 내 세션 정보 조회
+      description: |
+        Bearer 토큰으로 현재 로그인한 사용자 정보(user_id, role, display_name, 최근 로그인 시각)를 조회한다.
+        Frontend `useSessionStore` 초기화 시 호출한다(Frontend_UIUX_명세서 13.2절).
+      x-permission: 로그인한 전체 역할 (tenant, landlord, advisor, hug_admin, system_admin, verifier)
+      x-mock-supported: true
+      responses:
+        "200":
+          description: 세션 정보 조회 성공
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessResponse'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/User'
+              example:
+                status: Success
+                data:
+                  user_id: "8f14e45f-ceea-4b4f-9c1a-000000000001"
+                  role: tenant
+                  display_name: "홍길동"
+                  email: "tenant01@example.com"
+                  created_at: "2026-06-01T09:00:00+09:00"
+                  last_login_at: "2026-07-14T09:12:00+09:00"
+                request_id: "req_20260714_0002"
+        "401":
+          $ref: '#/components/responses/Unauthorized'
+        "404":
+          $ref: '#/components/responses/NotFound'
+  /auth/logout:
+    post:
+      operationId: authLogout
+      tags: [Auth]
+      summary: 로그아웃
+      description: 현재 세션의 Access Token을 서버 측에서 무효화한다. Refresh Token 정책은 Backend_API_명세서_260714.md에서 확정한다.
+      x-permission: 로그인한 전체 역할
+      x-mock-supported: true
+      responses:
+        "200":
+          description: 로그아웃 성공
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessResponse'
+              example:
+                status: Success
+                data: { logged_out: true }
+                request_id: "req_20260714_0003"
+        "401":
+          $ref: '#/components/responses/Unauthorized'
+  /address/normalize:
+    post:
+      operationId: addressNormalize
+      tags: [Property-Risk]
+      summary: 주소 정규화
+      description: |
+        사용자가 입력한 주소 검색어를 도로명주소 API(데이터수집_및_API가이드 2.2.2 ②) 기준으로 정규화하여
+        표준 도로명주소, 지번주소, 법정동코드, 건물관리번호를 반환한다. TEN-01 화면에서 호출한다.
+        외부 API 실패 시 4.5절 Fallback Flow(재시도 2회 → 캐시 → 업로드/Mock)를 따르며 `APIResultStatus`로 결과를 구분한다.
+      x-permission: tenant
+      x-mock-supported: true
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AddressNormalizeRequest'
+            example:
+              keyword: "서울특별시 강남구 테헤란로 000"
+      responses:
+        "200":
+          description: 주소 정규화 성공(Success/Partial/MockFallback 포함)
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessResponse'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/AddressNormalizeResponse'
+              example:
+                status: Success
+                data:
+                  api_call_id: "a1b2c3d4-0000-0000-0000-000000000001"
+                  api_result_status: Success
+                  candidates:
+                    - road_address: "서울특별시 강남구 테헤란로 000"
+                      jibun_address: "서울특별시 강남구 역삼동 000-00"
+                      adm_cd: "1168010100"
+                      bd_mgt_sn: "1168010100100010000000001"
+                      zip_no: "06212"
+                  fetched_at: "2026-07-14T13:30:00+09:00"
+                  source: codef_juso_api
+                request_id: "req_20260714_0004"
+        "422":
+          $ref: '#/components/responses/ValidationError'
+        "401":
+          $ref: '#/components/responses/Unauthorized'
+        "408":
+          $ref: '#/components/responses/Timeout'
+        "206":
+          $ref: '#/components/responses/Partial'
+  /risk/diagnose:
+    post:
+      operationId: riskDiagnose
+      tags: [Property-Risk]
+      summary: 통합 위험진단 요청
+      description: |
+        정규화된 주소와 계약정보를 입력받아 CODEF 등기부(또는 Mock) → 건축물대장 → 실거래가 → 공시가격(Mock)
+        → 사업자등록/DART 순으로 외부 API를 오케스트레이션하고(데이터수집_및_API가이드 4장 연동 순서),
+        Rule Engine 결과와 ML 위험유사도(RiskPrediction)를 결합해 risk_assessment_id를 생성한다(ML개발가이드 21장 결합 원칙).
+        규칙 엔진과 ML 결과가 충돌하면 보수적 결과(고위험)를 우선한다. TEN-02 화면이 진행 상태를 폴링한다.
+      x-permission: tenant
+      x-mock-supported: true
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RiskDiagnoseRequest'
+            example:
+              property_id: "c1a2b3c4-0000-0000-0000-000000000010"
+              deposit: 400000000
+              contract_start_date: "2026-08-01"
+              contract_end_date: "2028-07-31"
+              landlord_type: INDIVIDUAL
+              housing_type: MULTI_HOUSEHOLD
+      responses:
+        "202":
+          description: 위험진단 접수(비동기 오케스트레이션 시작). Backend는 이후 GET /risk/{case_id}로 폴링을 유도한다.
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessResponse'
+                  - type: object
+                    properties:
+                      data:
+                        type: object
+                        properties:
+                          case_id:
+                            $ref: '#/components/schemas/UUID'
+                          risk_assessment_id:
+                            $ref: '#/components/schemas/UUID'
+                          api_progress:
+                            type: array
+                            items:
+                              $ref: '#/components/schemas/APIProgressStep'
+              example:
+                status: Success
+                data:
+                  case_id: "d2e3f4a5-0000-0000-0000-000000000020"
+                  risk_assessment_id: "e3f4a5b6-0000-0000-0000-000000000030"
+                  api_progress:
+                    - api_name: registry_codef
+                      status: Success
+                    - api_name: building_registry
+                      status: Success
+                    - api_name: rtms_price
+                      status: Reviewing
+                    - api_name: business_status
+                      status: Failed
+                request_id: "req_20260714_0005"
+        "422":
+          $ref: '#/components/responses/ValidationError'
+        "401":
+          $ref: '#/components/responses/Unauthorized'
+        "408":
+          $ref: '#/components/responses/Timeout'
+  /risk/{case_id}:
+    get:
+      operationId: getRiskResult
+      tags: [Property-Risk]
+      summary: 위험진단 결과 조회
+      description: |
+        case_id 기준 위험진단 결과(위험등급, risk_reasons, 해결가능/해결불가 구분, SHAP 자연어 요약, 데이터 출처,
+        조회시각, model_version, ModelResultStatus)를 조회한다. TEN-03 화면의 주 데이터 소스다.
+      x-permission: tenant (본인 소유 case_id만)
+      x-mock-supported: true
+      parameters:
+        - $ref: '#/components/parameters/CaseIdPath'
+        - $ref: '#/components/parameters/TraceIdHeaderParam'
+      responses:
+        "200":
+          description: 위험진단 결과 조회 성공
+          headers:
+            X-Request-ID:
+              $ref: '#/components/headers/RequestIdHeader'
+            X-Trace-ID:
+              $ref: '#/components/headers/TraceIdHeader'
+            X-Model-Version:
+              $ref: '#/components/headers/ModelVersionHeader'
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessResponse'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/RiskAssessment'
+              example:
+                status: Success
+                data:
+                  risk_assessment_id: "e3f4a5b6-0000-0000-0000-000000000030"
+                  case_id: "d2e3f4a5-0000-0000-0000-000000000020"
+                  contract_id: "f4a5b6c7-0000-0000-0000-000000000040"
+                  risk_grade: HIGH
+                  risk_reasons: ["근저당설정", "전세가율 높음"]
+                  resolvable_risks: ["근저당 말소 예정"]
+                  unresolvable_risks: ["건물 구조적 노후"]
+                  ml_prediction:
+                    risk_grade_suggestion: HIGH
+                    similarity_score: 0.82
+                    matched_patterns: ["근저당 고비율 사고 패턴"]
+                    top_factors:
+                      - feature_name: mortgage_ratio
+                        contribution: 0.34
+                        direction: increase
+                    model_version: risk_similarity_v1.0.0
+                    model_result_status: Success
+                    is_mock: false
+                  data_sources: ["codef_registry", "rtms_price", "building_registry"]
+                  fetched_at: "2026-07-14T13:30:00+09:00"
+                  blockchain_tx_id: null
+                  created_at: "2026-07-14T13:31:00+09:00"
+                request_id: "req_20260714_0006"
+        "404":
+          $ref: '#/components/responses/NotFound'
+        "403":
+          $ref: '#/components/responses/Forbidden'
+        "401":
+          $ref: '#/components/responses/Unauthorized'
+  /rag/search:
+    post:
+      operationId: ragSearch
+      tags: [Property-Risk]
+      summary: 상담·제도 근거 검색 (RAG)
+      description: |
+        위험진단 결과 또는 상담 분류 결과를 쿼리 조건으로 삼아 유사 상담사례·제도 근거 문서를 Hybrid 검색(BM25+Vector)한다
+        (데이터수집_및_API가이드 11장). 근거 없음일 경우 결과 없음으로 명시적으로 표시하며 근거 없이 결론을 만들지 않는다
+        (ML개발가이드 부록 F). TEN-03, ADV-01 화면에서 공통으로 사용한다.
+      x-permission: tenant, advisor
+      x-mock-supported: true
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RagSearchRequest'
+            example:
+              topic: "보증금미반환"
+              region: "서울"
+              consultation_stage: "계약전"
+              top_k: 3
+      responses:
+        "200":
+          description: RAG 검색 성공(근거 0건 포함)
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessResponse'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/RagSearchResponse'
+              example:
+                status: Success
+                data:
+                  query: { topic: "보증금미반환", region: "서울" }
+                  chunks:
+                    - chunk_id: rag_0001
+                      source: in_consulting
+                      topic: "근저당"
+                      consultation_stage: "계약전"
+                      excerpt: "개인정보 제거된 상담 요약..."
+                      pii_removed: true
+                  is_mock: false
+                request_id: "req_20260714_0007"
+        "422":
+          $ref: '#/components/responses/ValidationError'
+        "401":
+          $ref: '#/components/responses/Unauthorized'
+  /contracts:
+    get:
+      operationId: listContracts
+      tags: [Contract]
+      summary: 계약 목록 조회
+      description: 로그인 사용자(tenant/landlord) 기준 진행 중인 계약 목록을 조회한다. TEN-00/LAND-00 홈 화면에서 사용한다.
+      x-permission: tenant, landlord
+      x-mock-supported: true
+      parameters:
+        - $ref: '#/components/parameters/PageParam'
+        - $ref: '#/components/parameters/SizeParam'
+        - name: contract_status
+          in: query
+          required: false
+          description: ContractStatus 필터
+          schema:
+            $ref: '#/components/schemas/ContractStatus'
+      responses:
+        "200":
+          description: 계약 목록 조회 성공
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessResponse'
+                  - type: object
+                    properties:
+                      data:
+                        type: object
+                        properties:
+                          items:
+                            type: array
+                            items:
+                              $ref: '#/components/schemas/Contract'
+                          pagination:
+                            $ref: '#/components/schemas/Pagination'
+              example:
+                status: Success
+                data:
+                  items:
+                    - contract_id: "f4a5b6c7-0000-0000-0000-000000000040"
+                      property_id: "c1a2b3c4-0000-0000-0000-000000000010"
+                      contract_status: Monitoring
+                      deposit: 400000000
+                      contract_start_date: "2026-08-01"
+                      contract_end_date: "2028-07-31"
+                  pagination: { page: 1, size: 20, total_elements: 1, total_pages: 1 }
+                request_id: "req_20260714_0008"
+        "401":
+          $ref: '#/components/responses/Unauthorized'
+    post:
+      operationId: createContract
+      tags: [Contract]
+      summary: 계약 생성
+      description: |
+        주소·보증금·계약기간·임대인 유형을 입력받아 contract_id를 생성한다(개발설계보고서 MVP 완료 기준, 표 11).
+        생성 직후 ContractStatus는 Draft이며, 이후 위험진단 완료 시 Diagnosed로 전이한다(전이 상세는 Backend_API_명세서에서 확정).
+      x-permission: tenant
+      x-mock-supported: true
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ContractCreateRequest'
+            example:
+              property_id: "c1a2b3c4-0000-0000-0000-000000000010"
+              deposit: 400000000
+              contract_start_date: "2026-08-01"
+              contract_end_date: "2028-07-31"
+              landlord_type: INDIVIDUAL
+              housing_type: MULTI_HOUSEHOLD
+      responses:
+        "201":
+          description: 계약 생성 성공
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessResponse'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/Contract'
+              example:
+                status: Success
+                data:
+                  contract_id: "f4a5b6c7-0000-0000-0000-000000000040"
+                  property_id: "c1a2b3c4-0000-0000-0000-000000000010"
+                  contract_status: Draft
+                  deposit: 400000000
+                  contract_start_date: "2026-08-01"
+                  contract_end_date: "2028-07-31"
+                  created_at: "2026-07-14T13:00:00+09:00"
+                request_id: "req_20260714_0009"
+        "422":
+          $ref: '#/components/responses/ValidationError'
+        "409":
+          $ref: '#/components/responses/Conflict'
+        "401":
+          $ref: '#/components/responses/Unauthorized'
+  /contracts/{contract_id}:
+    get:
+      operationId: getContract
+      tags: [Contract]
+      summary: 계약 상세 조회
+      description: contract_id 기준 계약 상세(물건 정보, 현재 ContractStatus, 최신 버전 참조)를 조회한다.
+      x-permission: tenant, landlord (본인 계약만), advisor, hug_admin, system_admin (읽기 전용)
+      x-mock-supported: true
+      parameters:
+        - $ref: '#/components/parameters/ContractIdPath'
+      responses:
+        "200":
+          description: 계약 상세 조회 성공
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessResponse'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/Contract'
+        "404":
+          $ref: '#/components/responses/NotFound'
+        "403":
+          $ref: '#/components/responses/Forbidden'
+        "401":
+          $ref: '#/components/responses/Unauthorized'
+  /contracts/{contract_id}/timeline:
+    get:
+      operationId: getContractTimeline
+      tags: [Contract]
+      summary: 계약 타임라인 조회
+      description: |
+        계약 생애주기 상태 변경 이벤트(TimelineEvent, 10.3절 공통 이벤트)와 각 이벤트의 BlockchainStatus를
+        시간순으로 조회한다. TEN-05, HUG-02 화면에서 사용한다.
+      x-permission: tenant, landlord (본인 계약만), advisor, hug_admin
+      x-mock-supported: true
+      parameters:
+        - $ref: '#/components/parameters/ContractIdPath'
+      responses:
+        "200":
+          description: 타임라인 조회 성공
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessResponse'
+                  - type: object
+                    properties:
+                      data:
+                        type: object
+                        properties:
+                          contract_id:
+                            $ref: '#/components/schemas/UUID'
+                          contract_status:
+                            $ref: '#/components/schemas/ContractStatus'
+                          events:
+                            type: array
+                            items:
+                              $ref: '#/components/schemas/TimelineEvent'
+              example:
+                status: Success
+                data:
+                  contract_id: "f4a5b6c7-0000-0000-0000-000000000040"
+                  contract_status: Monitoring
+                  events:
+                    - timeline_event_id: "aa000000-0000-0000-0000-000000000001"
+                      event_type: ContractCreated
+                      occurred_at: "2026-07-01T09:00:00+09:00"
+                      blockchain_status: Confirmed
+                    - timeline_event_id: "aa000000-0000-0000-0000-000000000002"
+                      event_type: RiskAssessed
+                      occurred_at: "2026-07-02T10:00:00+09:00"
+                      blockchain_status: Confirmed
+                    - timeline_event_id: "aa000000-0000-0000-0000-000000000003"
+                      event_type: EvidenceSubmitted
+                      occurred_at: "2026-07-05T11:00:00+09:00"
+                      blockchain_status: Pending
+                request_id: "req_20260714_0010"
+        "404":
+          $ref: '#/components/responses/NotFound'
+        "403":
+          $ref: '#/components/responses/Forbidden'
+        "401":
+          $ref: '#/components/responses/Unauthorized'
+  /contracts/{contract_id}/return-plan:
+    get:
+      operationId: getReturnPlan
+      tags: [Contract]
+      summary: D-90 반환계획 조회
+      description: |
+        계약 만료 90일 전 반환 준비 상태(ReturnPlan), D-90 카운트다운, 임대인 응답 여부, 조기경보 배지를 조회한다.
+        TEN-06 화면에서 사용하며, 반환계획 자체의 제출은 POST /return-plans(임대인)에서 수행한다.
+      x-permission: tenant, landlord (본인 계약만)
+      x-mock-supported: true
+      parameters:
+        - $ref: '#/components/parameters/ContractIdPath'
+      responses:
+        "200":
+          description: 반환계획 조회 성공
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessResponse'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/ReturnPlan'
+              example:
+                status: Success
+                data:
+                  return_plan_id: "bb000000-0000-0000-0000-000000000001"
+                  contract_id: "f4a5b6c7-0000-0000-0000-000000000040"
+                  d_day: -62
+                  landlord_response_status: NotResponded
+                  early_warning: true
+                  planned_return_date: null
+                  created_at: "2026-07-14T00:00:00+09:00"
+                request_id: "req_20260714_0011"
+        "404":
+          $ref: '#/components/responses/NotFound'
+        "403":
+          $ref: '#/components/responses/Forbidden'
+        "401":
+          $ref: '#/components/responses/Unauthorized'
+  /evidence-requests:
+    get:
+      operationId: listEvidenceRequests
+      tags: [Evidence-Verification]
+      summary: 보완요청 목록 조회
+      description: |
+        규칙 엔진/아이엔이 생성한 보완요청(EvidenceRequest) 목록을 조회한다. TEN-04 화면(조회 전용)에서 사용하며,
+        제출은 임대인 화면(POST /evidence)에서 수행한다.
+      x-permission: tenant, landlord
+      x-mock-supported: true
+      parameters:
+        - name: case_id
+          in: query
+          required: false
+          schema:
+            $ref: '#/components/schemas/UUID'
+        - name: contract_id
+          in: query
+          required: false
+          schema:
+            $ref: '#/components/schemas/UUID'
+        - $ref: '#/components/parameters/PageParam'
+        - $ref: '#/components/parameters/SizeParam'
+      responses:
+        "200":
+          description: 보완요청 목록 조회 성공(0건 포함)
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessResponse'
+                  - type: object
+                    properties:
+                      data:
+                        type: object
+                        properties:
+                          items:
+                            type: array
+                            items:
+                              $ref: '#/components/schemas/EvidenceRequest'
+                          pagination:
+                            $ref: '#/components/schemas/Pagination'
+              example:
+                status: Success
+                data:
+                  items:
+                    - evidence_request_id: "cc000000-0000-0000-0000-000000000001"
+                      contract_id: "f4a5b6c7-0000-0000-0000-000000000040"
+                      reason: "근저당 말소 확인"
+                      evidence_type: REGISTRY_CANCELLATION_PROOF
+                      due_date: "2026-07-20"
+                      verification_status: Reviewing
+                  pagination: { page: 1, size: 20, total_elements: 1, total_pages: 1 }
+                request_id: "req_20260714_0012"
+        "401":
+          $ref: '#/components/responses/Unauthorized'
+  /evidence-requests/{evidence_request_id}:
+    get:
+      operationId: getEvidenceRequest
+      tags: [Evidence-Verification]
+      summary: 보완요청 상세 조회
+      description: 단건 보완요청 상세(사유, 대상 위험요소, 마감일, 관련 제출 증빙 목록)를 조회한다.
+      x-permission: tenant, landlord, advisor
+      x-mock-supported: true
+      parameters:
+        - name: evidence_request_id
+          in: path
+          required: true
+          schema:
+            $ref: '#/components/schemas/UUID'
+      responses:
+        "200":
+          description: 보완요청 상세 조회 성공
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessResponse'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/EvidenceRequest'
+        "404":
+          $ref: '#/components/responses/NotFound'
+        "401":
+          $ref: '#/components/responses/Unauthorized'
+  /evidence:
+    post:
+      operationId: submitEvidence
+      tags: [Evidence-Verification]
+      summary: 증빙 제출
+      description: |
+        임대인이 보완요청에 대한 증빙 파일(등기부 말소 확인서 등)을 업로드한다. 업로드 즉시 document_hash(SHA-256)를
+        생성하고 evidence_id를 발급하며 VerificationStatus는 Submitted로 전이한다. LAND-01 화면에서 호출한다.
+      x-permission: landlord
+      x-mock-supported: true
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/EvidenceSubmitRequest'
+      responses:
+        "201":
+          description: 증빙 제출 성공
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessResponse'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/Evidence'
+              example:
+                status: Success
+                data:
+                  evidence_id: "dd000000-0000-0000-0000-000000000001"
+                  evidence_request_id: "cc000000-0000-0000-0000-000000000001"
+                  file_name: "말소확인서.pdf"
+                  document_hash: "sha256:9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08"
+                  verification_status: Submitted
+                  submitted_at: "2026-07-14T14:00:00+09:00"
+                request_id: "req_20260714_0013"
+        "422":
+          $ref: '#/components/responses/ValidationError'
+        "409":
+          $ref: '#/components/responses/Conflict'
+        "401":
+          $ref: '#/components/responses/Unauthorized'
+  /verifications/{verification_id}:
+    get:
+      operationId: getVerification
+      tags: [Evidence-Verification]
+      summary: 검증 상태 조회
+      description: |
+        제출 증빙의 검증 진행 상태(VerificationStatus: Pending~Verified/Rejected/Expired)와 검토 코멘트를 조회한다.
+        LAND-02, ADV-02 화면에서 사용한다.
+      x-permission: landlord (본인 제출건만), advisor, verifier
+      x-mock-supported: true
+      parameters:
+        - $ref: '#/components/parameters/VerificationIdPath'
+      responses:
+        "200":
+          description: 검증 상태 조회 성공
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessResponse'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/Verification'
+              example:
+                status: Success
+                data:
+                  verification_id: "ee000000-0000-0000-0000-000000000001"
+                  evidence_id: "dd000000-0000-0000-0000-000000000001"
+                  verification_status: Reviewing
+                  reviewer_comment: null
+                  resubmission_required: false
+                  blockchain_tx_id: null
+                request_id: "req_20260714_0014"
+        "404":
+          $ref: '#/components/responses/NotFound'
+        "403":
+          $ref: '#/components/responses/Forbidden'
+        "401":
+          $ref: '#/components/responses/Unauthorized'
+  /verifications/{verification_id}/decision:
+    post:
+      operationId: decideVerification
+      tags: [Evidence-Verification]
+      summary: 검증 결정(승인/반려/보류)
+      description: |
+        아이엔 검증 담당자(advisor, verifier 서브 권한 필요)가 제출 증빙과 외부 API 조회 결과를 대조해
+        승인/반려/보류를 결정한다. 승인 시 VerificationStatus=Verified로 전이하고 Blockchain Adapter를 통해
+        검증 완료 이벤트를 온체인에 기록한다(개발설계보고서 8장). ADV-02 화면에서 호출한다.
+      x-permission: advisor (verifier 서브 권한 필수, 없으면 조회만 허용)
+      x-mock-supported: true
+      parameters:
+        - $ref: '#/components/parameters/VerificationIdPath'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/VerificationDecisionRequest'
+            example:
+              decision: approve
+              reviewer_comment: "등기부 말소 확인서와 CODEF 재조회 결과 일치"
+      responses:
+        "200":
+          description: 검증 결정 처리 성공
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessResponse'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/Verification'
+              example:
+                status: Success
+                data:
+                  verification_id: "ee000000-0000-0000-0000-000000000001"
+                  verification_status: Verified
+                  reviewer_comment: "등기부 말소 확인서와 CODEF 재조회 결과 일치"
+                  blockchain_tx_id: "ff000000-0000-0000-0000-000000000001"
+                request_id: "req_20260714_0015"
+        "422":
+          $ref: '#/components/responses/ValidationError'
+        "403":
+          $ref: '#/components/responses/Forbidden'
+        "404":
+          $ref: '#/components/responses/NotFound'
+        "401":
+          $ref: '#/components/responses/Unauthorized'
+  /return-plans:
+    post:
+      operationId: submitReturnPlan
+      tags: [Evidence-Verification]
+      summary: 반환계획 제출
+      description: D-90 도달 시 임대인이 보증금 반환 예정일·방법을 제출한다. LAND-03 화면에서 호출한다.
+      x-permission: landlord
+      x-mock-supported: true
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ReturnPlanCreateRequest'
+            example:
+              contract_id: "f4a5b6c7-0000-0000-0000-000000000040"
+              planned_return_date: "2028-07-31"
+              return_method: "신규 임차인 보증금으로 반환"
+              note: "특이사항 없음"
+      responses:
+        "201":
+          description: 반환계획 제출 성공
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessResponse'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/ReturnPlan'
+              example:
+                status: Success
+                data:
+                  return_plan_id: "bb000000-0000-0000-0000-000000000001"
+                  contract_id: "f4a5b6c7-0000-0000-0000-000000000040"
+                  landlord_response_status: Responded
+                  planned_return_date: "2028-07-31"
+                request_id: "req_20260714_0016"
+        "422":
+          $ref: '#/components/responses/ValidationError'
+        "409":
+          $ref: '#/components/responses/Conflict'
+        "401":
+          $ref: '#/components/responses/Unauthorized'
+  /incidents:
+    post:
+      operationId: createIncident
+      tags: [Evidence-Verification]
+      summary: 사고 접수
+      description: |
+        보증금 미반환 의심 상황을 신고한다. 접수 즉시 ContractStatus는 AtRisk → IncidentReported로 전이하고,
+        Backend가 자동으로 TransferredToHUG 단계까지 인계한다(Frontend_UIUX_명세서 4.6절 Flow). 중복 접수는 거부한다.
+        TEN-07 화면에서 호출한다.
+      x-permission: tenant
+      x-mock-supported: true
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/IncidentCreateRequest'
+            example:
+              contract_id: "f4a5b6c7-0000-0000-0000-000000000040"
+              incident_reason: "임대인 연락 두절, 보증금 미반환"
+              attachment_ids: []
+      responses:
+        "201":
+          description: 사고 접수 성공
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessResponse'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/Incident'
+              example:
+                status: Success
+                data:
+                  incident_id: "10000000-0000-0000-0000-000000000001"
+                  contract_id: "f4a5b6c7-0000-0000-0000-000000000040"
+                  incident_status: TransferredToHUG
+                  incident_reason: "임대인 연락 두절, 보증금 미반환"
+                  reported_at: "2026-07-14T15:00:00+09:00"
+                request_id: "req_20260714_0017"
+        "422":
+          $ref: '#/components/responses/ValidationError'
+        "409":
+          $ref: '#/components/responses/Conflict'
+        "401":
+          $ref: '#/components/responses/Unauthorized'
+  /referrals:
+    post:
+      operationId: createReferral
+      tags: [Evidence-Verification]
+      summary: 전문가 이관
+      description: |
+        고위험 사건(압류·가압류·경매개시·중대한 계약서 불일치 등, ML개발가이드 2장 원칙 9)을 전문가에게 이관 처리한다.
+        ADV-03 화면에서 호출하며 중복 이관은 거부한다.
+      x-permission: advisor
+      x-mock-supported: true
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ReferralCreateRequest'
+            example:
+              case_id: "d2e3f4a5-0000-0000-0000-000000000020"
+              reason: "expert_referral_rule 일치: 전세사기 의심"
+              assigned_expert: "law_firm_kim"
+              priority: HIGH
+      responses:
+        "201":
+          description: 전문가 이관 성공
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessResponse'
+              example:
+                status: Success
+                data:
+                  referral_id: "20000000-0000-0000-0000-000000000001"
+                  case_id: "d2e3f4a5-0000-0000-0000-000000000020"
+                  referred_at: "2026-07-14T15:10:00+09:00"
+                request_id: "req_20260714_0018"
+        "422":
+          $ref: '#/components/responses/ValidationError'
+        "409":
+          $ref: '#/components/responses/Conflict'
+        "401":
+          $ref: '#/components/responses/Unauthorized'
+  /counsel-queue:
+    get:
+      operationId: listCounselQueue
+      tags: [Advisor]
+      summary: 상담 큐 조회
+      description: 신규 상담과 전문가 이관 대상을 우선순위별로 정렬해 조회한다. ADV-00 화면에서 사용한다.
+      x-permission: advisor
+      x-mock-supported: true
+      parameters:
+        - name: region
+          in: query
+          required: false
+          schema: { type: string }
+        - name: dispute_type
+          in: query
+          required: false
+          schema:
+            $ref: '#/components/schemas/DisputeType'
+        - name: expert_referral
+          in: query
+          required: false
+          schema: { type: boolean }
+        - $ref: '#/components/parameters/PageParam'
+        - $ref: '#/components/parameters/SizeParam'
+      responses:
+        "200":
+          description: 상담 큐 조회 성공
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessResponse'
+                  - type: object
+                    properties:
+                      data:
+                        type: object
+                        properties:
+                          items:
+                            type: array
+                            items:
+                              $ref: '#/components/schemas/Counsel'
+                          pagination:
+                            $ref: '#/components/schemas/Pagination'
+              example:
+                status: Success
+                data:
+                  items:
+                    - counsel_id: "30000000-0000-0000-0000-000000000001"
+                      region_sido: "서울"
+                      predicted_dispute_type: "보증금미반환"
+                      dispute_type_confidence: 0.71
+                      expert_referral: true
+                  pagination: { page: 1, size: 20, total_elements: 1, total_pages: 1 }
+                request_id: "req_20260714_0019"
+        "401":
+          $ref: '#/components/responses/Unauthorized'
+  /counsel/{counsel_id}:
+    get:
+      operationId: getCounselDetail
+      tags: [Advisor]
+      summary: 상담 상세 및 RAG 근거 조회
+      description: |
+        상담 원문, 상담 분류 모델(모델 1) 결과(predicted_dispute_type, predicted_stage, expert_referral_reasons)를
+        조회한다. RAG 유사 상담사례는 별도로 POST /rag/search를 호출해 결합한다(Frontend_UIUX_명세서 8.2절).
+        ADV-01 화면에서 사용한다.
+      x-permission: advisor
+      x-mock-supported: true
+      parameters:
+        - name: counsel_id
+          in: path
+          required: true
+          schema:
+            $ref: '#/components/schemas/UUID'
+      responses:
+        "200":
+          description: 상담 상세 조회 성공
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessResponse'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/Counsel'
+              example:
+                status: Success
+                data:
+                  counsel_id: "30000000-0000-0000-0000-000000000001"
+                  region_sido: "서울"
+                  region_sigungu: "동작구"
+                  deposit_range: "1억~2억"
+                  housing_type: MULTI_HOUSEHOLD
+                  counsel_text: "다세대주택이며 9개호실이 근저당 공동담보로..."
+                  prediction:
+                    predicted_dispute_type: "경매·공매"
+                    dispute_type_confidence: 0.78
+                    predicted_stage: "HUG이행청구"
+                    stage_confidence: 0.55
+                    expert_referral: true
+                    expert_referral_reasons: ["분쟁유형=경매·공매 규칙 일치"]
+                    model_version: counsel_classifier_v1.0.0
+                    is_mock: false
+                request_id: "req_20260714_0020"
+        "404":
+          $ref: '#/components/responses/NotFound'
+        "401":
+          $ref: '#/components/responses/Unauthorized'
+  /hug/dashboard:
+    get:
+      operationId: getHugDashboard
+      tags: [HUG]
+      summary: HUG 채권관리 대시보드 조회
+      description: |
+        사고 접수 사건을 조기경보·회수등급(모델 2)·처리기간(모델 3) 기준으로 우선순위 정렬한 집계를 조회한다.
+        모델 결과가 전혀 없는 사건은 "수동 우선순위 필요(PoC 단계)"로 표시한다(개발설계보고서 부록 D). HUG-01 화면에서 사용.
+      x-permission: hug_admin
+      x-mock-supported: true
+      parameters:
+        - name: region
+          in: query
+          required: false
+          schema: { type: string }
+        - name: recovery_grade
+          in: query
+          required: false
+          schema:
+            $ref: '#/components/schemas/RecoveryGrade'
+        - name: delay_risk
+          in: query
+          required: false
+          schema:
+            $ref: '#/components/schemas/DelayRisk'
+        - $ref: '#/components/parameters/PageParam'
+        - $ref: '#/components/parameters/SizeParam'
+      responses:
+        "200":
+          description: HUG 대시보드 조회 성공
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessResponse'
+                  - type: object
+                    properties:
+                      data:
+                        type: object
+                        properties:
+                          summary_by_recovery_grade:
+                            type: object
+                            additionalProperties:
+                              type: integer
+                          summary_by_delay_risk:
+                            type: object
+                            additionalProperties:
+                              type: integer
+                          items:
+                            type: array
+                            items:
+                              $ref: '#/components/schemas/Incident'
+                          pagination:
+                            $ref: '#/components/schemas/Pagination'
+              example:
+                status: Success
+                data:
+                  summary_by_recovery_grade: { HIGH: 12, MEDIUM: 34, LOW: 9 }
+                  summary_by_delay_risk: { HIGH: 8, MEDIUM: 30, LOW: 17 }
+                  items:
+                    - incident_id: "10000000-0000-0000-0000-000000000001"
+                      incident_status: RecoveryInProgress
+                      recovery_grade: MEDIUM
+                      delay_risk: HIGH
+                  pagination: { page: 1, size: 20, total_elements: 1, total_pages: 1 }
+                request_id: "req_20260714_0021"
+        "401":
+          $ref: '#/components/responses/Unauthorized'
+  /incidents/{incident_id}:
+    get:
+      operationId: getIncident
+      tags: [HUG]
+      summary: 사건 상세 조회
+      description: 개별 사고 사건의 이력, 담당자 액션 로그, 연결된 회수·처리기간 예측 참조를 조회한다. HUG-02 화면에서 사용한다.
+      x-permission: hug_admin
+      x-mock-supported: true
+      parameters:
+        - name: incident_id
+          in: path
+          required: true
+          schema:
+            $ref: '#/components/schemas/UUID'
+      responses:
+        "200":
+          description: 사건 상세 조회 성공
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessResponse'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/Incident'
+        "404":
+          $ref: '#/components/responses/NotFound'
+        "401":
+          $ref: '#/components/responses/Unauthorized'
+  /recovery-predictions/{recovery_prediction_id}:
+    get:
+      operationId: getRecoveryPrediction
+      tags: [HUG]
+      summary: 회수·처리기간 예측 결과 조회
+      description: |
+        모델 2(회수등급)·모델 3(처리기간) 추론 결과(expected_recovery_rate, recovery_grade, expected_days, delay_risk,
+        top_factors)를 조회한다. HUG-02 화면에서 사용한다.
+      x-permission: hug_admin
+      x-mock-supported: true
+      parameters:
+        - name: recovery_prediction_id
+          in: path
+          required: true
+          schema:
+            $ref: '#/components/schemas/UUID'
+      responses:
+        "200":
+          description: 회수·처리기간 예측 조회 성공
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessResponse'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/RecoveryPrediction'
+              example:
+                status: Success
+                data:
+                  recovery_prediction_id: "40000000-0000-0000-0000-000000000001"
+                  incident_id: "10000000-0000-0000-0000-000000000001"
+                  recovery:
+                    expected_recovery_rate: 0.58
+                    recovery_grade: MEDIUM
+                    expected_recovery_amount: 126440000
+                    top_factors: ["claim_amount", "region_risk_group", "housing_type_group"]
+                    similar_group_summary: { region: "인천", housing_type: "다세대주택", sample_size: 388 }
+                    model_version: recovery_regressor_v1.0.0
+                    model_result_status: Success
+                    is_mock: false
+                  duration:
+                    expected_days: 454
+                    expected_range: { lower: 320, upper: 600 }
+                    delay_risk: HIGH
+                    top_factors: ["procedure_type", "claim_amount"]
+                    model_version: duration_regressor_v1.0.0
+                    model_result_status: Success
+                    is_mock: false
+                  created_at: "2026-07-14T16:00:00+09:00"
+                request_id: "req_20260714_0022"
+        "404":
+          $ref: '#/components/responses/NotFound'
+        "401":
+          $ref: '#/components/responses/Unauthorized'
+  /recovery-predictions/{recovery_prediction_id}/similar:
+    get:
+      operationId: getSimilarRecoveryCases
+      tags: [HUG]
+      summary: 유사사건 비교 조회
+      description: |
+        동일 지역/주택유형/절차유형 그룹 내 유사사건 비교 정보(similar_group_summary, sample_size)를 조회한다.
+        표본이 임계값(예: 10건) 미만이면 Partial로 취급하고 참고용 경고를 포함한다(Frontend_UIUX_명세서 9.2절). HUG-03 화면에서 사용.
+      x-permission: hug_admin
+      x-mock-supported: true
+      parameters:
+        - name: recovery_prediction_id
+          in: path
+          required: true
+          schema:
+            $ref: '#/components/schemas/UUID'
+        - name: criteria
+          in: query
+          required: false
+          description: 비교 기준(지역/주택유형/절차유형)
+          schema:
+            type: string
+            enum: [region, housing_type, procedure_type]
+            default: region
+      responses:
+        "200":
+          description: 유사사건 비교 조회 성공
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessResponse'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/RecoveryGroup'
+              example:
+                status: Success
+                data:
+                  recovery_group_id: "50000000-0000-0000-0000-000000000001"
+                  criteria: region
+                  region: "인천"
+                  housing_type: MULTI_HOUSEHOLD
+                  sample_size: 8
+                  average_recovery_rate: 0.55
+                  average_duration_days: 310
+                  is_low_sample_warning: true
+                request_id: "req_20260714_0023"
+        "206":
+          $ref: '#/components/responses/Partial'
+        "404":
+          $ref: '#/components/responses/NotFound'
+        "401":
+          $ref: '#/components/responses/Unauthorized'
+  /entity-risk-groups/{entity_group_id}:
+    get:
+      operationId: getEntityRiskGroup
+      tags: [HUG]
+      summary: 법인 집단위험 조회
+      description: |
+        법인 임대인 관련 위험 신호를 지역/주택유형 집단 단위로 조회한다. 비식별 법인키가 없어 개별 법인 추적은
+        제공하지 않으며(ML개발가이드 7.5절 한계), 응답에는 항상 "개별 법인 추적 불가" 안내를 포함한다. HUG-04 화면에서 사용.
+      x-permission: hug_admin
+      x-mock-supported: true
+      parameters:
+        - name: entity_group_id
+          in: path
+          required: true
+          schema:
+            $ref: '#/components/schemas/UUID'
+      responses:
+        "200":
+          description: 법인 집단위험 조회 성공
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessResponse'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/EntityRiskGroup'
+              example:
+                status: Success
+                data:
+                  entity_group_id: "60000000-0000-0000-0000-000000000001"
+                  region: "서울"
+                  housing_type: MULTI_HOUSEHOLD
+                  dart_disclosure_ratio: 0.12
+                  business_closed_ratio: 0.05
+                  sample_size: 240
+                  individual_entity_tracking_supported: false
+                  disclaimer: "비식별 법인키 부재로 개별 법인 추적을 제공하지 않습니다."
+                request_id: "req_20260714_0024"
+        "404":
+          $ref: '#/components/responses/NotFound'
+        "401":
+          $ref: '#/components/responses/Unauthorized'
+  /admin/users:
+    get:
+      operationId: listAdminUsers
+      tags: [Admin]
+      summary: 사용자·권한 관리 조회
+      description: 사용자 역할(tenant/landlord/advisor/hug_admin/verifier) 배정과 계정 상태를 조회한다. ADM-00 화면에서 사용한다.
+      x-permission: system_admin
+      x-mock-supported: true
+      parameters:
+        - name: search
+          in: query
+          required: false
+          schema: { type: string }
+        - name: role
+          in: query
+          required: false
+          schema:
+            $ref: '#/components/schemas/UserRole'
+        - $ref: '#/components/parameters/PageParam'
+        - $ref: '#/components/parameters/SizeParam'
+      responses:
+        "200":
+          description: 사용자 목록 조회 성공
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessResponse'
+                  - type: object
+                    properties:
+                      data:
+                        type: object
+                        properties:
+                          items:
+                            type: array
+                            items:
+                              $ref: '#/components/schemas/User'
+                          pagination:
+                            $ref: '#/components/schemas/Pagination'
+              example:
+                status: Success
+                data:
+                  items:
+                    - user_id: "8f14e45f-ceea-4b4f-9c1a-000000000001"
+                      role: tenant
+                      display_name: "홍길동"
+                      last_login_at: "2026-07-14T09:12:00+09:00"
+                  pagination: { page: 1, size: 20, total_elements: 1, total_pages: 1 }
+                request_id: "req_20260714_0025"
+        "403":
+          $ref: '#/components/responses/Forbidden'
+        "401":
+          $ref: '#/components/responses/Unauthorized'
+  /admin/model-status:
+    get:
+      operationId: getModelStatus
+      tags: [Admin]
+      summary: ML 모델 가동 상태 조회
+      description: |
+        상담분류·회수·처리기간 3개 모델의 ModelResultStatus 최근 이력, 평균 추론시간, 로딩된 model_version을
+        조회한다(ML개발가이드 25장 모니터링). ADM-01 화면에서 사용한다.
+      x-permission: system_admin
+      x-mock-supported: true
+      responses:
+        "200":
+          description: 모델 상태 조회 성공
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessResponse'
+                  - type: object
+                    properties:
+                      data:
+                        type: object
+                        properties:
+                          models:
+                            type: array
+                            items:
+                              $ref: '#/components/schemas/ModelMetadata'
+              example:
+                status: Success
+                data:
+                  models:
+                    - model_key: counsel_classifier
+                      model_version: counsel_classifier_v1.0.0
+                      loaded_at: "2026-07-14T08:00:00+09:00"
+                      recent_status: Success
+                      average_latency_ms: 42
+                      rule_only_fallback_count_24h: 0
+                    - model_key: recovery_regressor
+                      model_version: recovery_regressor_v1.0.0
+                      loaded_at: "2026-07-14T08:00:00+09:00"
+                      recent_status: Success
+                      average_latency_ms: 55
+                      rule_only_fallback_count_24h: 1
+                    - model_key: duration_regressor
+                      model_version: duration_regressor_v1.0.0
+                      loaded_at: "2026-07-14T08:00:00+09:00"
+                      recent_status: Success
+                      average_latency_ms: 51
+                      rule_only_fallback_count_24h: 0
+                request_id: "req_20260714_0026"
+        "403":
+          $ref: '#/components/responses/Forbidden'
+        "401":
+          $ref: '#/components/responses/Unauthorized'
+  /admin/blockchain-logs:
+    get:
+      operationId: listBlockchainLogs
+      tags: [Admin]
+      summary: 블록체인 트랜잭션 로그 조회
+      description: 계약 버전 공증, 검증 이벤트 등 전체 블록체인 트랜잭션 로그(BlockchainTransaction)를 조회한다. ADM-02 화면에서 사용.
+      x-permission: system_admin
+      x-mock-supported: true
+      parameters:
+        - name: date_from
+          in: query
+          required: false
+          schema: { type: string, format: date }
+        - name: date_to
+          in: query
+          required: false
+          schema: { type: string, format: date }
+        - name: blockchain_status
+          in: query
+          required: false
+          schema:
+            $ref: '#/components/schemas/BlockchainStatus'
+        - $ref: '#/components/parameters/PageParam'
+        - $ref: '#/components/parameters/SizeParam'
+      responses:
+        "200":
+          description: 블록체인 로그 조회 성공
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessResponse'
+                  - type: object
+                    properties:
+                      data:
+                        type: object
+                        properties:
+                          items:
+                            type: array
+                            items:
+                              $ref: '#/components/schemas/BlockchainTransaction'
+                          pagination:
+                            $ref: '#/components/schemas/Pagination'
+        "403":
+          $ref: '#/components/responses/Forbidden'
+        "401":
+          $ref: '#/components/responses/Unauthorized'
+  /admin/system-logs:
+    get:
+      operationId: listSystemLogs
+      tags: [Admin]
+      summary: 시스템 로그 조회
+      description: |
+        API 재시도, 알림 발송, 인증 실패 등 시스템 이벤트 로그(SystemLog)를 조회한다. 개인정보는 마스킹되어 있다
+        (데이터수집_및_API가이드 13장). ADM-03 화면에서 사용한다.
+      x-permission: system_admin
+      x-mock-supported: true
+      parameters:
+        - name: log_level
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [DEBUG, INFO, WARN, ERROR]
+        - name: date_from
+          in: query
+          required: false
+          schema: { type: string, format: date }
+        - name: date_to
+          in: query
+          required: false
+          schema: { type: string, format: date }
+        - $ref: '#/components/parameters/PageParam'
+        - $ref: '#/components/parameters/SizeParam'
+      responses:
+        "200":
+          description: 시스템 로그 조회 성공
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessResponse'
+                  - type: object
+                    properties:
+                      data:
+                        type: object
+                        properties:
+                          items:
+                            type: array
+                            items:
+                              $ref: '#/components/schemas/SystemLog'
+                          pagination:
+                            $ref: '#/components/schemas/Pagination'
+        "403":
+          $ref: '#/components/responses/Forbidden'
+        "401":
+          $ref: '#/components/responses/Unauthorized'
+  /health:
+    get:
+      operationId: healthCheck
+      tags: [Admin]
+      summary: API 상태 확인
+      description: |
+        전체 API 게이트웨이, 주요 외부 API 어댑터, DB, ML 모델 로딩 상태를 종합해 응답한다(데이터수집_및_API가이드 부록 A).
+        ADM-01 화면과 배포 파이프라인의 헬스체크가 함께 사용한다.
+      security: []
+      x-permission: 없음 (공개 엔드포인트)
+      x-mock-supported: true
+      responses:
+        "200":
+          description: 정상
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HealthCheckResponse'
+              example:
+                status: ok
+                checked_at: "2026-07-14T16:30:00+09:00"
+                dependencies:
+                  database: ok
+                  vector_store: ok
+                  external_api_gateway: degraded
+                  blockchain_adapter: ok
+                  ml_inference_service: ok
+        "503":
+          description: 하나 이상의 의존성이 비정상 상태
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HealthCheckResponse'
+  /blockchain/anchor:
+    post:
+      operationId: anchorBlockchain
+      tags: [Blockchain]
+      summary: 결과 해시 온체인 기록
+      description: |
+        검증 완료, 계약버전 확정, D-90 이벤트, 사고 인계 등 감사 대상 사건의 canonical JSON 해시를 Polygon Amoy
+        또는 Mock chain에 기록한다(개발설계보고서 8·9.7절). 온체인에는 case_id_hash, result_hash,
+        model_version_hash, created_at, issuer만 저장하며 원문·개인정보는 절대 포함하지 않는다.
+      x-permission: Backend 내부 서비스 호출 전용 (Contract/Verification/Scheduler/Incident Service). 사용자 직접 호출 대상 아님.
+      x-mock-supported: true
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AnchorRequest'
+            example:
+              event_type: VerificationCompleted
+              reference_id: "ee000000-0000-0000-0000-000000000001"
+              result_hash: "sha256:2c624232cdd221771294dfbb310aca000a0df6ac8b66b696d90ef06fdefb64a"
+              model_version: null
+      responses:
+        "202":
+          description: 온체인 기록 요청 접수(BlockchainStatus=Pending)
+          headers:
+            X-Request-ID:
+              $ref: '#/components/headers/RequestIdHeader'
+            X-Blockchain-Version:
+              $ref: '#/components/headers/BlockchainVersionHeader'
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessResponse'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/AnchorResponse'
+              example:
+                status: Success
+                data:
+                  blockchain_tx_id: "ff000000-0000-0000-0000-000000000001"
+                  chain_id: 80002
+                  contract_address: "0x0000000000000000000000000000000000dEaD"
+                  tx_hash: null
+                  blockchain_status: Pending
+                  is_mock: false
+                request_id: "req_20260714_0027"
+        "422":
+          $ref: '#/components/responses/ValidationError'
+        "401":
+          $ref: '#/components/responses/Unauthorized'
+        "408":
+          $ref: '#/components/responses/Timeout'
+  /blockchain/{tx_id}:
+    get:
+      operationId: getBlockchainTransaction
+      tags: [Blockchain]
+      summary: 블록체인 트랜잭션 상세 조회
+      description: |
+        blockchain_tx_id 기준 온체인 트랜잭션 상태(Pending/Confirmed/Failed)와 tx_hash, contract_address를 조회한다.
+        `/blockchain/[txId]` 공통 화면과 TEN-05, ADM-02에서 사용한다. 법적 효력이 있는 것처럼 표현하지 않는다.
+      x-permission: 로그인한 전체 역할(본인 관련 트랜잭션 또는 system_admin 전체)
+      x-mock-supported: true
+      parameters:
+        - name: tx_id
+          in: path
+          required: true
+          description: blockchain_tx_id (UUID) 또는 온체인 tx_hash
+          schema:
+            type: string
+      responses:
+        "200":
+          description: 블록체인 트랜잭션 조회 성공
+          headers:
+            X-Blockchain-Version:
+              $ref: '#/components/headers/BlockchainVersionHeader'
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessResponse'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/BlockchainTransaction'
+              example:
+                status: Success
+                data:
+                  blockchain_tx_id: "ff000000-0000-0000-0000-000000000001"
+                  event_type: VerificationCompleted
+                  reference_id: "ee000000-0000-0000-0000-000000000001"
+                  chain_id: 80002
+                  contract_address: "0x0000000000000000000000000000000000dEaD"
+                  tx_hash: "0x9a3f...c21e"
+                  result_hash: "sha256:2c624232cdd221771294dfbb310aca000a0df6ac8b66b696d90ef06fdefb64a"
+                  blockchain_status: Confirmed
+                  is_mock: false
+                  created_at: "2026-07-14T15:20:00+09:00"
+                  confirmed_at: "2026-07-14T15:20:45+09:00"
+                request_id: "req_20260714_0028"
+        "404":
+          $ref: '#/components/responses/NotFound'
+        "401":
+          $ref: '#/components/responses/Unauthorized'
+  /notifications:
+    get:
+      operationId: listNotifications
+      tags: [Notification]
+      summary: 알림 목록 조회
+      description: 역할별 알림(보완요청, D-90, 검증 결과 등)을 통합 조회한다. COMMON-01 화면에서 사용한다.
+      x-permission: 로그인한 전체 역할
+      x-mock-supported: true
+      parameters:
+        - name: is_read
+          in: query
+          required: false
+          schema: { type: boolean }
+        - name: notification_type
+          in: query
+          required: false
+          schema:
+            $ref: '#/components/schemas/NotificationType'
+        - $ref: '#/components/parameters/PageParam'
+        - $ref: '#/components/parameters/SizeParam'
+      responses:
+        "200":
+          description: 알림 목록 조회 성공(0건 포함)
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessResponse'
+                  - type: object
+                    properties:
+                      data:
+                        type: object
+                        properties:
+                          items:
+                            type: array
+                            items:
+                              $ref: '#/components/schemas/Notification'
+                          pagination:
+                            $ref: '#/components/schemas/Pagination'
+              example:
+                status: Success
+                data:
+                  items:
+                    - notification_id: "70000000-0000-0000-0000-000000000001"
+                      notification_type: D90Reminder
+                      title: "D-90 반환계획 확인이 필요합니다"
+                      is_read: false
+                      created_at: "2026-07-14T07:00:00+09:00"
+                  pagination: { page: 1, size: 20, total_elements: 1, total_pages: 1 }
+                request_id: "req_20260714_0029"
+        "401":
+          $ref: '#/components/responses/Unauthorized'
+  /notifications/{notification_id}/read:
+    post:
+      operationId: markNotificationRead
+      tags: [Notification]
+      summary: 알림 읽음 처리
+      description: 알림 클릭 또는 명시적 읽음 처리 액션 시 호출한다.
+      x-permission: 로그인한 전체 역할(본인 알림만)
+      x-mock-supported: true
+      parameters:
+        - name: notification_id
+          in: path
+          required: true
+          schema:
+            $ref: '#/components/schemas/UUID'
+      responses:
+        "200":
+          description: 읽음 처리 성공
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessResponse'
+              example:
+                status: Success
+                data: { notification_id: "70000000-0000-0000-0000-000000000001", is_read: true }
+                request_id: "req_20260714_0030"
+        "404":
+          $ref: '#/components/responses/NotFound'
+        "401":
+          $ref: '#/components/responses/Unauthorized'
+  /ml/risk/predict:
+    post:
+      operationId: mlRiskPredict
+      tags: [ML]
+      summary: "[ML] 위험유사도 추론"
+      description: |
+        규칙 엔진 Feature(권리부담·전세가율·건축물 특성 등)를 입력받아 과거 사고사례 기반 위험유사도를 추론한다.
+        정상계약 데이터가 없어 "실제 사고확률"은 산출하지 않으며(ML개발가이드 2장 원칙 1·3), 출력은 위험유사도·매칭
+        패턴·SHAP 기여도로 한정한다. `/risk/diagnose`가 내부적으로 이 계약을 호출해 Rule Engine 결과와 결합한다
+        (ML개발가이드 21장). 모델 로딩 실패 시 `model_result_status=RuleOnlyFallback`으로 즉시 전환한다.
+      x-permission: Backend 내부 서비스 호출 전용 (Risk Engine)
+      x-mock-supported: true
+      x-fallback-policy: |
+        Mock: is_mock=true 필드로 표시(23장 10개 시나리오). Fallback: 외부 Feature 일부 결측 시 결측 플래그를 채워 추론.
+        RuleOnlyFallback: 모델 로딩/추론 실패 시 규칙 엔진 결과만 반환(model_result_status=RuleOnlyFallback).
+        InsufficientData: 필수 Feature 다수 결측 시 추론을 생략하고 InsufficientData 반환.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RiskPredictRequest'
+            example:
+              region_sido: "서울"
+              mortgage_ratio: 0.29
+              rights_burden_ratio: 0.935
+              jeonse_ratio: 0.645
+              has_seizure: false
+              building_age_years: 12
+              business_closed_flag: false
+              dart_disclosure_flag: false
+              model_version: risk_similarity_v1.0.0
+      responses:
+        "200":
+          description: 위험유사도 추론 성공(Success/RuleOnlyFallback/InsufficientData 포함)
+          headers:
+            X-Model-Version:
+              $ref: '#/components/headers/ModelVersionHeader'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RiskPrediction'
+              example:
+                risk_grade_suggestion: HIGH
+                similarity_score: 0.82
+                matched_patterns: ["근저당 고비율 사고 패턴"]
+                top_factors:
+                  - feature_name: mortgage_ratio
+                    contribution: 0.34
+                    direction: increase
+                  - feature_name: rights_burden_ratio
+                    contribution: 0.21
+                    direction: increase
+                model_version: risk_similarity_v1.0.0
+                model_result_status: Success
+                is_mock: false
+        "422":
+          $ref: '#/components/responses/ValidationError'
+        "206":
+          $ref: '#/components/responses/Partial'
+  /ml/counsel/predict:
+    post:
+      operationId: mlCounselPredict
+      tags: [ML]
+      summary: "[ML] 상담 분류 추론 (모델 1)"
+      description: |
+        상담 원문과 메타데이터를 입력받아 분쟁유형(8클래스), 진행단계(7클래스), 전문가 이관 필요도를 추론한다
+        (ML개발가이드 12장, 부록 C). 표본이 938건으로 적어 `*_confidence`는 보정 전 원시 확신도이며 "실제 확률"로
+        표현하지 않는다. ADV-01 화면에서 사용한다.
+      x-permission: advisor
+      x-mock-supported: true
+      x-fallback-policy: |
+        Mock: is_mock=true. Fallback: 텍스트 없이 구조화 Feature만 있는 경우 결합모델 대신 구조화 전용 모델로 대체.
+        RuleOnlyFallback: 모델 로딩 실패 시 expert_referral_rule(규칙 기반 이관 라벨)만 반환.
+        InsufficientData: 상담 원문과 구조화 Feature가 모두 없으면 InsufficientData 반환, 수동 분류 폼으로 전환(Frontend 5.12절).
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CounselPredictRequest'
+            example:
+              region_sido: "서울"
+              region_sigungu: "동작구"
+              deposit_range: "1억~2억"
+              contract_status: "계약중(종료예정)"
+              housing_type: MULTI_HOUSEHOLD
+              prior_right: "근저당설정"
+              insurance_status: "가입"
+              counsel_text: "다세대주택이며 9개호실이 근저당 공동담보로..."
+      responses:
+        "200":
+          description: 상담 분류 추론 성공
+          headers:
+            X-Model-Version:
+              $ref: '#/components/headers/ModelVersionHeader'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CounselPrediction'
+              example:
+                predicted_dispute_type: "경매·공매"
+                dispute_type_confidence: 0.78
+                predicted_stage: "HUG이행청구"
+                stage_confidence: 0.55
+                expert_referral: true
+                expert_referral_reasons: ["분쟁유형=경매·공매 규칙 일치"]
+                similar_case_query: { topic: "경매·공매", region: "서울" }
+                model_version: counsel_classifier_v1.0.0
+                model_result_status: Success
+                is_mock: false
+        "422":
+          $ref: '#/components/responses/ValidationError'
+  /ml/recovery/predict:
+    post:
+      operationId: mlRecoveryPredict
+      tags: [ML]
+      summary: "[ML] 회수율·회수등급 추론 (모델 2)"
+      description: |
+        HUG 경매·배당·사고 합성데이터 기반으로 학습된 회수율·회수등급을 추론한다(ML개발가이드 13장, 부록 C).
+        합성데이터 기준 패턴이며 실제 예측 성능을 검증한 것이 아니다(2장 원칙 5). HUG-02 화면과 `/hug/dashboard` 집계가 사용한다.
+      x-permission: hug_admin (Backend 내부 Recovery Service 경유)
+      x-mock-supported: true
+      x-fallback-policy: |
+        Mock: is_mock=true(mock_scenario_6/7 대응). Fallback: 회수율 회귀모델 실패 시 등급 분류모델 결과만 반환.
+        RuleOnlyFallback: 모델 로딩 실패 시 지역/주택유형 group median(15장 Baseline)으로 대체.
+        InsufficientData: claim_amount 등 필수 입력 결측 시 InsufficientData 반환.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RecoveryPredictRequest'
+            example:
+              product_name: "전세보증금반환보증"
+              claim_amount: 218000000
+              region_sido: "인천"
+              housing_type: MULTI_HOUSEHOLD
+              landlord_type: INDIVIDUAL_BUSINESS
+      responses:
+        "200":
+          description: 회수율·회수등급 추론 성공
+          headers:
+            X-Model-Version:
+              $ref: '#/components/headers/ModelVersionHeader'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RecoveryPredictionOutput'
+              example:
+                expected_recovery_rate: 0.58
+                recovery_grade: MEDIUM
+                expected_recovery_amount: 126440000
+                top_factors: ["claim_amount", "region_risk_group", "housing_type_group"]
+                similar_group_summary: { region: "인천", housing_type: "다세대주택", sample_size: 388 }
+                model_version: recovery_regressor_v1.0.0
+                model_result_status: Success
+                is_mock: false
+        "422":
+          $ref: '#/components/responses/ValidationError'
+  /ml/duration/predict:
+    post:
+      operationId: mlDurationPredict
+      tags: [ML]
+      summary: "[ML] 처리기간 추론 (모델 3)"
+      description: |
+        경공매 신청 또는 사고 발생 이후 배당·처리까지 예상 소요기간을 절차유형별로 추론한다(ML개발가이드 14장, 부록 C).
+        서로 다른 절차의 기간을 하나로 섞지 않고 `procedure_type` Feature로 구분한다. HUG-02 화면과 `/hug/dashboard` 집계가 사용.
+      x-permission: hug_admin (Backend 내부 Recovery Service 경유)
+      x-mock-supported: true
+      x-fallback-policy: |
+        Mock: is_mock=true(mock_scenario_8 대응). Fallback: 절차유형 미상 시 전체 중앙값(Baseline)으로 대체.
+        RuleOnlyFallback: 모델 로딩 실패 시 절차유형별 그룹 중앙값으로 대체.
+        InsufficientData: procedure_type/claim_amount 결측 시 InsufficientData 반환.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DurationPredictRequest'
+            example:
+              procedure_type: "경공매신청~배당"
+              claim_amount: 151191001
+              region_sido: "서울"
+              product_name: "전세보증금반환보증"
+      responses:
+        "200":
+          description: 처리기간 추론 성공
+          headers:
+            X-Model-Version:
+              $ref: '#/components/headers/ModelVersionHeader'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DurationPrediction'
+              example:
+                expected_days: 454
+                expected_range: { lower: 320, upper: 600 }
+                delay_risk: HIGH
+                top_factors: ["procedure_type", "claim_amount"]
+                model_version: duration_regressor_v1.0.0
+                model_result_status: Success
+                is_mock: false
+        "422":
+          $ref: '#/components/responses/ValidationError'
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: |
+        JWT Bearer 토큰. `role` 클레임(tenant/landlord/advisor/hug_admin/system_admin/verifier)을 포함한다.
+        `verifier`는 advisor 내 서브 권한으로, `/verifications/{id}/decision` 액션 권한 판정에만 사용한다
+        (Frontend_UIUX_명세서 3장, 개발설계보고서 13.5절). 발급/폐기 상세 구현은 Backend_API_명세서_260714.md에서 확정한다.
+  parameters:
+    CaseIdPath:
+      name: case_id
+      in: path
+      required: true
+      description: risk_assessment 조회 단위 케이스 ID
+      schema:
+        $ref: '#/components/schemas/UUID'
+    ContractIdPath:
+      name: contract_id
+      in: path
+      required: true
+      description: 계약 식별자
+      schema:
+        $ref: '#/components/schemas/UUID'
+    VerificationIdPath:
+      name: verification_id
+      in: path
+      required: true
+      description: 검증 결과 식별자
+      schema:
+        $ref: '#/components/schemas/UUID'
+    PageParam:
+      name: page
+      in: query
+      required: false
+      description: 페이지 번호(1부터 시작)
+      schema:
+        type: integer
+        minimum: 1
+        default: 1
+    SizeParam:
+      name: size
+      in: query
+      required: false
+      description: 페이지당 항목 수
+      schema:
+        type: integer
+        minimum: 1
+        maximum: 100
+        default: 20
+    RequestIdHeaderParam:
+      name: Request-ID
+      in: header
+      required: false
+      description: 클라이언트가 지정하는 요청 추적 ID. 미지정 시 서버가 생성해 응답 헤더로 반환한다.
+      schema:
+        type: string
+    TraceIdHeaderParam:
+      name: Trace-ID
+      in: header
+      required: false
+      description: 분산 트레이싱용 상관관계 ID(OpenTelemetry trace_id 등).
+      schema:
+        type: string
+    ModelVersionHeaderParam:
+      name: X-Model-Version
+      in: header
+      required: false
+      description: 클라이언트가 특정 모델 버전 강제 지정을 요청할 때 사용(테스트/롤백 용도, MVP 이후 지원).
+      schema:
+        type: string
+    BlockchainVersionHeaderParam:
+      name: X-Blockchain-Version
+      in: header
+      required: false
+      description: 스마트컨트랙트/ABI 버전 지정 헤더(Blockchain_설계서_260714.md 배포 버전과 매핑).
+      schema:
+        type: string
+  headers:
+    RequestIdHeader:
+      description: 요청-응답을 연결하는 추적 ID. 클라이언트가 보낸 `Request-ID`를 그대로 반환하거나 서버가 생성한다.
+      schema:
+        type: string
+    TraceIdHeader:
+      description: 분산 트레이싱 상관관계 ID.
+      schema:
+        type: string
+    ModelVersionHeader:
+      description: 응답 생성에 사용된 실제 ML 모델 버전(추론 API에서만 반환).
+      schema:
+        type: string
+    BlockchainVersionHeader:
+      description: 응답 생성에 사용된 스마트컨트랙트/ABI 버전(블록체인 API에서만 반환).
+      schema:
+        type: string
+  responses:
+    SuccessResponse:
+      description: 공통 성공 응답. status=Success, data에 실제 페이로드, request_id 포함.
+      headers:
+        X-Request-ID:
+          $ref: '#/components/headers/RequestIdHeader'
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/SuccessResponse'
+    ErrorResponse:
+      description: 공통 오류 응답 포맷(모든 4xx/5xx 응답의 기본 구조). error_code는 ERROR-NNN 형식을 따른다.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            status: Failed
+            error:
+              error_code: ERROR-001
+              message: "예상하지 못한 오류가 발생했습니다."
+              details: null
+            request_id: "req_20260714_9999"
+    ValidationError:
+      description: 요청 값 검증 실패(422). Zod/Pydantic 검증 오류를 필드 단위로 반환한다.
+      content:
+        application/json:
+          schema:
+            allOf:
+              - $ref: '#/components/schemas/ErrorResponse'
+              - type: object
+                properties:
+                  error:
+                    type: object
+                    properties:
+                      error_code:
+                        type: string
+                        example: ERROR-002
+                      message:
+                        type: string
+                        example: "요청 값이 유효하지 않습니다."
+                      field_errors:
+                        type: array
+                        items:
+                          $ref: '#/components/schemas/ValidationErrorItem'
+          example:
+            status: Failed
+            error:
+              error_code: ERROR-002
+              message: "요청 값이 유효하지 않습니다."
+              field_errors:
+                - field: deposit
+                  reason: "0보다 큰 정수여야 합니다."
+            request_id: "req_20260714_0100"
+    Unauthorized:
+      description: 인증 실패(401). 토큰 없음/만료/서명 불일치.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            status: Failed
+            error: { error_code: ERROR-004, message: "인증 토큰이 유효하지 않습니다." }
+            request_id: "req_20260714_0101"
+    Forbidden:
+      description: 권한 없음(403). 역할(role)이 허용되지 않거나 verifier 서브 권한이 없는 경우.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            status: Failed
+            error: { error_code: ERROR-005, message: "해당 작업을 수행할 권한이 없습니다." }
+            request_id: "req_20260714_0102"
+    NotFound:
+      description: 리소스 없음(404). 존재하지 않거나 본인 소유가 아닌 리소스에 대한 조회.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            status: Failed
+            error: { error_code: ERROR-006, message: "요청한 리소스를 찾을 수 없습니다." }
+            request_id: "req_20260714_0103"
+    Conflict:
+      description: 상태 충돌(409). 중복 접수, 상태 전이 규칙 위반 등.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            status: Failed
+            error: { error_code: ERROR-007, message: "이미 접수된 사건이 존재합니다." }
+            request_id: "req_20260714_0104"
+    Timeout:
+      description: 외부 API/모델 응답 지연(408). 데이터수집_및_API가이드 5장 Fallback Flow 대상.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            status: Failed
+            error: { error_code: ERROR-008, message: "외부 API 응답이 지연되어 재시도가 필요합니다." }
+            request_id: "req_20260714_0105"
+    Partial:
+      description: 부분 성공(206). APIResultStatus=Partial 또는 표본 부족 등 참고용 데이터를 의미한다.
+      content:
+        application/json:
+          schema:
+            allOf:
+              - $ref: '#/components/schemas/SuccessResponse'
+              - type: object
+                properties:
+                  warnings:
+                    type: array
+                    items:
+                      type: string
+          example:
+            status: Partial
+            data: {}
+            warnings: ["표본이 적어 참고용으로만 사용하세요."]
+            request_id: "req_20260714_0106"
+    Mock:
+      description: |
+        Mock/시연 데이터 응답(200). 실제 API·모델 실패 또는 발표 모드(useMockModeStore)에서 반환되며
+        본문에 `is_mock: true` 또는 `api_result_status: MockFallback` / `model_result_status: RuleOnlyFallback`
+        중 하나 이상이 명시된다. Mock 결과는 실제 예측 성능으로 간주하지 않는다(ML개발가이드 2장 원칙 5).
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/SuccessResponse'
+          example:
+            status: Success
+            data: { is_mock: true }
+            request_id: "req_20260714_0107"
+  schemas:
+    # ======================================================================
+    # 1. 공통 Schema (Common Schema) - 7종
+    # ======================================================================
+    UUID:
+      type: string
+      format: uuid
+      description: 전역 고유 식별자. 개발설계보고서 10.1절 공통 식별자 16종은 모두 이 포맷을 사용한다.
+      example: "8f14e45f-ceea-4b4f-9c1a-000000000001"
+    Timestamp:
+      type: string
+      format: date-time
+      description: KST 기준 ISO 8601 일시(개발설계보고서 10.5절). 오프셋 `+09:00`을 포함해 표기한다.
+      example: "2026-07-14T13:30:00+09:00"
+    Money:
+      type: integer
+      format: int64
+      minimum: 0
+      description: KRW 정수 원 단위 금액(개발설계보고서 10.5절). 화면에서는 천 단위 구분을 적용해 표시한다.
+      example: 400000000
+    Pagination:
+      type: object
+      description: 목록 API 공통 페이지네이션 응답.
+      required: [page, size, total_elements, total_pages]
+      properties:
+        page:
+          type: integer
+          minimum: 1
+          example: 1
+        size:
+          type: integer
+          minimum: 1
+          example: 20
+        total_elements:
+          type: integer
+          minimum: 0
+          example: 1
+        total_pages:
+          type: integer
+          minimum: 0
+          example: 1
+    File:
+      type: object
+      description: 업로드 파일 메타데이터(증빙, 계약서 원문 등). 원문은 Object Storage에 저장되고 API는 참조 메타데이터만 전달한다.
+      required: [file_name, content_type, size_bytes]
+      properties:
+        file_id:
+          allOf: [{ $ref: '#/components/schemas/UUID' }]
+          readOnly: true
+        file_name:
+          type: string
+          example: "말소확인서.pdf"
+        content_type:
+          type: string
+          example: "application/pdf"
+        size_bytes:
+          type: integer
+          minimum: 0
+          example: 245678
+        document_hash:
+          type: string
+          readOnly: true
+          description: SHA-256 해시(온체인 기록 대상). 원문 자체는 온체인에 저장하지 않는다.
+          example: "sha256:9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08"
+        object_uri:
+          type: string
+          readOnly: true
+          description: Object Storage 참조 경로(권한 기반 접근).
+          example: "s3://hug-anshim/evidence/dd000000.pdf"
+    Coordinate:
+      type: object
+      description: 좌표 정보(장기 확장 대상, 개발설계보고서 부록 E). 현재는 선택적 필드로 제공한다.
+      properties:
+        latitude:
+          type: number
+          format: double
+          minimum: -90
+          maximum: 90
+          example: 37.5013
+        longitude:
+          type: number
+          format: double
+          minimum: -180
+          maximum: 180
+          example: 127.0397
+    Address:
+      type: object
+      description: 도로명주소/지번주소/법정동코드/건물관리번호를 구분하는 표준 주소 객체(개발설계보고서 10.5절).
+      required: [road_address]
+      properties:
+        road_address:
+          type: string
+          example: "서울특별시 강남구 테헤란로 000"
+        jibun_address:
+          type: [string, "null"]
+          example: "서울특별시 강남구 역삼동 000-00"
+        adm_cd:
+          type: [string, "null"]
+          description: 법정동코드
+          example: "1168010100"
+        bd_mgt_sn:
+          type: [string, "null"]
+          description: 건물관리번호
+          example: "1168010100100010000000001"
+        zip_no:
+          type: [string, "null"]
+          example: "06212"
+        dong:
+          type: [string, "null"]
+          description: 동(공동주택). 상세주소 최소화 원칙에 따라 선택 필드로만 제공한다(데이터수집가이드 13장).
+        ho:
+          type: [string, "null"]
+          description: 호(공동주택).
+        coordinate:
+          $ref: '#/components/schemas/Coordinate'
+    # ======================================================================
+    # 공통 Response 스키마 (SuccessResponse/ErrorResponse/ValidationErrorItem)
+    # ======================================================================
+    SuccessResponse:
+      type: object
+      description: 모든 성공 응답의 공통 봉투(envelope). data 필드는 각 API별 실제 스키마로 대체된다.
+      required: [status, data, request_id]
+      properties:
+        status:
+          type: string
+          enum: [Success, Partial]
+          example: Success
+        data:
+          description: 실제 응답 페이로드. 각 API operation에서 구체 스키마로 재정의한다.
+          type: object
+        request_id:
+          type: string
+          description: Request-ID 헤더와 동일한 값을 본문에도 포함해 로그 상관관계를 보장한다.
+          example: "req_20260714_0001"
+    ErrorResponse:
+      type: object
+      description: 모든 오류 응답의 공통 봉투. error_code는 "ERROR-NNN" 형식(하단 오류코드 표 참조).
+      required: [status, error, request_id]
+      properties:
+        status:
+          type: string
+          enum: [Failed]
+          example: Failed
+        error:
+          type: object
+          required: [error_code, message]
+          properties:
+            error_code:
+              type: string
+              pattern: '^ERROR-[0-9]{3}$'
+              example: ERROR-006
+            message:
+              type: string
+              example: "요청한 리소스를 찾을 수 없습니다."
+            details:
+              type: [object, "null"]
+              additionalProperties: true
+        request_id:
+          type: string
+          example: "req_20260714_9999"
+    ValidationErrorItem:
+      type: object
+      description: 필드 단위 검증 오류 항목.
+      required: [field, reason]
+      properties:
+        field:
+          type: string
+          example: deposit
+        reason:
+          type: string
+          example: "0보다 큰 정수여야 합니다."
+    # ======================================================================
+    # 2. 공통 Enum (Common Enum) - 14종 (개발설계보고서 10.2절, 부록 C 및 관련 문서 기준)
+    # ======================================================================
+    ContractStatus:
+      type: string
+      description: 계약 생애주기 상태(개발설계보고서 10.2절, 8단계 생애주기와 1:1 대응). 전이 상세는 Backend_API_명세서_260714.md에서 확정한다.
+      enum:
+        - Draft
+        - Diagnosed
+        - EvidenceRequested
+        - EvidenceSubmitted
+        - Verified
+        - ContractFinalized
+        - Monitoring
+        - D90Requested
+        - ReturnPlanSubmitted
+        - AtRisk
+        - IncidentReported
+        - TransferredToHUG
+        - RecoveryInProgress
+        - Closed
+      example: Monitoring
+    VerificationStatus:
+      type: string
+      description: 증빙·검증 진행 상태(개발설계보고서 10.2절).
+      enum: [Pending, Submitted, Reviewing, Verified, Rejected, Expired]
+      example: Reviewing
+    BlockchainStatus:
+      type: string
+      description: 온체인 기록 상태(개발설계보고서 10.2절). Confirmed라도 법적 효력을 의미하지 않는다(Frontend_UIUX_명세서 10.4절).
+      enum: [NotRequested, Pending, Confirmed, Failed]
+      example: Confirmed
+    APIResultStatus:
+      type: string
+      description: 외부 API 조회 결과 상태(개발설계보고서 10.2절, 데이터수집_및_API가이드 5장 Fallback Flow).
+      enum: [Success, Partial, Failed, MockFallback]
+      example: Success
+    ModelResultStatus:
+      type: string
+      description: ML 모델 추론 결과 상태(개발설계보고서 10.2절, ML개발가이드 2장 원칙 8·20.2절).
+      enum: [Success, RuleOnlyFallback, Failed, InsufficientData]
+      example: Success
+    RecoveryGrade:
+      type: string
+      description: 회수등급(모델 2 출력, ML개발가이드 13.7절). 배당률/회수완료 여부 기반 3단계 등급이며 인과적 회수 보장이 아니다.
+      enum: [LOW, MEDIUM, HIGH]
+      example: MEDIUM
+    DelayRisk:
+      type: string
+      description: 처리기간 지연 위험(모델 3 출력, ML개발가이드 14.6절). 180일 등 임계값 기준 3단계 등급이다.
+      enum: [LOW, MEDIUM, HIGH]
+      example: HIGH
+    RiskGrade:
+      type: string
+      description: 위험진단 등급(Frontend_UIUX_명세서 5.3절 TEN-03). 규칙 엔진과 ML 위험유사도를 결합한 최종 등급이다.
+      enum: [LOW, MEDIUM, HIGH]
+      example: HIGH
+    UserRole:
+      type: string
+      description: 사용자 역할(개발설계보고서 13.5절, Frontend_UIUX_명세서 3장). verifier는 advisor 내 서브 권한이다.
+      enum: [tenant, landlord, advisor, hug_admin, system_admin, verifier]
+      example: tenant
+    NotificationType:
+      type: string
+      description: 알림 유형(Frontend_UIUX_명세서 COMMON-01, 개발설계보고서 10.3절 공통 이벤트 기반).
+      enum:
+        - EvidenceRequested
+        - D90Reminder
+        - VerificationResult
+        - RiskAssessed
+        - IncidentUpdate
+        - BlockchainConfirmed
+        - ExpertReferral
+        - SystemAlert
+      example: D90Reminder
+    EvidenceType:
+      type: string
+      description: 증빙 유형(Backend_API_명세서에서 세부 확정, 데이터수집_및_API가이드 6장 Mock 대상과 연계).
+      enum:
+        - REGISTRY_CANCELLATION_PROOF
+        - BUSINESS_STATUS_PROOF
+        - OWNERSHIP_PROOF
+        - INSURANCE_PROOF
+        - RETURN_PLAN_DOCUMENT
+        - CONTRACT_DOCUMENT
+        - OTHER
+      example: REGISTRY_CANCELLATION_PROOF
+    DisputeType:
+      type: string
+      description: 상담 분쟁유형 8클래스(ML개발가이드 12.2절, 실데이터 938건 기준 분포 그대로 유지).
+      enum:
+        - GENERAL_INQUIRY
+        - AUCTION
+        - DEPOSIT_NON_RETURN
+        - LEASE_FRAUD
+        - IMPLICIT_RENEWAL_DISPUTE
+        - RESTORATION_SETTLEMENT
+        - DOUBLE_CONTRACT
+        - PRIOR_MORTGAGE_TRANSFER
+      example: DEPOSIT_NON_RETURN
+    HousingType:
+      type: string
+      description: 주택유형(ML개발가이드 10장 Feature Engineering, 데이터수집_및_API가이드 건축물대장 연계).
+      enum:
+        - MULTI_HOUSEHOLD
+        - MULTI_FAMILY
+        - APARTMENT
+        - OFFICETEL
+        - SINGLE_FAMILY
+        - ROW_HOUSE
+        - OTHER
+      example: MULTI_HOUSEHOLD
+    LandlordType:
+      type: string
+      description: 임대인 유형(개발설계보고서 표 9, ML개발가이드 부록 B landlord_type Feature).
+      enum: [INDIVIDUAL, INDIVIDUAL_BUSINESS, CORPORATION]
+      example: INDIVIDUAL
+    # ======================================================================
+    # 3. Entity Schema - 19종 (개발설계보고서 13.3절 핵심 엔터티 + Frontend/HUG 화면에 필요한 보조 엔터티)
+    # ======================================================================
+    User:
+      type: object
+      description: 사용자와 역할(개발설계보고서 부록 B user_id).
+      required: [user_id, role]
+      properties:
+        user_id:
+          allOf: [{ $ref: '#/components/schemas/UUID' }]
+          readOnly: true
+        role:
+          $ref: '#/components/schemas/UserRole'
+        display_name:
+          type: string
+          example: "홍길동"
+        email:
+          type: [string, "null"]
+          format: email
+        is_active:
+          type: boolean
+          default: true
+        created_at:
+          allOf: [{ $ref: '#/components/schemas/Timestamp' }]
+          readOnly: true
+        last_login_at:
+          allOf: [{ $ref: '#/components/schemas/Timestamp' }]
+          readOnly: true
+    Property:
+      type: object
+      description: 주소 정규화 후 물건 식별 단위(개발설계보고서 부록 B property_id).
+      required: [property_id, address]
+      properties:
+        property_id:
+          allOf: [{ $ref: '#/components/schemas/UUID' }]
+          readOnly: true
+        address:
+          $ref: '#/components/schemas/Address'
+        housing_type:
+          $ref: '#/components/schemas/HousingType'
+        building_age_years:
+          type: [integer, "null"]
+          minimum: 0
+        created_at:
+          allOf: [{ $ref: '#/components/schemas/Timestamp' }]
+          readOnly: true
+    Contract:
+      type: object
+      description: 계약 생애주기 중심 엔터티(개발설계보고서 부록 B contract_id, 13.4절 ERD).
+      required: [contract_id, property_id, contract_status, deposit]
+      properties:
+        contract_id:
+          allOf: [{ $ref: '#/components/schemas/UUID' }]
+          readOnly: true
+        property_id:
+          $ref: '#/components/schemas/UUID'
+        tenant_user_id:
+          allOf: [{ $ref: '#/components/schemas/UUID' }]
+          readOnly: true
+        landlord_user_id:
+          type: [string, "null"]
+          format: uuid
+          readOnly: true
+        contract_status:
+          $ref: '#/components/schemas/ContractStatus'
+        deposit:
+          $ref: '#/components/schemas/Money'
+        contract_start_date:
+          type: string
+          format: date
+          example: "2026-08-01"
+        contract_end_date:
+          type: string
+          format: date
+          example: "2028-07-31"
+        landlord_type:
+          $ref: '#/components/schemas/LandlordType'
+        housing_type:
+          $ref: '#/components/schemas/HousingType'
+        latest_contract_version_id:
+          type: [string, "null"]
+          format: uuid
+          readOnly: true
+        created_at:
+          allOf: [{ $ref: '#/components/schemas/Timestamp' }]
+          readOnly: true
+        updated_at:
+          allOf: [{ $ref: '#/components/schemas/Timestamp' }]
+          readOnly: true
+    ContractVersion:
+      type: object
+      description: 계약서 버전 식별(개발설계보고서 부록 B contract_version_id). 초안·보완·최종·HUG 제출본을 구분한다.
+      required: [contract_version_id, contract_id, version_label]
+      properties:
+        contract_version_id:
+          allOf: [{ $ref: '#/components/schemas/UUID' }]
+          readOnly: true
+        contract_id:
+          $ref: '#/components/schemas/UUID'
+        version_label:
+          type: string
+          enum: [Draft, Amended, Final, HUGSubmission]
+          example: Final
+        document_hash:
+          type: string
+          readOnly: true
+          example: "sha256:6b8f9e..."
+        blockchain_tx_id:
+          type: [string, "null"]
+          format: uuid
+          readOnly: true
+        created_at:
+          allOf: [{ $ref: '#/components/schemas/Timestamp' }]
+          readOnly: true
+    RegistrySnapshot:
+      type: object
+      description: 등기/외부 API 조회 시점 스냅샷(개발설계보고서 부록 B registry_snapshot_id, 데이터수집_및_API가이드 6·12장).
+      required: [registry_snapshot_id, property_id, api_result_status]
+      properties:
+        registry_snapshot_id:
+          allOf: [{ $ref: '#/components/schemas/UUID' }]
+          readOnly: true
+        property_id:
+          $ref: '#/components/schemas/UUID'
+        api_call_id:
+          $ref: '#/components/schemas/UUID'
+        api_result_status:
+          $ref: '#/components/schemas/APIResultStatus'
+        source:
+          type: string
+          description: 원천 시스템(codef/mock/user_upload 등, 데이터수집_및_API가이드 10장).
+          example: codef
+        rights_summary:
+          type: [object, "null"]
+          description: 근저당·압류 등 권리부담 요약(원문 비저장, 요약 값만 보관).
+          additionalProperties: true
+        fetched_at:
+          allOf: [{ $ref: '#/components/schemas/Timestamp' }]
+          readOnly: true
+    RiskAssessment:
+      type: object
+      description: 위험진단 결과 엔터티(개발설계보고서 부록 B risk_assessment_id).
+      required: [risk_assessment_id, case_id, risk_grade, risk_reasons]
+      properties:
+        risk_assessment_id:
+          allOf: [{ $ref: '#/components/schemas/UUID' }]
+          readOnly: true
+        case_id:
+          $ref: '#/components/schemas/UUID'
+        contract_id:
+          type: [string, "null"]
+          format: uuid
+        risk_grade:
+          $ref: '#/components/schemas/RiskGrade'
+        risk_score:
+          type: [number, "null"]
+          deprecated: true
+          description: >-
+            초기 버전의 수치형 위험점수(하위호환용). 개발설계보고서 12.4절 "점수보다 근거와 다음 행동 우선" 원칙에 따라
+            신규 클라이언트는 risk_grade와 risk_reasons를 사용해야 하며 이 필드는 더 이상 갱신되지 않는다.
+        risk_reasons:
+          type: array
+          items:
+            type: string
+          example: ["근저당설정", "전세가율 높음"]
+        resolvable_risks:
+          type: array
+          items:
+            type: string
+          example: ["근저당 말소 예정"]
+        unresolvable_risks:
+          type: array
+          items:
+            type: string
+          example: ["건물 구조적 노후"]
+        ml_prediction:
+          $ref: '#/components/schemas/RiskPrediction'
+        data_sources:
+          type: array
+          items:
+            type: string
+          example: ["codef_registry", "rtms_price"]
+        fetched_at:
+          allOf: [{ $ref: '#/components/schemas/Timestamp' }]
+          readOnly: true
+        blockchain_tx_id:
+          type: [string, "null"]
+          format: uuid
+          readOnly: true
+        created_at:
+          allOf: [{ $ref: '#/components/schemas/Timestamp' }]
+          readOnly: true
+    EvidenceRequest:
+      type: object
+      description: 위험조건 보완요청 엔터티(개발설계보고서 부록 B evidence_request_id).
+      required: [evidence_request_id, contract_id, reason, evidence_type]
+      properties:
+        evidence_request_id:
+          allOf: [{ $ref: '#/components/schemas/UUID' }]
+          readOnly: true
+        contract_id:
+          $ref: '#/components/schemas/UUID'
+        risk_assessment_id:
+          type: [string, "null"]
+          format: uuid
+        reason:
+          type: string
+          example: "근저당 말소 확인"
+        evidence_type:
+          $ref: '#/components/schemas/EvidenceType'
+        due_date:
+          type: [string, "null"]
+          format: date
+        verification_status:
+          $ref: '#/components/schemas/VerificationStatus'
+        created_at:
+          allOf: [{ $ref: '#/components/schemas/Timestamp' }]
+          readOnly: true
+    Evidence:
+      type: object
+      description: 제출 증빙 엔터티(개발설계보고서 부록 B evidence_id).
+      required: [evidence_id, evidence_request_id, file_name, document_hash]
+      properties:
+        evidence_id:
+          allOf: [{ $ref: '#/components/schemas/UUID' }]
+          readOnly: true
+        evidence_request_id:
+          $ref: '#/components/schemas/UUID'
+        file_name:
+          type: string
+          example: "말소확인서.pdf"
+        document_hash:
+          type: string
+          readOnly: true
+        verification_status:
+          $ref: '#/components/schemas/VerificationStatus'
+        submitted_at:
+          allOf: [{ $ref: '#/components/schemas/Timestamp' }]
+          readOnly: true
+    Verification:
+      type: object
+      description: 검증 결과 엔터티(개발설계보고서 부록 B verification_id).
+      required: [verification_id, evidence_id, verification_status]
+      properties:
+        verification_id:
+          allOf: [{ $ref: '#/components/schemas/UUID' }]
+          readOnly: true
+        evidence_id:
+          $ref: '#/components/schemas/UUID'
+        verification_status:
+          $ref: '#/components/schemas/VerificationStatus'
+        reviewer_comment:
+          type: [string, "null"]
+        resubmission_required:
+          type: boolean
+          default: false
+        reviewer_user_id:
+          type: [string, "null"]
+          format: uuid
+          readOnly: true
+        blockchain_tx_id:
+          type: [string, "null"]
+          format: uuid
+          readOnly: true
+        decided_at:
+          allOf: [{ $ref: '#/components/schemas/Timestamp' }]
+          readOnly: true
+    TimelineEvent:
+      type: object
+      description: 계약 생애주기 이벤트(개발설계보고서 부록 B timeline_event_id, 10.3절 공통 이벤트 13종).
+      required: [timeline_event_id, contract_id, event_type, occurred_at]
+      properties:
+        timeline_event_id:
+          allOf: [{ $ref: '#/components/schemas/UUID' }]
+          readOnly: true
+        contract_id:
+          $ref: '#/components/schemas/UUID'
+        event_type:
+          type: string
+          enum:
+            - ContractCreated
+            - RegistrySnapshotCreated
+            - RiskAssessed
+            - EvidenceRequested
+            - EvidenceSubmitted
+            - VerificationCompleted
+            - ContractVersionFinalized
+            - D90Requested
+            - ReturnPlanSubmitted
+            - IncidentReported
+            - TransferredToHUG
+            - RecoveryPredictionCreated
+            - BlockchainConfirmed
+          example: RiskAssessed
+        occurred_at:
+          allOf: [{ $ref: '#/components/schemas/Timestamp' }]
+          readOnly: true
+        blockchain_status:
+          $ref: '#/components/schemas/BlockchainStatus'
+        blockchain_tx_id:
+          type: [string, "null"]
+          format: uuid
+    ReturnPlan:
+      type: object
+      description: D-90 반환계획 엔터티(개발설계보고서 부록 B return_plan_id).
+      required: [return_plan_id, contract_id]
+      properties:
+        return_plan_id:
+          allOf: [{ $ref: '#/components/schemas/UUID' }]
+          readOnly: true
+        contract_id:
+          $ref: '#/components/schemas/UUID'
+        d_day:
+          type: integer
+          description: 계약 만료일 기준 D-day(음수=만료 전 잔여일).
+          example: -62
+        landlord_response_status:
+          type: string
+          enum: [NotResponded, Responded, ReturnDifficultyReported]
+          example: NotResponded
+        early_warning:
+          type: boolean
+          default: false
+        planned_return_date:
+          type: [string, "null"]
+          format: date
+        return_method:
+          type: [string, "null"]
+        note:
+          type: [string, "null"]
+        blockchain_tx_id:
+          type: [string, "null"]
+          format: uuid
+          readOnly: true
+        created_at:
+          allOf: [{ $ref: '#/components/schemas/Timestamp' }]
+          readOnly: true
+    Incident:
+      type: object
+      description: 사고 접수 엔터티(개발설계보고서 부록 B incident_id).
+      required: [incident_id, contract_id, incident_status, incident_reason]
+      properties:
+        incident_id:
+          allOf: [{ $ref: '#/components/schemas/UUID' }]
+          readOnly: true
+        contract_id:
+          $ref: '#/components/schemas/UUID'
+        incident_status:
+          type: string
+          enum: [IncidentReported, TransferredToHUG, RecoveryInProgress, Closed]
+          example: TransferredToHUG
+        incident_reason:
+          type: string
+          example: "임대인 연락 두절, 보증금 미반환"
+        recovery_grade:
+          $ref: '#/components/schemas/RecoveryGrade'
+        delay_risk:
+          $ref: '#/components/schemas/DelayRisk'
+        recovery_prediction_id:
+          type: [string, "null"]
+          format: uuid
+        assignee_action_log:
+          type: array
+          items:
+            type: object
+            properties:
+              actor_user_id:
+                $ref: '#/components/schemas/UUID'
+              action:
+                type: string
+              memo:
+                type: [string, "null"]
+              acted_at:
+                $ref: '#/components/schemas/Timestamp'
+        reported_at:
+          allOf: [{ $ref: '#/components/schemas/Timestamp' }]
+          readOnly: true
+        closed_at:
+          type: [string, "null"]
+          format: date-time
+          readOnly: true
+    RecoveryPrediction:
+      type: object
+      description: |
+        회수·처리기간 예측 결과 엔터티(개발설계보고서 부록 B recovery_prediction_id).
+        ML 원시 출력(모델 2·3, RecoveryPredictionOutput/DurationPrediction)을 감싸 저장 계층 정보를 추가한 리소스이며,
+        ML Schema 섹션의 회수·처리기간 계약을 그대로 재사용한다(Schema 재사용 원칙).
+      required: [recovery_prediction_id, incident_id, recovery, duration]
+      properties:
+        recovery_prediction_id:
+          allOf: [{ $ref: '#/components/schemas/UUID' }]
+          readOnly: true
+        incident_id:
+          $ref: '#/components/schemas/UUID'
+        recovery:
+          $ref: '#/components/schemas/RecoveryPredictionOutput'
+        duration:
+          $ref: '#/components/schemas/DurationPrediction'
+        blockchain_tx_id:
+          type: [string, "null"]
+          format: uuid
+          readOnly: true
+        created_at:
+          allOf: [{ $ref: '#/components/schemas/Timestamp' }]
+          readOnly: true
+    BlockchainTransaction:
+      type: object
+      description: 블록체인 트랜잭션 로그 엔터티(개발설계보고서 부록 B blockchain_tx_id).
+      required: [blockchain_tx_id, event_type, reference_id, blockchain_status]
+      properties:
+        blockchain_tx_id:
+          allOf: [{ $ref: '#/components/schemas/UUID' }]
+          readOnly: true
+        event_type:
+          type: string
+          description: 10.3절 공통 이벤트 중 온체인 기록 대상 이벤트.
+          example: VerificationCompleted
+        reference_id:
+          $ref: '#/components/schemas/UUID'
+        chain_id:
+          type: integer
+          example: 80002
+          description: Polygon Amoy 테스트넷 chain_id(확인 필요, Blockchain_설계서_260714.md에서 확정).
+        contract_address:
+          type: [string, "null"]
+        tx_hash:
+          type: [string, "null"]
+          readOnly: true
+        result_hash:
+          type: string
+          readOnly: true
+        blockchain_status:
+          $ref: '#/components/schemas/BlockchainStatus'
+        is_mock:
+          type: boolean
+          default: false
+        created_at:
+          allOf: [{ $ref: '#/components/schemas/Timestamp' }]
+          readOnly: true
+        confirmed_at:
+          type: [string, "null"]
+          format: date-time
+          readOnly: true
+    Notification:
+      type: object
+      description: 알림 엔터티(Frontend_UIUX_명세서 COMMON-01).
+      required: [notification_id, notification_type, title, is_read]
+      properties:
+        notification_id:
+          allOf: [{ $ref: '#/components/schemas/UUID' }]
+          readOnly: true
+        notification_type:
+          $ref: '#/components/schemas/NotificationType'
+        title:
+          type: string
+          example: "D-90 반환계획 확인이 필요합니다"
+        body:
+          type: [string, "null"]
+        related_reference_id:
+          type: [string, "null"]
+          format: uuid
+        is_read:
+          type: boolean
+          default: false
+        created_at:
+          allOf: [{ $ref: '#/components/schemas/Timestamp' }]
+          readOnly: true
+    Counsel:
+      type: object
+      description: 아이엔 상담 엔터티(ML개발가이드 12장 모델 1 입력, Frontend_UIUX_명세서 ADV-00~01).
+      required: [counsel_id, region_sido]
+      properties:
+        counsel_id:
+          allOf: [{ $ref: '#/components/schemas/UUID' }]
+          readOnly: true
+        region_sido:
+          type: string
+          example: "서울"
+        region_sigungu:
+          type: [string, "null"]
+          example: "동작구"
+        deposit_range:
+          type: [string, "null"]
+          example: "1억~2억"
+        housing_type:
+          $ref: '#/components/schemas/HousingType'
+        counsel_text:
+          type: [string, "null"]
+          description: 상담 원문(비식별 처리, ML개발가이드 27장 개인정보 원칙 적용).
+        prediction:
+          $ref: '#/components/schemas/CounselPrediction'
+        created_at:
+          allOf: [{ $ref: '#/components/schemas/Timestamp' }]
+          readOnly: true
+    RecoveryGroup:
+      type: object
+      description: HUG-03 유사사건 비교용 집단 통계 엔터티(ML개발가이드 13.7절 similar_group_summary 확장).
+      required: [recovery_group_id, sample_size]
+      properties:
+        recovery_group_id:
+          allOf: [{ $ref: '#/components/schemas/UUID' }]
+          readOnly: true
+        criteria:
+          type: string
+          enum: [region, housing_type, procedure_type]
+        region:
+          type: [string, "null"]
+        housing_type:
+          $ref: '#/components/schemas/HousingType'
+        sample_size:
+          type: integer
+          minimum: 0
+          example: 8
+        average_recovery_rate:
+          type: [number, "null"]
+          minimum: 0
+          maximum: 1
+        average_duration_days:
+          type: [integer, "null"]
+        is_low_sample_warning:
+          type: boolean
+          default: false
+          description: sample_size가 임계값(기본 10) 미만이면 true(Frontend_UIUX_명세서 9.2절).
+    EntityRiskGroup:
+      type: object
+      description: |
+        법인 집단위험 엔터티(HUG-04). 비식별 법인키가 없어 개별 법인 추적을 제공하지 않으며(ML개발가이드 7.5절),
+        지역/주택유형 집단 단위 신호만 제공한다.
+      required: [entity_group_id, individual_entity_tracking_supported]
+      properties:
+        entity_group_id:
+          allOf: [{ $ref: '#/components/schemas/UUID' }]
+          readOnly: true
+        region:
+          type: [string, "null"]
+        housing_type:
+          $ref: '#/components/schemas/HousingType'
+        dart_disclosure_ratio:
+          type: [number, "null"]
+          minimum: 0
+          maximum: 1
+        business_closed_ratio:
+          type: [number, "null"]
+          minimum: 0
+          maximum: 1
+        sample_size:
+          type: integer
+          minimum: 0
+        individual_entity_tracking_supported:
+          type: boolean
+          const: false
+          description: 항상 false. 비식별 법인키 부재로 개별 법인 추적 불가(ML개발가이드 7.5절).
+        disclaimer:
+          type: string
+          example: "비식별 법인키 부재로 개별 법인 추적을 제공하지 않습니다."
+    SystemLog:
+      type: object
+      description: 시스템 이벤트 로그 엔터티(데이터수집_및_API가이드 13장 개인정보 마스킹 원칙 적용).
+      required: [log_id, log_level, message, logged_at]
+      properties:
+        log_id:
+          allOf: [{ $ref: '#/components/schemas/UUID' }]
+          readOnly: true
+        log_level:
+          type: string
+          enum: [DEBUG, INFO, WARN, ERROR]
+        message:
+          type: string
+          description: 개인정보 마스킹 적용된 로그 메시지.
+          example: "API_TIMEOUT: business_status 조회 재시도 2회 후 MockFallback 전환"
+        source_module:
+          type: [string, "null"]
+          example: "external_api_gateway"
+        logged_at:
+          allOf: [{ $ref: '#/components/schemas/Timestamp' }]
+          readOnly: true
+    # ======================================================================
+    # 4. ML Schema - 9종 (ML개발가이드_260714.md 20장·부록 C 기준. RecoveryPredictionOutput은
+    #    ML개발가이드가 정의한 "회수 모델 출력(RecoveryPrediction)" 계약을 그대로 담되, Entity Schema의
+    #    RecoveryPrediction(저장 리소스)과 이름이 충돌하지 않도록 Output 접미사를 붙여 재사용한다.
+    #    CounselPrediction은 모델 1(상담분류) 계약이며 Counsel 엔터티·counsel/predict에서 재사용한다.
+    # ======================================================================
+    ModelMetadata:
+      type: object
+      description: 모델 아티팩트 메타데이터(ML개발가이드 19장 저장 구조, ADM-01 화면).
+      required: [model_key, model_version]
+      properties:
+        model_key:
+          type: string
+          enum: [counsel_classifier, recovery_regressor, duration_regressor, risk_similarity]
+          example: counsel_classifier
+        model_version:
+          type: string
+          description: "{model_key}_v{MAJOR.MINOR.PATCH}(ML개발가이드 부록 G 버전 규칙)."
+          example: counsel_classifier_v1.0.0
+        loaded_at:
+          allOf: [{ $ref: '#/components/schemas/Timestamp' }]
+          readOnly: true
+        recent_status:
+          $ref: '#/components/schemas/ModelResultStatus'
+        average_latency_ms:
+          type: [integer, "null"]
+          minimum: 0
+        rule_only_fallback_count_24h:
+          type: integer
+          minimum: 0
+          default: 0
+    PredictionMetadata:
+      type: object
+      description: 모든 ML 추론 응답에 공통으로 포함되는 메타데이터 조각(재사용 대상). Risk/Counsel/Recovery/Duration 각 출력 스키마가 이 필드셋을 내장한다.
+      required: [model_version, model_result_status, is_mock]
+      properties:
+        model_version:
+          type: string
+          example: recovery_regressor_v1.0.0
+        model_result_status:
+          $ref: '#/components/schemas/ModelResultStatus'
+        is_mock:
+          type: boolean
+          default: false
+          description: "시연/Mock 여부(ML개발가이드 23장). true인 경우 UI는 반드시 MockBadge를 표시한다."
+        inference_ms:
+          type: [integer, "null"]
+          minimum: 0
+          readOnly: true
+    TopFactor:
+      type: object
+      description: SHAP 기반 상위 기여 요인 1건(ML개발가이드 17장). 인과관계가 아닌 예측 기여도로 해석한다.
+      required: [feature_name, contribution]
+      properties:
+        feature_name:
+          type: string
+          example: mortgage_ratio
+        contribution:
+          type: number
+          description: SHAP 값 또는 정규화된 기여도(절대적 인과 효과 아님).
+          example: 0.34
+        direction:
+          type: string
+          enum: [increase, decrease]
+          example: increase
+    FeatureImportance:
+      type: object
+      description: 모델 단위 전체 Feature Importance 1건(ML개발가이드 17.1절, 관리자 상세 근거용).
+      required: [feature_name, importance]
+      properties:
+        feature_name:
+          type: string
+          example: claim_amount
+        importance:
+          type: number
+          minimum: 0
+          example: 0.28
+        rank:
+          type: [integer, "null"]
+          minimum: 1
+    ShapExplanation:
+      type: object
+      description: |
+        케이스 단위 SHAP 설명 묶음(ML개발가이드 17장). 사용자 화면에는 natural_language_summary(2~3개 요인)만,
+        관리자 화면에는 top_factors 상세까지 노출한다(설명 수준 구분 원칙).
+      required: [top_factors]
+      properties:
+        top_factors:
+          type: array
+          items:
+            $ref: '#/components/schemas/TopFactor'
+        feature_importance:
+          type: array
+          items:
+            $ref: '#/components/schemas/FeatureImportance'
+        natural_language_summary:
+          type: [string, "null"]
+          description: 금지 표현(부록 F) 검증을 거친 자연어 요약 2~3문장.
+          example: "예상 처리기간이 길어진 주요 요인은 동일 절차유형의 과거 장기화 사례와 채권규모입니다."
+    RiskPrediction:
+      type: object
+      description: |
+        위험유사도 ML 출력(개발설계보고서 6.1절 "ML 위험유사도", ML개발가이드 21장 Rule Engine 결합 대상).
+        "실제 사고확률"이 아닌 과거 사고사례 기반 위험유사도·매칭 패턴만 제공한다(ML개발가이드 부록 F).
+      required: [risk_grade_suggestion, model_version, model_result_status, is_mock]
+      properties:
+        risk_grade_suggestion:
+          $ref: '#/components/schemas/RiskGrade'
+        similarity_score:
+          type: [number, "null"]
+          minimum: 0
+          maximum: 1
+          description: 과거 고위험 사고사례군과의 상대적 유사도(확률이 아님).
+          example: 0.82
+        matched_patterns:
+          type: array
+          items:
+            type: string
+          example: ["근저당 고비율 사고 패턴"]
+        top_factors:
+          type: array
+          items:
+            $ref: '#/components/schemas/TopFactor'
+        model_version:
+          type: string
+          example: risk_similarity_v1.0.0
+        model_result_status:
+          $ref: '#/components/schemas/ModelResultStatus'
+        is_mock:
+          type: boolean
+          default: false
+    CounselPrediction:
+      type: object
+      description: 상담 분류 ML 출력(모델 1, ML개발가이드 12.8절·부록 C 1:1 대응).
+      required: [predicted_dispute_type, dispute_type_confidence, expert_referral, model_version, model_result_status, is_mock]
+      properties:
+        predicted_dispute_type:
+          type: string
+          description: DisputeType 한글 라벨(ML개발가이드 원본 라벨 그대로 유지, DisputeType enum과 매핑은 Backend에서 확정).
+          example: "경매·공매"
+        dispute_type_confidence:
+          type: number
+          minimum: 0
+          maximum: 1
+          description: 모델의 상대적 확신도(softmax 원시값, 보정 전). "실제 확률"이 아니다(ML개발가이드 12.8절).
+          example: 0.78
+        predicted_stage:
+          type: [string, "null"]
+          example: "HUG이행청구"
+        stage_confidence:
+          type: [number, "null"]
+          minimum: 0
+          maximum: 1
+          example: 0.55
+        expert_referral:
+          type: boolean
+          example: true
+        expert_referral_reasons:
+          type: array
+          items:
+            type: string
+          example: ["분쟁유형=경매·공매 규칙 일치"]
+        similar_case_query:
+          type: [object, "null"]
+          description: RAG 검색(POST /rag/search)에 그대로 전달하는 쿼리 조건.
+          properties:
+            topic:
+              type: string
+            region:
+              type: string
+        model_version:
+          type: string
+          example: counsel_classifier_v1.0.0
+        model_result_status:
+          $ref: '#/components/schemas/ModelResultStatus'
+        is_mock:
+          type: boolean
+          default: false
+    RecoveryPredictionOutput:
+      type: object
+      description: |
+        회수율·회수등급 ML 출력(모델 2, ML개발가이드 13.7절·부록 C 1:1 대응). ML Schema 요구사항의
+        "RecoveryPrediction" 출력 계약에 해당하며, 저장 리소스인 Entity Schema RecoveryPrediction이 이 스키마를 내장 재사용한다.
+      required: [expected_recovery_rate, recovery_grade, model_version, model_result_status, is_mock]
+      properties:
+        expected_recovery_rate:
+          type: number
+          minimum: 0
+          maximum: 1
+          example: 0.58
+        recovery_grade:
+          $ref: '#/components/schemas/RecoveryGrade'
+        expected_recovery_amount:
+          allOf: [{ $ref: '#/components/schemas/Money' }]
+          example: 126440000
+        top_factors:
+          type: array
+          items:
+            type: string
+          example: ["claim_amount", "region_risk_group", "housing_type_group"]
+        similar_group_summary:
+          type: [object, "null"]
+          properties:
+            region:
+              type: string
+            housing_type:
+              type: string
+            sample_size:
+              type: integer
+        model_version:
+          type: string
+          example: recovery_regressor_v1.0.0
+        model_result_status:
+          $ref: '#/components/schemas/ModelResultStatus'
+        is_mock:
+          type: boolean
+          default: false
+    DurationPrediction:
+      type: object
+      description: 처리기간 ML 출력(모델 3, ML개발가이드 14.6절·부록 C 1:1 대응).
+      required: [expected_days, delay_risk, model_version, model_result_status, is_mock]
+      properties:
+        expected_days:
+          type: integer
+          minimum: 0
+          example: 454
+        expected_range:
+          type: [object, "null"]
+          properties:
+            lower:
+              type: integer
+              minimum: 0
+            upper:
+              type: integer
+              minimum: 0
+          example: { lower: 320, upper: 600 }
+        delay_risk:
+          $ref: '#/components/schemas/DelayRisk'
+        top_factors:
+          type: array
+          items:
+            type: string
+          example: ["procedure_type", "claim_amount"]
+        model_version:
+          type: string
+          example: duration_regressor_v1.0.0
+        model_result_status:
+          $ref: '#/components/schemas/ModelResultStatus'
+        is_mock:
+          type: boolean
+          default: false
+    # ======================================================================
+    # 5. Blockchain Schema - 6종 (개발설계보고서 8장, 데이터수집_및_API가이드 12장 기준)
+    # ======================================================================
+    DocumentHash:
+      type: object
+      description: 문서 원문의 SHA-256 해시(계약서·증빙 등). 원문 자체는 온체인 저장 금지 대상이다.
+      required: [algorithm, hash_value]
+      properties:
+        algorithm:
+          type: string
+          enum: [SHA-256]
+          default: SHA-256
+        hash_value:
+          type: string
+          example: "sha256:9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08"
+    ContractHash:
+      type: object
+      description: 계약 버전 공증용 해시 묶음(canonical JSON 기반, 데이터수집_및_API가이드 12장 Hash 생성 규칙).
+      required: [contract_version_id, result_hash]
+      properties:
+        contract_version_id:
+          $ref: '#/components/schemas/UUID'
+        result_hash:
+          type: string
+          example: "sha256:2c624232cdd221771294dfbb310aca000a0df6ac8b66b696d90ef06fdefb64a"
+        canonical_fields:
+          type: array
+          description: 해시 산출에 사용된 필드 목록(원문 값이 아닌 필드명만 노출).
+          items:
+            type: string
+          example: ["case_id", "normalized_address_hash", "risk_grade", "model_version", "created_at"]
+    AnchorRequest:
+      type: object
+      description: 온체인 기록 요청 바디(POST /blockchain/anchor).
+      required: [event_type, reference_id, result_hash]
+      properties:
+        event_type:
+          type: string
+          description: 10.3절 공통 이벤트 중 온체인 기록 대상.
+          example: VerificationCompleted
+        reference_id:
+          $ref: '#/components/schemas/UUID'
+        result_hash:
+          type: string
+          example: "sha256:2c624232cdd221771294dfbb310aca000a0df6ac8b66b696d90ef06fdefb64a"
+        model_version:
+          type: [string, "null"]
+          description: ML 결과를 함께 공증하는 경우에만 사용.
+    AnchorResponse:
+      type: object
+      description: 온체인 기록 요청 접수 응답(BlockchainStatus=Pending으로 시작).
+      required: [blockchain_tx_id, blockchain_status]
+      properties:
+        blockchain_tx_id:
+          allOf: [{ $ref: '#/components/schemas/UUID' }]
+          readOnly: true
+        chain_id:
+          type: integer
+          example: 80002
+        contract_address:
+          type: [string, "null"]
+        tx_hash:
+          type: [string, "null"]
+          readOnly: true
+        blockchain_status:
+          $ref: '#/components/schemas/BlockchainStatus'
+        is_mock:
+          type: boolean
+          default: false
+    TransactionReceipt:
+      type: object
+      description: 온체인 트랜잭션 영수증 요약(Blockchain_설계서_260714.md의 실제 receipt 구조를 요약 인용).
+      required: [tx_hash, block_confirmed]
+      properties:
+        tx_hash:
+          type: string
+          example: "0x9a3f...c21e"
+        block_number:
+          type: [integer, "null"]
+        block_confirmed:
+          type: boolean
+        gas_used:
+          type: [integer, "null"]
+        confirmed_at:
+          type: [string, "null"]
+          format: date-time
+    BlockchainEvent:
+      type: object
+      description: 스마트컨트랙트 이벤트 로그 요약(Blockchain_설계서_260714.md 상세 이벤트 정의의 요약 인용).
+      required: [event_name, tx_hash]
+      properties:
+        event_name:
+          type: string
+          example: VerificationConfirmed
+        tx_hash:
+          type: string
+        args:
+          type: object
+          additionalProperties: true
+          description: 이벤트 인자(해시·상태값만 포함, 개인정보/원문 금지).
+    # ======================================================================
+    # 6. Request/Response DTO (경로별 요청/응답 바디, 위 공통·엔터티·ML·블록체인 스키마를 재사용해 구성)
+    # ======================================================================
+    LoginRequest:
+      type: object
+      required: [email, password]
+      properties:
+        email:
+          type: string
+          format: email
+          example: tenant01@example.com
+        password:
+          type: string
+          format: password
+          writeOnly: true
+          example: "P@ssw0rd!"
+    LoginResponse:
+      type: object
+      required: [status, data, request_id]
+      properties:
+        status:
+          type: string
+          enum: [Success]
+        data:
+          type: object
+          required: [access_token, token_type, user]
+          properties:
+            access_token:
+              type: string
+              readOnly: true
+            token_type:
+              type: string
+              enum: [Bearer]
+            expires_in:
+              type: integer
+              description: 초 단위 만료 시간.
+              example: 3600
+            user:
+              $ref: '#/components/schemas/User'
+        request_id:
+          type: string
+    AddressNormalizeRequest:
+      type: object
+      required: [keyword]
+      properties:
+        keyword:
+          type: string
+          example: "서울특별시 강남구 테헤란로 000"
+    AddressCandidate:
+      allOf:
+        - $ref: '#/components/schemas/Address'
+    AddressNormalizeResponse:
+      type: object
+      required: [api_call_id, api_result_status, candidates]
+      properties:
+        api_call_id:
+          $ref: '#/components/schemas/UUID'
+        api_result_status:
+          $ref: '#/components/schemas/APIResultStatus'
+        candidates:
+          type: array
+          items:
+            $ref: '#/components/schemas/AddressCandidate'
+        fetched_at:
+          $ref: '#/components/schemas/Timestamp'
+        source:
+          type: string
+          example: codef_juso_api
+    APIProgressStep:
+      type: object
+      description: TEN-02 외부 API 조회 진행 단계 1건.
+      required: [api_name, status]
+      properties:
+        api_name:
+          type: string
+          enum: [address_normalize, registry_codef, building_registry, rtms_price, official_price, business_status, dart]
+        status:
+          $ref: '#/components/schemas/APIResultStatus'
+    RiskDiagnoseRequest:
+      type: object
+      required: [property_id, deposit, contract_start_date, contract_end_date, landlord_type, housing_type]
+      properties:
+        property_id:
+          $ref: '#/components/schemas/UUID'
+        deposit:
+          $ref: '#/components/schemas/Money'
+        contract_start_date:
+          type: string
+          format: date
+        contract_end_date:
+          type: string
+          format: date
+        landlord_type:
+          $ref: '#/components/schemas/LandlordType'
+        housing_type:
+          $ref: '#/components/schemas/HousingType'
+    RagSearchRequest:
+      type: object
+      required: [topic]
+      properties:
+        topic:
+          type: string
+          example: "보증금미반환"
+        region:
+          type: [string, "null"]
+          example: "서울"
+        consultation_stage:
+          type: [string, "null"]
+          enum: [계약전, 계약중, 사고후]
+        top_k:
+          type: integer
+          minimum: 1
+          maximum: 10
+          default: 3
+    RagChunk:
+      type: object
+      required: [chunk_id, source]
+      properties:
+        chunk_id:
+          type: string
+          example: rag_0001
+        source:
+          type: string
+          example: in_consulting
+        topic:
+          type: [string, "null"]
+        consultation_stage:
+          type: [string, "null"]
+        excerpt:
+          type: [string, "null"]
+          description: 개인정보 제거 완료된 발췌문(데이터수집_및_API가이드 11장).
+        pii_removed:
+          type: boolean
+          default: true
+    RagSearchResponse:
+      type: object
+      required: [query, chunks, is_mock]
+      properties:
+        query:
+          type: object
+          additionalProperties: true
+        chunks:
+          type: array
+          items:
+            $ref: '#/components/schemas/RagChunk'
+          description: 근거 0건일 수 있으며, 이 경우 결론을 생성하지 않고 빈 배열을 반환한다(ML개발가이드 부록 F).
+        is_mock:
+          type: boolean
+          default: false
+    ContractCreateRequest:
+      type: object
+      required: [property_id, deposit, contract_start_date, contract_end_date, landlord_type, housing_type]
+      properties:
+        property_id:
+          $ref: '#/components/schemas/UUID'
+        deposit:
+          $ref: '#/components/schemas/Money'
+        contract_start_date:
+          type: string
+          format: date
+        contract_end_date:
+          type: string
+          format: date
+        landlord_type:
+          $ref: '#/components/schemas/LandlordType'
+        housing_type:
+          $ref: '#/components/schemas/HousingType'
+    EvidenceSubmitRequest:
+      type: object
+      required: [evidence_request_id, file]
+      properties:
+        evidence_request_id:
+          $ref: '#/components/schemas/UUID'
+        file:
+          type: string
+          format: binary
+          description: 업로드 파일(등기부 말소 확인서 등). 실제 저장은 Object Storage, 응답에는 document_hash만 포함된다.
+    VerificationDecisionRequest:
+      type: object
+      required: [decision]
+      properties:
+        decision:
+          type: string
+          enum: [approve, reject, hold]
+        reviewer_comment:
+          type: [string, "null"]
+    ReturnPlanCreateRequest:
+      type: object
+      required: [contract_id, planned_return_date, return_method]
+      properties:
+        contract_id:
+          $ref: '#/components/schemas/UUID'
+        planned_return_date:
+          type: string
+          format: date
+        return_method:
+          type: string
+          example: "신규 임차인 보증금으로 반환"
+        note:
+          type: [string, "null"]
+    IncidentCreateRequest:
+      type: object
+      required: [contract_id, incident_reason]
+      properties:
+        contract_id:
+          $ref: '#/components/schemas/UUID'
+        incident_reason:
+          type: string
+          example: "임대인 연락 두절, 보증금 미반환"
+        attachment_ids:
+          type: array
+          items:
+            $ref: '#/components/schemas/UUID'
+          default: []
+    ReferralCreateRequest:
+      type: object
+      required: [case_id, reason]
+      properties:
+        case_id:
+          $ref: '#/components/schemas/UUID'
+        reason:
+          type: string
+          example: "expert_referral_rule 일치: 전세사기 의심"
+        assigned_expert:
+          type: [string, "null"]
+        priority:
+          type: string
+          enum: [LOW, MEDIUM, HIGH]
+          default: MEDIUM
+    RiskPredictRequest:
+      type: object
+      description: /ml/risk/predict 요청. Rule Engine이 생성한 정규화 Feature를 그대로 전달한다(ML개발가이드 10·21장).
+      required: [region_sido]
+      properties:
+        region_sido:
+          type: string
+          example: "서울"
+        mortgage_ratio:
+          type: [number, "null"]
+          minimum: 0
+        rights_burden_ratio:
+          type: [number, "null"]
+          minimum: 0
+        jeonse_ratio:
+          type: [number, "null"]
+          minimum: 0
+        has_seizure:
+          type: [boolean, "null"]
+        building_age_years:
+          type: [integer, "null"]
+          minimum: 0
+        business_closed_flag:
+          type: [boolean, "null"]
+        dart_disclosure_flag:
+          type: [boolean, "null"]
+        model_version:
+          type: [string, "null"]
+          description: 특정 모델 버전 강제 지정(테스트용, X-Model-Version 헤더와 동등한 역할).
+    CounselPredictRequest:
+      type: object
+      description: /ml/counsel/predict 요청(ML개발가이드 20.3절·부록 C 1:1 대응).
+      required: [region_sido]
+      properties:
+        region_sido:
+          type: string
+          example: "서울"
+        region_sigungu:
+          type: [string, "null"]
+          example: "동작구"
+        deposit_range:
+          type: [string, "null"]
+          example: "1억~2억"
+        contract_status:
+          type: [string, "null"]
+          example: "계약중(종료예정)"
+        housing_type:
+          $ref: '#/components/schemas/HousingType'
+        prior_right:
+          type: [string, "null"]
+          example: "근저당설정"
+        insurance_status:
+          type: [string, "null"]
+          example: "가입"
+        counsel_text:
+          type: [string, "null"]
+    RecoveryPredictRequest:
+      type: object
+      description: /ml/recovery/predict 요청(ML개발가이드 20.3절·부록 C 1:1 대응).
+      required: [claim_amount, region_sido]
+      properties:
+        product_name:
+          type: [string, "null"]
+          example: "전세보증금반환보증"
+        claim_amount:
+          $ref: '#/components/schemas/Money'
+        region_sido:
+          type: string
+          example: "인천"
+        housing_type:
+          $ref: '#/components/schemas/HousingType'
+        landlord_type:
+          $ref: '#/components/schemas/LandlordType'
+    DurationPredictRequest:
+      type: object
+      description: /ml/duration/predict 요청(ML개발가이드 20.3절·부록 C 1:1 대응).
+      required: [procedure_type, claim_amount, region_sido]
+      properties:
+        procedure_type:
+          type: string
+          enum: ["사고~경공매 처리", "경공매신청~배당", "대위변제~해지"]
+          example: "경공매신청~배당"
+        claim_amount:
+          $ref: '#/components/schemas/Money'
+        region_sido:
+          type: string
+          example: "서울"
+        product_name:
+          type: [string, "null"]
+          example: "전세보증금반환보증"
+    HealthCheckResponse:
+      type: object
+      required: [status, checked_at, dependencies]
+      properties:
+        status:
+          type: string
+          enum: [ok, degraded, down]
+        checked_at:
+          $ref: '#/components/schemas/Timestamp'
+        dependencies:
+          type: object
+          properties:
+            database:
+              type: string
+              enum: [ok, degraded, down]
+            vector_store:
+              type: string
+              enum: [ok, degraded, down]
+            external_api_gateway:
+              type: string
+              enum: [ok, degraded, down]
+            blockchain_adapter:
+              type: string
+              enum: [ok, degraded, down]
+            ml_inference_service:
+              type: string
+              enum: [ok, degraded, down]
+x-error-codes:
+  description: >-
+    공통 오류코드 목록. 모든 오류 응답의 error.error_code는 이 표의 값 중 하나를 사용한다.
+    Backend_API_명세서_260714.md에서 세부 원인/재시도 정책을 확장할 수 있으나 코드 체계는 본 문서를 기준으로 한다.
+  codes:
+    - code: ERROR-001
+      name: INTERNAL_SERVER_ERROR
+      http_status: 500
+      description: 예상하지 못한 서버 오류.
+    - code: ERROR-002
+      name: VALIDATION_ERROR
+      http_status: 422
+      description: 요청 값 검증 실패(Zod/Pydantic 스키마 불일치).
+    - code: ERROR-003
+      name: AUTHENTICATION_REQUIRED
+      http_status: 401
+      description: Authorization 헤더 누락.
+    - code: ERROR-004
+      name: INVALID_TOKEN
+      http_status: 401
+      description: JWT 토큰 만료 또는 서명 불일치.
+    - code: ERROR-005
+      name: PERMISSION_DENIED
+      http_status: 403
+      description: 역할(role) 또는 verifier 서브 권한 부족.
+    - code: ERROR-006
+      name: RESOURCE_NOT_FOUND
+      http_status: 404
+      description: 리소스가 존재하지 않거나 본인 소유가 아님.
+    - code: ERROR-007
+      name: STATE_CONFLICT
+      http_status: 409
+      description: 중복 접수, 상태 전이 규칙 위반 등.
+    - code: ERROR-008
+      name: EXTERNAL_API_TIMEOUT
+      http_status: 408
+      description: 외부 API 응답 지연(데이터수집_및_API가이드 5장 Fallback Flow 트리거).
+    - code: ERROR-009
+      name: EXTERNAL_API_FAILED
+      http_status: 502
+      description: 외부 API 재시도 2회 실패. 캐시/업로드/MockFallback 전환 대상.
+    - code: ERROR-010
+      name: MODEL_INFERENCE_FAILED
+      http_status: 500
+      description: ML 모델 로딩/추론 실패. ModelResultStatus=RuleOnlyFallback으로 전환.
+    - code: ERROR-011
+      name: MODEL_INSUFFICIENT_DATA
+      http_status: 422
+      description: 필수 Feature 결측으로 추론 불가. ModelResultStatus=InsufficientData.
+    - code: ERROR-012
+      name: BLOCKCHAIN_ANCHOR_FAILED
+      http_status: 502
+      description: 온체인 기록 실패. BlockchainStatus=Failed, DB 상태는 별도 유지.
+x-contract-summary:
+  description: 본 계약 문서의 최종 집계. API 설계 완료 후 계산한 실제 수치이며 검증 스크립트(openapi-spec-validator)로 구조 유효성을 확인했다.
+  api_count: 40
+  schema_count: 79
+  enum_count: 14
+  entity_count: 19
+  ml_endpoint_count: 4
+  blockchain_endpoint_count: 2
+  breakdown:
+    auth_apis: 3
+    property_risk_apis: 4
+    contract_apis: 5
+    evidence_verification_apis: 8
+    advisor_apis: 2
+    hug_apis: 5
+    admin_apis: 5
+    blockchain_apis: 2
+    notification_apis: 2
+    ml_apis: 4
+    common_schema: 7
+    common_response_schema: 3
+    common_enum: 14
+    entity_schema: 19
+    ml_schema: 9
+    blockchain_schema: 6
+    request_response_dto_schema: 21

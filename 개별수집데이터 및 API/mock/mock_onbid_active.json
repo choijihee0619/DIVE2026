@@ -1,0 +1,18 @@
+{
+  "case_id": "case_mock_010",
+  "source": "mock_onbid_active",
+  "onbid": {
+    "asset_id": "ONBID-MOCK-001",
+    "asset_name": "서울 강서구 화곡동 다세대주택",
+    "status": "입찰진행",
+    "appraisal_price": 480000000,
+    "min_bid_price": 336000000,
+    "bid_period": {
+      "start": "2026-08-01",
+      "end": "2026-08-05"
+    }
+  },
+  "label": {
+    "onbid_auction_active": true
+  }
+}

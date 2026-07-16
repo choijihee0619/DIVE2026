@@ -1,0 +1,14 @@
+{
+  "case_id": "case_mock_005",
+  "source": "mock_official_price_success",
+  "official_price": 620000000,
+  "base_year": 2026,
+  "address": {
+    "road_address": "서울특별시 송파구 올림픽로 300",
+    "adm_cd": "1171010100"
+  },
+  "complex_name": "OO단지",
+  "dong": "101",
+  "ho": "1502",
+  "exclusive_area_sqm": 84.9
+}

@@ -1,0 +1,32 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npx --yes create-next-app@latest frontend --typescript --tailwind --eslint --app --no-src-dir --import-alias \"@/*\" --use-npm --no-turbopack)",
+      "Bash(cd \"/Users/choijihee/Library/CloudStorage/GoogleDrive-heeppiness@pukyong.ac.kr/내 드라이브/DIVE2026\" && rm -rf frontend/.git && echo \"removed nested git repo\")",
+      "Bash(npm install *)",
+      "Bash(npx --yes shadcn@latest init -d --base-color neutral)",
+      "Bash(npx --yes shadcn@latest init --help)",
+      "Bash(npx --yes shadcn@latest init -d -y)",
+      "Bash(cd \"/Users/choijihee/Library/CloudStorage/GoogleDrive-heeppiness@pukyong.ac.kr/내 드라이브/DIVE2026/frontend\" && mkdir -p app/\\\\\\(auth\\\\\\)/login app/\\\\\\(common\\\\\\)/notifications app/\\\\\\(common\\\\\\)/unauthorized \"app/\\(common\\)/blockchain/[txId]\" app/tenant app/landlord app/advisor app/hug app/admin components/common hooks lib services types stores styles && find . -maxdepth 2 -type d -not -path \"./node_modules*\" -not -path \"./.next*\" | sort)",
+      "Bash(npx --yes shadcn@latest add button input label dialog sonner card badge table skeleton form select tabs tooltip avatar dropdown-menu progress -y)",
+      "Bash(npx --yes shadcn@latest view form)",
+      "Bash(npx --yes shadcn@latest add --help)",
+      "Bash(npx --yes shadcn@latest add form -y)",
+      "Bash(npx --yes shadcn@latest view field)",
+      "Bash(npx --yes shadcn@latest add field -y)",
+      "Bash(npm run *)",
+      "Bash(lsof -i :8000 -sTCP:LISTEN)",
+      "Bash(lsof -i :3000 -sTCP:LISTEN)",
+      "Bash(curl -sS -m 20 -w \"\\\\nHTTP_STATUS:%{http_code} TIME:%{time_total}\\\\n\" http://127.0.0.1:8000/health)",
+      "Bash(top -l 1 -pid 71864)",
+      "Bash(kill 71709 71716 71864)",
+      "Bash(nohup npm run dev)",
+      "Bash(disown)",
+      "Bash(curl -sS -m 8 -w \"\\\\nSTATUS:%{http_code} TIME:%{time_total}\\\\n\" http://127.0.0.1:8000/health)",
+      "Bash(curl -sS -m 5 http://127.0.0.1:8000/health)",
+      "Bash(pip show *)",
+      "Bash(ps -o pid,time,stat,%cpu -p 74178)",
+      "Bash(sort -rk3)"
+    ]
+  }
+}

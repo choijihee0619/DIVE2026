@@ -1,0 +1,15 @@
+{
+  "case_id": "case_mock_006",
+  "source": "mock_transaction_empty",
+  "lawd_cd": "11710",
+  "deal_ymd_range": [
+    "202503",
+    "202506"
+  ],
+  "transactions": [],
+  "fallback": {
+    "used": true,
+    "reason": "no_transaction_in_range",
+    "action": "지역 평균 Mock 또는 최근 6개월 확대 조회 필요"
+  }
+}
