@@ -29,6 +29,15 @@ export const HUG_CASE_PRIORITY: ContractStatus[] = [
   ContractStatus.CONTRACT_FINALIZED,
 ];
 
+/** 임차인 홈에서 "주의 필요"로 강조하는 상태(위험~회수 단계). */
+export const ATTENTION_STATUSES: ContractStatus[] = [
+  ContractStatus.AT_RISK,
+  ContractStatus.INCIDENT_REPORTED,
+  ContractStatus.TRANSFERRED_TO_HUG,
+  ContractStatus.RECOVERY_IN_PROGRESS,
+  ContractStatus.D90_REQUESTED,
+];
+
 export function hugCasePriority(status: ContractStatus): number {
   const index = HUG_CASE_PRIORITY.indexOf(status);
   return index === -1 ? HUG_CASE_PRIORITY.length : index;

@@ -1,31 +1,12 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useMemo, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
-import { contractService } from "@/services/contractService";
-import { ApiError } from "@/services/apiClient";
-import { useSessionStore } from "@/stores/useSessionStore";
+import { ContractTable } from "@/components/contracts/ContractTable";
+import { useContractList } from "@/hooks/useContractList";
 import { ContractStatus } from "@/types/enums";
-import type { Contract } from "@/types/contract";
-import {
-  CONTRACT_STATUS_LABEL,
-  contractStatusBadgeVariant,
-  formatDeposit,
-  hugCasePriority,
-} from "@/lib/contract-labels";
+import { hugCasePriority } from "@/lib/contract-labels";
 
 const FILTER_TABS: { value: string; label: string }[] = [
   { value: "all", label: "전체" },
@@ -44,43 +25,11 @@ const SUMMARY_CARDS: { status: ContractStatus; label: string }[] = [
 
 /** HUG-01 채권관리 대시보드: GET /contracts(관리 역할 전체 조회) 실데이터. */
 export default function HugDashboardPage() {
-  const router = useRouter();
-  const clearSession = useSessionStore((state) => state.clearSession);
-
-  const [contracts, setContracts] = useState<Contract[] | null>(null);
-  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const { contracts, errorMessage, reload } = useContractList();
   const [filter, setFilter] = useState<string>("all");
 
-  const load = useCallback(() => {
-    // 데모 규모(수십 건)라 한 번에 받아 요약 카드·필터를 클라이언트에서 처리한다.
-    contractService
-      .list({ size: 100 })
-      .then((data) => {
-        setContracts(data.items);
-        setErrorMessage(null);
-      })
-      .catch((error: unknown) => {
-        if (error instanceof ApiError && error.httpStatus === 401) {
-          clearSession();
-          router.replace("/login");
-          return;
-        }
-        if (error instanceof ApiError && error.httpStatus === 403) {
-          router.replace("/unauthorized");
-          return;
-        }
-        setErrorMessage(
-          error instanceof ApiError ? `${error.message} (${error.errorCode})` : "목록을 불러오지 못했습니다.",
-        );
-      });
-  }, [clearSession, router]);
-
-  useEffect(() => {
-    load();
-  }, [load]);
-
   const sorted = useMemo(() => {
-    if (!contracts) return [];
+    if (!contracts) return null;
     return [...contracts].sort(
       (a, b) =>
         hugCasePriority(a.contract_status) - hugCasePriority(b.contract_status) ||
@@ -88,10 +37,10 @@ export default function HugDashboardPage() {
     );
   }, [contracts]);
 
-  const visible = useMemo(
-    () => (filter === "all" ? sorted : sorted.filter((c) => c.contract_status === filter)),
-    [sorted, filter],
-  );
+  const visible = useMemo(() => {
+    if (!sorted) return null;
+    return filter === "all" ? sorted : sorted.filter((c) => c.contract_status === filter);
+  }, [sorted, filter]);
 
   const countByStatus = useMemo(() => {
     const counts = new Map<string, number>();
@@ -138,62 +87,12 @@ export default function HugDashboardPage() {
           </Tabs>
         </CardHeader>
         <CardContent>
-          {errorMessage ? (
-            <div className="flex flex-col items-center gap-3 py-10 text-center">
-              <p className="text-sm text-destructive">{errorMessage}</p>
-              <Button
-                variant="outline"
-                onClick={() => {
-                  setContracts(null);
-                  setErrorMessage(null);
-                  load();
-                }}
-              >
-                다시 시도
-              </Button>
-            </div>
-          ) : contracts === null ? (
-            <div className="flex flex-col gap-2" aria-label="목록 불러오는 중">
-              {Array.from({ length: 5 }, (_, i) => (
-                <Skeleton key={i} className="h-10 w-full" />
-              ))}
-            </div>
-          ) : visible.length === 0 ? (
-            <p className="py-10 text-center text-sm text-muted-foreground">
-              {filter === "all" ? "표시할 사건이 없습니다." : "해당 상태의 사건이 없습니다."}
-            </p>
-          ) : (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>계약 ID</TableHead>
-                  <TableHead>상태</TableHead>
-                  <TableHead className="text-right">보증금</TableHead>
-                  <TableHead>계약 기간</TableHead>
-                  <TableHead>최근 변경</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {visible.map((contract) => (
-                  <TableRow key={contract.contract_id}>
-                    <TableCell className="font-mono text-xs">{contract.contract_id}</TableCell>
-                    <TableCell>
-                      <Badge variant={contractStatusBadgeVariant(contract.contract_status)}>
-                        {CONTRACT_STATUS_LABEL[contract.contract_status] ?? contract.contract_status}
-                      </Badge>
-                    </TableCell>
-                    <TableCell className="text-right">{formatDeposit(contract.deposit)}</TableCell>
-                    <TableCell className="text-sm text-muted-foreground">
-                      {contract.contract_start_date} ~ {contract.contract_end_date}
-                    </TableCell>
-                    <TableCell className="text-sm text-muted-foreground">
-                      {contract.updated_at.slice(0, 10)}
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          )}
+          <ContractTable
+            contracts={visible}
+            errorMessage={errorMessage}
+            onRetry={reload}
+            emptyMessage={filter === "all" ? "표시할 사건이 없습니다." : "해당 상태의 사건이 없습니다."}
+          />
         </CardContent>
       </Card>
     </div>
