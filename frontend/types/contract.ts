@@ -30,3 +30,46 @@ export interface ContractListData {
   items: Contract[];
   pagination: Pagination;
 }
+
+export interface ContractCreate {
+  property_id: string;
+  deposit: number;
+  contract_start_date: string;
+  contract_end_date: string;
+  landlord_type: string;
+  housing_type: string;
+  landlord_id?: string | null;
+}
+
+export interface TimelineEvent {
+  timeline_event_id: string;
+  event_type: string;
+  occurred_at: string;
+  blockchain_status: string;
+  blockchain_tx_id: string | null;
+}
+
+export interface ContractTimeline {
+  contract_id: string;
+  contract_status: ContractStatus;
+  events: TimelineEvent[];
+}
+
+export interface ReturnPlan {
+  return_plan_id: string;
+  contract_id: string;
+  d_day: number | null;
+  landlord_response_status: string;
+  early_warning: boolean;
+  planned_return_date: string | null;
+  return_method: string | null;
+  note: string | null;
+  created_at: string;
+}
+
+export interface ReturnPlanCreate {
+  contract_id: string;
+  planned_return_date: string;
+  return_method: string;
+  note?: string;
+}

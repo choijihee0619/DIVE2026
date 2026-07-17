@@ -20,9 +20,7 @@ const SIDEBAR_ITEMS: Record<string, SidebarItem[]> = {
   ],
   [UserRole.SYSTEM_ADMIN]: [
     { href: "/admin", label: "사용자·권한 관리" },
-    { href: "/admin/api-status", label: "외부 API/모델 상태" },
     { href: "/admin/blockchain", label: "블록체인 로그" },
-    { href: "/admin/logs", label: "시스템 로그" },
   ],
 };
 
