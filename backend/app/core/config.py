@@ -28,7 +28,7 @@ class Settings(BaseSettings):
     # --- App ---
     app_name: str = Field(default="hug-anshim-backend", validation_alias="APP_NAME")
     app_env: str = Field(default="local", validation_alias="APP_ENV")
-    debug: bool = Field(default=True, validation_alias="DEBUG")
+    debug: bool = Field(default=True, validation_alias=AliasChoices("APP_DEBUG", "DEBUG"))
     api_v1_prefix: str = Field(default="/api/v1", validation_alias="API_V1_PREFIX")
     mock_mode: bool = Field(default=True, validation_alias="MOCK_MODE")
 
