@@ -2,7 +2,8 @@
 
 import { useMemo } from "react";
 import Link from "next/link";
-import { MessageCircleQuestion } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { FilePlus2, MessageCircleQuestion } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { buttonVariants } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -12,6 +13,7 @@ import { ATTENTION_STATUSES } from "@/lib/contract-labels";
 
 /** TEN-00 임차인 홈: GET /contracts(본인 계약) 실데이터. */
 export default function TenantHomePage() {
+  const router = useRouter();
   const { contracts, errorMessage, reload } = useContractList();
 
   const attentionCount = useMemo(
@@ -56,15 +58,20 @@ export default function TenantHomePage() {
       </div>
 
       <Card>
-        <CardHeader>
+        <CardHeader className="flex flex-row items-center justify-between">
           <CardTitle>진행 계약 목록</CardTitle>
+          <Link href="/tenant/contracts/new" className={cn(buttonVariants({ size: "sm" }))}>
+            <FilePlus2 size={14} />
+            계약 등록
+          </Link>
         </CardHeader>
         <CardContent>
           <ContractTable
             contracts={contracts}
             errorMessage={errorMessage}
             onRetry={reload}
-            emptyMessage="진행 중인 계약이 없습니다. 계약 진단을 시작해 보세요."
+            emptyMessage="진행 중인 계약이 없습니다. 계약 등록으로 시작해 보세요."
+            onRowClick={(contract) => router.push(`/tenant/contracts/${contract.contract_id}`)}
           />
         </CardContent>
       </Card>

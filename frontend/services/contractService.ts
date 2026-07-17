@@ -1,5 +1,12 @@
 import { apiClient } from "@/services/apiClient";
-import type { ContractListData } from "@/types/contract";
+import type {
+  Contract,
+  ContractCreate,
+  ContractListData,
+  ContractTimeline,
+  ReturnPlan,
+  ReturnPlanCreate,
+} from "@/types/contract";
 
 interface ContractListParams {
   contractStatus?: string;
@@ -14,4 +21,9 @@ export const contractService = {
     if (contractStatus) query.set("contract_status", contractStatus);
     return apiClient.get<ContractListData>(`/contracts?${query.toString()}`);
   },
+  get: (contractId: string) => apiClient.get<Contract>(`/contracts/${contractId}`),
+  timeline: (contractId: string) => apiClient.get<ContractTimeline>(`/contracts/${contractId}/timeline`),
+  returnPlan: (contractId: string) => apiClient.get<ReturnPlan>(`/contracts/${contractId}/return-plan`),
+  create: (payload: ContractCreate) => apiClient.post<Contract>("/contracts", payload),
+  submitReturnPlan: (payload: ReturnPlanCreate) => apiClient.post<ReturnPlan>("/return-plans", payload),
 };

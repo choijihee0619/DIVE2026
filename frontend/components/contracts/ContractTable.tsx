@@ -20,6 +20,8 @@ interface ContractTableProps {
   errorMessage: string | null;
   onRetry: () => void;
   emptyMessage?: string;
+  /** 지정하면 행 클릭 시 호출(행에 pointer 커서 표시). */
+  onRowClick?: (contract: Contract) => void;
 }
 
 /** 계약 목록 테이블 + 로딩/빈/오류 상태(Tenant 홈·HUG 대시보드 공용). */
@@ -28,6 +30,7 @@ export function ContractTable({
   errorMessage,
   onRetry,
   emptyMessage = "표시할 계약이 없습니다.",
+  onRowClick,
 }: ContractTableProps) {
   if (errorMessage) {
     return (
@@ -67,7 +70,11 @@ export function ContractTable({
       </TableHeader>
       <TableBody>
         {contracts.map((contract) => (
-          <TableRow key={contract.contract_id}>
+          <TableRow
+            key={contract.contract_id}
+            className={onRowClick ? "cursor-pointer" : undefined}
+            onClick={onRowClick ? () => onRowClick(contract) : undefined}
+          >
             <TableCell className="font-mono text-xs">{contract.contract_id}</TableCell>
             <TableCell>
               <Badge variant={contractStatusBadgeVariant(contract.contract_status)}>
