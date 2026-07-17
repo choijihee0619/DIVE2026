@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from datetime import datetime
+
 from motor.motor_asyncio import AsyncIOMotorDatabase
 
 from app.core.exceptions import ResourceNotFoundError
@@ -9,14 +11,19 @@ from app.schemas.property import PropertyCreateRequest, PropertyResponse
 from app.utils.datetime_utils import now_kst_iso, new_uuid
 
 
+def _iso(value: str | datetime) -> str:
+    # 초기 수집 스크립트가 넣은 매물 문서는 created_at이 BSON datetime이라 문자열로 정규화한다.
+    return value.isoformat() if isinstance(value, datetime) else value
+
+
 def _to_response(doc: dict) -> PropertyResponse:
     return PropertyResponse(
         property_id=doc["_id"],
         address=doc.get("address", {}),
         housing_type=doc.get("housing_type"),
         source_system=doc.get("source_system", "user_upload"),
-        created_at=doc["created_at"],
-        updated_at=doc["updated_at"],
+        created_at=_iso(doc["created_at"]),
+        updated_at=_iso(doc["updated_at"]),
     )
 
 

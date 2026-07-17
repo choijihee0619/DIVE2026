@@ -28,7 +28,7 @@ async def list_evidence_requests(
     contract_id: str | None = None,
     page: int = Query(1, ge=1),
     size: int = Query(20, ge=1, le=100),
-    current_user: CurrentUser = Depends(require_roles("tenant", "landlord")),
+    current_user: CurrentUser = Depends(require_roles("tenant", "landlord", "advisor", "system_admin")),
     db: AsyncIOMotorDatabase = Depends(get_db),
     request_id: str = Depends(get_request_id),
 ):

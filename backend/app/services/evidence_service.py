@@ -10,6 +10,7 @@ from app.models.enums import VerificationStatus
 from app.repositories.contract_repository import ContractRepository, TimelineRepository
 from app.repositories.evidence_repository import EvidenceRepository, EvidenceRequestRepository, VerificationRepository
 from app.schemas.common import build_pagination
+from app.schemas.blockchain import AnchorRequest
 from app.schemas.evidence import (
     EvidenceRequestCreateRequest,
     EvidenceRequestResponse,
@@ -17,6 +18,7 @@ from app.schemas.evidence import (
     VerificationDecisionRequest,
     VerificationResponse,
 )
+from app.services.blockchain_service import BlockchainService
 from app.utils.datetime_utils import now_kst_iso, new_uuid
 from app.utils.hashing import sha256_bytes
 
@@ -25,7 +27,7 @@ ALLOWED_CONTENT_TYPES = {"application/pdf", "image/png", "image/jpeg"}
 MAX_FILE_SIZE_BYTES = 20 * 1024 * 1024
 
 
-def _request_to_response(doc: dict) -> EvidenceRequestResponse:
+def _request_to_response(doc: dict, latest_evidence_id: str | None = None) -> EvidenceRequestResponse:
     return EvidenceRequestResponse(
         evidence_request_id=doc["_id"],
         contract_id=doc["contract_id"],
@@ -34,6 +36,7 @@ def _request_to_response(doc: dict) -> EvidenceRequestResponse:
         evidence_type=doc["evidence_type"],
         due_date=doc.get("due_date"),
         verification_status=doc["verification_status"],
+        latest_evidence_id=latest_evidence_id,
         created_at=doc["created_at"],
         updated_at=doc["updated_at"],
     )
@@ -46,6 +49,7 @@ class EvidenceService:
         self._verifications = VerificationRepository(db)
         self._contracts = ContractRepository(db)
         self._timeline = TimelineRepository(db)
+        self._blockchain = BlockchainService(db)
 
     async def create_request(self, payload: EvidenceRequestCreateRequest) -> EvidenceRequestResponse:
         if not await self._contracts.exists(payload.contract_id):
@@ -72,11 +76,16 @@ class EvidenceService:
         doc = await self._requests.get_by_id(evidence_request_id)
         if not doc:
             raise ResourceNotFoundError("보완요청 정보를 찾을 수 없습니다.")
-        return _request_to_response(doc)
+        return _request_to_response(doc, await self._latest_evidence_id(doc["_id"]))
 
     async def list_requests(self, page: int, size: int, case_id: str | None, contract_id: str | None):
         items, total = await self._requests.list_paginated((page - 1) * size, size, case_id=case_id, contract_id=contract_id)
-        return [_request_to_response(i) for i in items], build_pagination(page, size, total)
+        responses = [_request_to_response(i, await self._latest_evidence_id(i["_id"])) for i in items]
+        return responses, build_pagination(page, size, total)
+
+    async def _latest_evidence_id(self, evidence_request_id: str) -> str | None:
+        evidences = await self._evidences.list_for_request(evidence_request_id)
+        return evidences[0]["_id"] if evidences else None
 
     async def submit_evidence(self, evidence_request_id: str, uploader_id: str, file: UploadFile) -> EvidenceResponse:
         request_doc = await self._requests.get_by_id(evidence_request_id)
@@ -178,6 +187,17 @@ class EvidenceService:
             "decided_at": now,
             "created_at": existing["created_at"] if existing else now,
         }
+        # 승인 시 검증 결과 해시를 체인(현재 Mock)에 앵커해 위험 보완 사실을 공증한다(기획서 2절).
+        if payload.decision == "approve" and not doc["blockchain_tx_id"]:
+            anchor = await self._blockchain.anchor(
+                AnchorRequest(
+                    event_type="VerificationCompleted",
+                    reference_id=verification_id,
+                    result_hash=evidence.get("document_hash"),
+                )
+            )
+            doc["blockchain_tx_id"] = anchor.blockchain_tx_id
+
         await self._verifications.collection.update_one({"_id": verification_id}, {"$set": doc}, upsert=True)
         await self._evidences.update_fields(evidence_id, {"verification_status": new_status})
 
@@ -195,8 +215,8 @@ class EvidenceService:
                     "contract_id": request_doc["contract_id"],
                     "event_type": "VerificationCompleted",
                     "occurred_at": now,
-                    "blockchain_status": "NotRequested",
-                    "blockchain_tx_id": None,
+                    "blockchain_status": "Confirmed" if doc["blockchain_tx_id"] else "NotRequested",
+                    "blockchain_tx_id": doc["blockchain_tx_id"],
                 }
             )
 

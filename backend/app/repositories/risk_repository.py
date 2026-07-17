@@ -9,7 +9,8 @@ class RiskAssessmentRepository(BaseRepository):
     collection_name = "risk_assessments"
 
     async def find_by_case_id(self, case_id: str) -> dict[str, Any] | None:
-        return await self.collection.find_one({"case_id": case_id})
+        # 계약 문서에는 risk_assessment_id(_id)만 저장되므로 둘 다로 조회할 수 있게 한다.
+        return await self.collection.find_one({"$or": [{"case_id": case_id}, {"_id": case_id}]})
 
     async def list_paginated(self, skip: int, limit: int, contract_id: str | None = None) -> tuple[list[dict[str, Any]], int]:
         query: dict[str, Any] = {}

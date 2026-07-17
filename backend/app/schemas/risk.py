@@ -16,6 +16,7 @@ class RiskDiagnoseRequest(BaseModel):
     landlord_type: LandlordType
     housing_type: HousingType
     landlord_id: str | None = None
+    contract_id: str | None = None
 
 
 class RiskFactor(BaseModel):
