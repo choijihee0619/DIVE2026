@@ -24,6 +24,7 @@ class EvidenceRequestResponse(BaseModel):
     evidence_type: str
     due_date: str | None = None
     verification_status: str
+    latest_evidence_id: str | None = None
     created_at: str
     updated_at: str
 

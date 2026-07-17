@@ -6,6 +6,7 @@ from motor.motor_asyncio import AsyncIOMotorDatabase
 from app.api.deps import CurrentUser, get_db, get_request_id, require_roles
 from app.core.responses import success_response
 from app.schemas.risk import RiskDiagnoseRequest
+from app.services.contract_service import ContractService
 from app.services.risk_service import RiskService
 
 router = APIRouter(tags=["Property-Risk"])
@@ -20,7 +21,9 @@ async def diagnose_risk(
 ):
     # 과제 지시사항(4절)의 rule-based fallback 요구에 맞춰, 계약의 202(비동기 폴링) 대신
     # 규칙엔진 결과를 동시에 계산해 200으로 즉시 반환한다(README/보고서에 편차로 명시).
-    result = await RiskService(db).diagnose(payload)
+    result = await RiskService(db).diagnose(payload, contract_id=payload.contract_id)
+    if payload.contract_id:
+        await ContractService(db).mark_diagnosed(payload.contract_id, result.risk_assessment_id)
     return success_response(result, request_id, status_code=200)
 
 
