@@ -1,0 +1,652 @@
+<meta charset="utf-8">
+<title>안심루프 UI 시안 — 역할·상황·뎁스별 화면 설계</title>
+<style>
+  :root{
+    --hug-blue:#0A5CA8; --hug-blue-deep:#0B3D6E; --hug-green:#00A05C; --hug-green-deep:#007A46;
+    --sky:#EAF2F9; --mint:#E7F5EE;
+    --ink:#15283C; --ink-soft:#4E6076; --line:#D8E2EC;
+    --bg:#F5F8FB; --card:#FFFFFF;
+    --warn:#E8A200; --danger:#D64545; --ok:#00A05C;
+    --shadow:0 1px 3px rgba(11,61,110,.08),0 8px 24px rgba(11,61,110,.07);
+  }
+  @media (prefers-color-scheme: dark){
+    :root{ --bg:#0F1822; --card:#16222F; --ink:#E6EEF6; --ink-soft:#93A6BA; --line:#26384B;
+      --sky:#12283C; --mint:#0F2E22; --hug-blue:#4D9FE8; --hug-green:#2FBF7F;
+      --shadow:0 1px 3px rgba(0,0,0,.4),0 8px 24px rgba(0,0,0,.35); }
+  }
+  :root[data-theme="light"]{
+    --hug-blue:#0A5CA8; --hug-blue-deep:#0B3D6E; --hug-green:#00A05C; --hug-green-deep:#007A46;
+    --sky:#EAF2F9; --mint:#E7F5EE; --ink:#15283C; --ink-soft:#4E6076; --line:#D8E2EC;
+    --bg:#F5F8FB; --card:#FFFFFF;
+    --shadow:0 1px 3px rgba(11,61,110,.08),0 8px 24px rgba(11,61,110,.07);
+  }
+  :root[data-theme="dark"]{
+    --bg:#0F1822; --card:#16222F; --ink:#E6EEF6; --ink-soft:#93A6BA; --line:#26384B;
+    --sky:#12283C; --mint:#0F2E22; --hug-blue:#4D9FE8; --hug-green:#2FBF7F;
+    --hug-blue-deep:#0B3D6E; --hug-green-deep:#007A46;
+    --shadow:0 1px 3px rgba(0,0,0,.4),0 8px 24px rgba(0,0,0,.35);
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);
+    font-family:"Pretendard","Apple SD Gothic Neo","Noto Sans KR","Malgun Gothic",system-ui,sans-serif;
+    line-height:1.55; -webkit-font-smoothing:antialiased;}
+  .wrap{max-width:1120px;margin:0 auto;padding:48px 24px 96px;}
+
+  /* ---------- 문서 상단 ---------- */
+  .doc-head{display:flex;flex-direction:column;gap:10px;margin-bottom:14px}
+  .doc-eyebrow{font-size:12px;font-weight:700;letter-spacing:.14em;color:var(--hug-green);text-transform:uppercase}
+  h1{font-size:30px;line-height:1.25;margin:0;text-wrap:balance;font-weight:800}
+  h1 .accent{color:var(--hug-blue)}
+  .doc-sub{color:var(--ink-soft);font-size:15px;max-width:66ch;margin:0}
+  .legend{display:flex;flex-wrap:wrap;gap:8px;margin:18px 0 0}
+  .legend span{font-size:12px;font-weight:600;padding:5px 12px;border-radius:999px;border:1px solid var(--line);background:var(--card)}
+  .legend .l-tenant{border-color:var(--hug-blue);color:var(--hug-blue)}
+  .legend .l-landlord{border-color:#7A93AD;color:var(--ink-soft)}
+  .legend .l-advisor{border-color:var(--warn);color:var(--warn)}
+  .legend .l-hug{border-color:var(--hug-green);color:var(--hug-green)}
+
+  section{margin-top:64px}
+  .sec-head{display:flex;align-items:baseline;gap:14px;border-bottom:2px solid var(--ink);padding-bottom:10px;margin-bottom:8px}
+  .sec-no{font-size:13px;font-weight:800;color:var(--hug-green);letter-spacing:.08em}
+  h2{font-size:21px;margin:0;font-weight:800}
+  .sec-note{color:var(--ink-soft);font-size:14px;max-width:72ch;margin:10px 0 26px}
+  h3.screen-title{font-size:15px;font-weight:700;margin:34px 0 4px;display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+  .depth-chip{font-size:11px;font-weight:700;color:var(--hug-blue);background:var(--sky);border-radius:6px;padding:2px 8px}
+  .flow-chip{font-size:11px;font-weight:600;color:var(--ink-soft);border:1px solid var(--line);border-radius:6px;padding:2px 8px}
+  p.screen-note{color:var(--ink-soft);font-size:13.5px;margin:2px 0 14px;max-width:76ch}
+
+  /* ---------- IA 맵 ---------- */
+  .ia-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:16px}
+  .ia-col{background:var(--card);border:1px solid var(--line);border-radius:14px;box-shadow:var(--shadow);overflow:hidden}
+  .ia-col-head{padding:12px 16px;font-weight:800;font-size:14px;color:#fff;display:flex;justify-content:space-between;align-items:center}
+  .ia-col-head small{font-weight:600;opacity:.85;font-size:11px}
+  .ia-tenant .ia-col-head{background:var(--hug-blue-deep)}
+  .ia-landlord .ia-col-head{background:#5A7690}
+  .ia-advisor .ia-col-head{background:#8A6A00}
+  .ia-hug .ia-col-head{background:var(--hug-green-deep)}
+  .ia-col ul{list-style:none;margin:0;padding:12px 14px 16px;font-size:13px}
+  .ia-col li{padding:5px 8px;border-radius:7px}
+  .ia-col li.d1{font-weight:700}
+  .ia-col li.d2{margin-left:16px;color:var(--ink-soft);position:relative}
+  .ia-col li.d3{margin-left:32px;color:var(--ink-soft);font-size:12.5px;position:relative}
+  .ia-col li.d2::before,.ia-col li.d3::before{content:"";position:absolute;left:-9px;top:.95em;width:6px;height:1px;background:var(--line)}
+  .ia-col li.hot{background:var(--mint);color:var(--hug-green-deep);font-weight:700}
+  :root[data-theme="dark"] .ia-col li.hot, [data-theme="dark"] .ia-col li.hot{color:var(--hug-green)}
+  .ia-foot{padding:0 16px 14px;font-size:11.5px;color:var(--ink-soft)}
+
+  /* ---------- 목업 프레임(브라우저) ---------- */
+  .frame{background:var(--card);border:1px solid var(--line);border-radius:14px;box-shadow:var(--shadow);overflow:hidden}
+  .chrome{display:flex;align-items:center;gap:8px;background:linear-gradient(var(--sky),var(--card));border-bottom:1px solid var(--line);padding:9px 14px}
+  .dots{display:flex;gap:5px}
+  .dots i{width:9px;height:9px;border-radius:50%;background:var(--line);display:block}
+  .urlbar{flex:1;max-width:430px;font-size:11px;color:var(--ink-soft);background:var(--bg);border:1px solid var(--line);border-radius:7px;padding:4px 12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .urlbar b{color:var(--hug-blue);font-weight:700}
+
+  /* 목업 내부 공통 — 고정 라이트 (제품 화면은 라이트 확정안) */
+  .ui{--u-ink:#15283C;--u-soft:#5A6B7E;--u-line:#DFE7EF;--u-bg:#F7FAFC;--u-card:#fff;
+      background:var(--u-bg);color:var(--u-ink);font-size:12px;line-height:1.45;display:flex;min-height:340px}
+  .ui .gnb{width:168px;background:#0B3D6E;color:#CFE2F3;padding:14px 0;flex-shrink:0;display:flex;flex-direction:column}
+  .ui .gnb .logo{font-weight:800;color:#fff;font-size:13px;padding:2px 16px 12px;letter-spacing:.02em}
+  .ui .gnb .logo em{font-style:normal;color:#6FDDA9}
+  .ui .gnb a{display:block;padding:8px 16px;color:#B9D2E8;text-decoration:none;font-size:12px}
+  .ui .gnb a.on{background:rgba(255,255,255,.12);color:#fff;font-weight:700;border-left:3px solid #00C878;padding-left:13px}
+  .ui .gnb .role-tag{margin:auto 16px 4px;font-size:10px;background:rgba(255,255,255,.14);color:#fff;border-radius:6px;padding:4px 8px;text-align:center}
+  .ui .gnb.g-green{background:#0C4A31}
+  .ui .gnb.g-green a{color:#BFE3D0}.ui .gnb.g-green a.on{border-left-color:#5FD59E;color:#fff}
+  .ui .gnb.g-amber{background:#4E3D08}.ui .gnb.g-amber a{color:#E5D6A8}.ui .gnb.g-amber a.on{border-left-color:#F5C64B;color:#fff}
+  .ui .gnb.g-slate{background:#3C4F63}.ui .gnb.g-slate a{color:#C7D5E2}.ui .gnb.g-slate a.on{border-left-color:#9FCBF2;color:#fff}
+  .ui main{flex:1;padding:16px 18px;min-width:0}
+  .ui .crumb{font-size:10.5px;color:var(--u-soft);margin-bottom:8px}
+  .ui .crumb b{color:#0A5CA8;font-weight:700}
+  .ui h4{margin:0 0 10px;font-size:15px;font-weight:800}
+  .ui h5{margin:0 0 8px;font-size:12px;font-weight:700}
+  .card{background:var(--u-card);border:1px solid var(--u-line);border-radius:10px;padding:12px}
+  .row{display:flex;gap:10px}
+  .col{display:flex;flex-direction:column;gap:10px}
+  .grow{flex:1;min-width:0}
+  .muted{color:var(--u-soft)}
+  .btn{display:inline-block;background:#0A5CA8;color:#fff;font-weight:700;font-size:11.5px;border-radius:8px;padding:7px 14px}
+  .btn.green{background:#00A05C}
+  .btn.ghost{background:#fff;color:#0A5CA8;border:1px solid #B9D2E8}
+  .pill{display:inline-block;font-size:10px;font-weight:700;border-radius:999px;padding:2px 9px}
+  .pill.ok{background:#E7F5EE;color:#007A46}
+  .pill.warn{background:#FBF1D9;color:#8A6A00}
+  .pill.bad{background:#FAE4E4;color:#C03A3A}
+  .pill.info{background:#EAF2F9;color:#0A5CA8}
+  .kpi{flex:1;background:var(--u-card);border:1px solid var(--u-line);border-radius:10px;padding:10px 12px}
+  .kpi .k-label{font-size:10px;color:var(--u-soft);font-weight:600}
+  .kpi .k-val{font-size:17px;font-weight:800;font-variant-numeric:tabular-nums;margin-top:2px}
+  .kpi .k-val small{font-size:10px;font-weight:600;color:var(--u-soft)}
+  .kpi .delta-up{color:#C03A3A;font-size:10px;font-weight:700}
+  .kpi .delta-dn{color:#007A46;font-size:10px;font-weight:700}
+  .card:has(> table.t){overflow-x:auto}
+  table.t{width:100%;border-collapse:collapse;font-size:11px;font-variant-numeric:tabular-nums}
+  table.t th{font-size:10px;color:var(--u-soft);text-align:left;font-weight:700;border-bottom:1px solid var(--u-line);padding:5px 8px;white-space:nowrap}
+  table.t td{border-bottom:1px solid var(--u-line);padding:6px 8px;white-space:nowrap}
+  table.t tr:last-child td{border-bottom:0}
+  .bar{height:8px;border-radius:4px;background:#E4ECF3;overflow:hidden}
+  .bar i{display:block;height:100%;border-radius:4px}
+  .signal{display:flex;align-items:center;gap:8px;padding:7px 0;border-bottom:1px dashed var(--u-line);font-size:11.5px}
+  .signal:last-child{border-bottom:0}
+  .lamp{width:10px;height:10px;border-radius:50%;flex-shrink:0}
+  .lamp.g{background:#00A05C}.lamp.y{background:#E8A200}.lamp.r{background:#D64545}
+  .stepper{display:flex;gap:0;margin-bottom:12px;font-size:10px;font-weight:700}
+  .stepper div{flex:1;text-align:center;padding:6px 4px;background:#E4ECF3;color:#5A6B7E;position:relative}
+  .stepper div.done{background:#CBE9DA;color:#007A46}
+  .stepper div.now{background:#0A5CA8;color:#fff}
+  .stepper div:first-child{border-radius:7px 0 0 7px}.stepper div:last-child{border-radius:0 7px 7px 0}
+  .chat{display:flex;flex-direction:column;gap:8px}
+  .bub{max-width:78%;border-radius:11px;padding:8px 11px;font-size:11.5px}
+  .bub.me{align-self:flex-end;background:#0A5CA8;color:#fff;border-bottom-right-radius:3px}
+  .bub.ai{align-self:flex-start;background:#fff;border:1px solid var(--u-line);border-bottom-left-radius:3px}
+  .src{display:flex;gap:6px;flex-wrap:wrap;margin-top:6px}
+  .src span{font-size:9.5px;font-weight:700;border-radius:5px;padding:2px 7px}
+  .src .official{background:#EAF2F9;color:#0A5CA8;border:1px solid #B9D2E8}
+  .src .case{background:#E7F5EE;color:#007A46;border:1px solid #BFE3D0}
+  .hash{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:10px;background:#0B3D6E;color:#8FE3B8;border-radius:7px;padding:7px 10px;word-break:break-all;white-space:normal}
+  .mapgrid{display:grid;grid-template-columns:repeat(6,1fr);gap:4px}
+  .mapgrid b{display:flex;align-items:center;justify-content:center;height:30px;border-radius:6px;font-size:9px;font-weight:700;color:#0B3D6E}
+  .cap{font-size:10px;color:var(--u-soft);margin-top:6px}
+  .shap{display:flex;flex-direction:column;gap:4px;font-size:10px}
+  .shap .srow{display:grid;grid-template-columns:88px 1fr 34px;align-items:center;gap:6px}
+  .shap .sbar{height:7px;border-radius:3px}
+  .duo{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+  @media (max-width:900px){.duo{grid-template-columns:1fr}}
+  @media (max-width:760px){
+    .ui{flex-direction:column}
+    .ui .gnb{width:100%;flex-direction:row;flex-wrap:wrap;align-items:center;padding:8px 10px;gap:2px}
+    .ui .gnb .logo{padding:0 10px 0 4px}
+    .ui .gnb a{padding:6px 10px}
+    .ui .gnb a.on{border-left:0;border-bottom:2px solid #00C878;padding-left:10px}
+    .ui .gnb .role-tag{margin:0 0 0 auto}
+    .row{flex-wrap:wrap}
+  }
+  .tok{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px}
+  .tok .sw{border:1px solid var(--line);border-radius:12px;overflow:hidden;background:var(--card)}
+  .tok .sw i{display:block;height:52px}
+  .tok .sw p{margin:0;padding:8px 12px;font-size:11.5px}
+  .tok .sw p b{display:block;font-size:12px}
+  footer{margin-top:72px;border-top:1px solid var(--line);padding-top:16px;color:var(--ink-soft);font-size:12.5px}
+</style>
+
+<div class="wrap">
+  <header class="doc-head">
+    <span class="doc-eyebrow">DIVE 2026 · HUG × 아이엔 · UI 시안 v1</span>
+    <h1>안심루프 — <span class="accent">역할·상황·뎁스별</span> 화면 설계</h1>
+    <p class="doc-sub">전세 생애주기(계약 전 예방 → 전자계약 → 거주 중 모니터링 → 사고 후 회수)를 4개 역할이 하나의 데이터 위에서 사용하는 플랫폼.
+    HUG 아이덴티티 컬러(블루·그린·화이트)를 기준으로 한 라이트 테마 제품 화면 시안입니다.</p>
+    <div class="legend">
+      <span class="l-tenant">임차인 — 깊게 (핵심 데모)</span>
+      <span class="l-landlord">임대인 — 얕게</span>
+      <span class="l-advisor">아이엔 상담사 — 중간</span>
+      <span class="l-hug">HUG 관리자 — 깊게 (핵심 데모)</span>
+    </div>
+  </header>
+
+  <!-- ================= 0. IA ================= -->
+  <section>
+    <div class="sec-head"><span class="sec-no">0</span><h2>정보구조(IA) · 뎁스 맵</h2></div>
+    <p class="sec-note">로그인 시 역할에 따라 좌측 내비게이션과 홈이 달라진다. 굵은 항목이 Depth 1(GNB), 들여쓰기가 Depth 2·3.
+    초록 배경 항목은 발표 데모의 핵심 경로.</p>
+    <div class="ia-grid">
+      <div class="ia-col ia-tenant">
+        <div class="ia-col-head">임차인<small>tenant</small></div>
+        <ul>
+          <li class="d1">홈 (내 전세 현황)</li>
+          <li class="d1 hot">안심 리포트</li>
+          <li class="d2 hot">주소·보증금 입력</li>
+          <li class="d2 hot">진단 결과 (5신호)</li>
+          <li class="d3">지역 사고율 상세</li>
+          <li class="d3">단계별 체크리스트</li>
+          <li class="d1 hot">AI 전세상담</li>
+          <li class="d2">대화 (근거 출처 카드)</li>
+          <li class="d2">상담사 이관</li>
+          <li class="d1 hot">전자계약</li>
+          <li class="d2">공동세션 · 특약 추천</li>
+          <li class="d2">서명 · 블록체인 앵커</li>
+          <li class="d3">위변조 검증</li>
+          <li class="d1">사고 접수 / 지원안내</li>
+          <li class="d1">알림함</li>
+        </ul>
+      </div>
+      <div class="ia-col ia-landlord">
+        <div class="ia-col-head">임대인<small>landlord</small></div>
+        <ul>
+          <li class="d1">홈 (내 보증 현황)</li>
+          <li class="d1">전자계약 요청함</li>
+          <li class="d2">공동세션 참여</li>
+          <li class="d2">서명</li>
+          <li class="d1">내 물건 관리</li>
+          <li class="d2">보증 만기 일정</li>
+        </ul>
+        <p class="ia-foot">계약 상대방 역할에 집중한 경량 화면. 데모에서는 전자계약 공동세션 참여 장면만 사용.</p>
+      </div>
+      <div class="ia-col ia-advisor">
+        <div class="ia-col-head">아이엔 상담사<small>advisor</small></div>
+        <ul>
+          <li class="d1 hot">상담 큐</li>
+          <li class="d2">자동분류(분쟁유형·단계)</li>
+          <li class="d1 hot">상담 상세</li>
+          <li class="d2">유사사례 검색 (938건)</li>
+          <li class="d2">AI 답변 초안</li>
+          <li class="d1">이관·예약 관리</li>
+        </ul>
+        <p class="ia-foot">챗봇이 근거를 못 찾은 문의가 큐로 유입 → 상담사가 유사사례·AI 초안으로 응대.</p>
+      </div>
+      <div class="ia-col ia-hug">
+        <div class="ia-col-head">HUG 관리자<small>hug</small></div>
+        <ul>
+          <li class="d1 hot">회수 코크핏</li>
+          <li class="d2">채권 포트폴리오</li>
+          <li class="d2 hot">우선순위 채권 목록</li>
+          <li class="d3">건별 상세 (SHAP 요인)</li>
+          <li class="d1 hot">회수 시뮬레이터</li>
+          <li class="d1">사고 접수 큐</li>
+          <li class="d1">지역 위험 모니터</li>
+          <li class="d2">발급×사고 사고율 지도</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <!-- ================= 1. 공통 ================= -->
+  <section>
+    <div class="sec-head"><span class="sec-no">1</span><h2>공통 — 로그인 · 역할 분기</h2></div>
+    <h3 class="screen-title">역할 선택 로그인 <span class="depth-chip">Depth 0</span><span class="flow-chip">모든 플로우의 입구</span></h3>
+    <p class="screen-note">주소 조회(안심 리포트 미리보기)는 비로그인도 허용, 나머지는 역할 로그인. 데모 계정 5종과 1:1 대응.</p>
+    <div class="frame">
+      <div class="chrome"><span class="dots"><i></i><i></i><i></i></span><span class="urlbar"><b>ansimloop.kr</b>/login</span></div>
+      <div class="ui" style="min-height:300px">
+        <main style="display:flex;flex-direction:column;align-items:center;justify-content:center;background:linear-gradient(160deg,#EAF2F9 0%,#fff 55%,#E7F5EE 100%)">
+          <div style="font-weight:800;font-size:19px;color:#0B3D6E">안심<span style="color:#00A05C">루프</span></div>
+          <div class="muted" style="margin:4px 0 16px">계약 전 예방부터 사고 후 회수까지, 하나의 루프</div>
+          <div class="row" style="width:86%;max-width:640px">
+            <div class="card grow" style="text-align:center;border-top:3px solid #0A5CA8"><b>임차인</b><div class="muted" style="font-size:10px;margin:4px 0 8px">위험진단·상담·전자계약</div><span class="btn" style="font-size:10px;padding:5px 12px">로그인</span></div>
+            <div class="card grow" style="text-align:center;border-top:3px solid #5A7690"><b>임대인</b><div class="muted" style="font-size:10px;margin:4px 0 8px">계약 요청·보증 현황</div><span class="btn ghost" style="font-size:10px;padding:5px 12px">로그인</span></div>
+            <div class="card grow" style="text-align:center;border-top:3px solid #E8A200"><b>상담사</b><div class="muted" style="font-size:10px;margin:4px 0 8px">상담 큐·유사사례</div><span class="btn ghost" style="font-size:10px;padding:5px 12px">로그인</span></div>
+            <div class="card grow" style="text-align:center;border-top:3px solid #00A05C"><b>HUG</b><div class="muted" style="font-size:10px;margin:4px 0 8px">회수 코크핏·시뮬레이터</div><span class="btn green" style="font-size:10px;padding:5px 12px">로그인</span></div>
+          </div>
+          <div class="muted" style="font-size:10px;margin-top:14px">로그인 없이 <u>우리집 안심 리포트 미리보기</u> →</div>
+        </main>
+      </div>
+    </div>
+  </section>
+
+  <!-- ================= 2. 임차인 ================= -->
+  <section>
+    <div class="sec-head"><span class="sec-no">2</span><h2>임차인 — 계약 전 예방 플로우</h2></div>
+    <p class="sec-note">상황 시나리오: “계약하려는 빌라가 안전한지 모르겠다” → 주소 입력 → 5개 신호 진단 → 챗봇으로 후속 질문 → 안전하면 전자계약으로 진입.</p>
+
+    <h3 class="screen-title">2-1 임차인 홈 <span class="depth-chip">Depth 1</span><span class="flow-chip">상황: 로그인 직후</span></h3>
+    <div class="frame">
+      <div class="chrome"><span class="dots"><i></i><i></i><i></i></span><span class="urlbar"><b>ansimloop.kr</b>/tenant</span></div>
+      <div class="ui">
+        <nav class="gnb"><div class="logo">안심<em>루프</em></div>
+          <a class="on">홈</a><a>안심 리포트</a><a>AI 전세상담</a><a>전자계약</a><a>사고 접수</a><a>알림함</a>
+          <span class="role-tag">임차인 · 김세입</span></nav>
+        <main>
+          <div class="crumb">홈</div>
+          <h4>김세입님, 계약 전 마지막 점검을 도와드릴게요</h4>
+          <div class="row">
+            <div class="card grow" style="background:linear-gradient(135deg,#0A5CA8,#0B3D6E);color:#fff;border:0">
+              <h5 style="color:#fff">우리집 안심 리포트</h5>
+              <div style="font-size:11px;opacity:.85;margin-bottom:10px">주소만 입력하면 5가지 위험 신호를 진단합니다</div>
+              <div style="background:#fff;border-radius:8px;padding:7px 10px;color:#5A6B7E;font-size:11px;display:flex;justify-content:space-between"><span>부산 남구 ○○로 12, 301호</span><b style="color:#0A5CA8">진단 시작</b></div>
+            </div>
+            <div class="card" style="width:31%">
+              <h5>내 계약 상태</h5>
+              <div class="signal"><span class="lamp g"></span>전자계약 서명 완료</div>
+              <div class="signal"><span class="lamp y"></span>보증보험 미가입</div>
+              <div class="cap">보증 만기 D-214</div>
+            </div>
+          </div>
+          <div class="row" style="margin-top:10px">
+            <div class="card grow">
+              <h5>알림 <span class="pill info">2</span></h5>
+              <div class="signal"><span class="lamp y"></span>등기 변동 감지 — 근저당 설정 (7/16)</div>
+              <div class="signal"><span class="lamp g"></span>확정일자 처리 완료 (7/12)</div>
+            </div>
+            <div class="card grow">
+              <h5>AI 전세상담 바로가기</h5>
+              <div class="muted" style="font-size:11px">“묵시적 갱신이 뭔가요?” 같은 질문을<br>공식자료·실제 사례 근거로 답해드려요</div>
+              <div style="margin-top:8px"><span class="btn ghost" style="font-size:10px">상담 시작</span></div>
+            </div>
+          </div>
+        </main>
+      </div>
+    </div>
+
+    <h3 class="screen-title">2-2 안심 리포트 — 진단 결과 <span class="depth-chip">Depth 2</span><span class="flow-chip">핵심 데모 ①</span></h3>
+    <p class="screen-note">5개 신호등 + 종합 등급. “사고 확률이 아니라 고위험 패턴 충족도”라는 정직한 방법론 문구를 UI에 상시 노출.
+    지역 사고율은 HOUSTA 발급×사고 실집계 기반.</p>
+    <div class="frame">
+      <div class="chrome"><span class="dots"><i></i><i></i><i></i></span><span class="urlbar"><b>ansimloop.kr</b>/tenant/report/result</span></div>
+      <div class="ui">
+        <nav class="gnb"><div class="logo">안심<em>루프</em></div>
+          <a>홈</a><a class="on">안심 리포트</a><a>AI 전세상담</a><a>전자계약</a><a>사고 접수</a><a>알림함</a>
+          <span class="role-tag">임차인 · 김세입</span></nav>
+        <main>
+          <div class="crumb">안심 리포트 › <b>진단 결과</b></div>
+          <div class="row">
+            <div class="card" style="width:34%;text-align:center;border-top:3px solid #E8A200">
+              <div class="muted" style="font-size:10px;font-weight:700">종합 판정</div>
+              <div style="font-size:26px;font-weight:800;color:#8A6A00;margin:2px 0">주의</div>
+              <div class="muted" style="font-size:10px">고위험 패턴 5개 중 <b>2개</b> 충족</div>
+              <div style="margin:10px 0 4px" class="bar"><i style="width:56%;background:linear-gradient(90deg,#00A05C,#E8A200)"></i></div>
+              <div class="cap">※ 본 결과는 사고 확률이 아닌<br><b>고위험 패턴 충족도</b>입니다</div>
+            </div>
+            <div class="card grow">
+              <h5>위험 신호 5종</h5>
+              <div class="signal"><span class="lamp r"></span><b>전세가율 92%</b>&nbsp;<span class="muted">— 사고사례 75%가 80% 초과 구간</span><span class="pill bad" style="margin-left:auto">위험</span></div>
+              <div class="signal"><span class="lamp y"></span><b>지역 사고율 3.1%</b>&nbsp;<span class="muted">— 부산 평균 1.8% (HOUSTA 실집계)</span><span class="pill warn" style="margin-left:auto">주의</span></div>
+              <div class="signal"><span class="lamp y"></span><b>주택유형: 다세대</b>&nbsp;<span class="muted">— 사고 집중 유형</span><span class="pill warn" style="margin-left:auto">주의</span></div>
+              <div class="signal"><span class="lamp g"></span><b>임대인 신호 없음</b>&nbsp;<span class="muted">— 악성임대인 공개명단 미해당·사업자 정상</span><span class="pill ok" style="margin-left:auto">양호</span></div>
+              <div class="signal"><span class="lamp g"></span><b>권리관계 깨끗</b>&nbsp;<span class="muted">— 등기부 근저당·압류 없음</span><span class="pill ok" style="margin-left:auto">양호</span></div>
+            </div>
+          </div>
+          <div class="row" style="margin-top:10px">
+            <div class="card grow">
+              <h5>부산 시군구 사고율 지도</h5>
+              <div class="mapgrid">
+                <b style="background:#CBE9DA">중구</b><b style="background:#A6DCC0">서구</b><b style="background:#F5D9A8;">동구</b><b style="background:#CBE9DA">영도</b><b style="background:#F0B9B9;color:#7A1F1F">남구</b><b style="background:#CBE9DA">북구</b>
+                <b style="background:#A6DCC0">사하</b><b style="background:#CBE9DA">금정</b><b style="background:#F5D9A8">강서</b><b style="background:#CBE9DA">연제</b><b style="background:#F5D9A8">수영</b><b style="background:#A6DCC0">사상</b>
+              </div>
+              <div class="cap">발급건수 대비 사고건수 — HUG 빅데이터 포털 실데이터</div>
+            </div>
+            <div class="card grow">
+              <h5>다음 행동</h5>
+              <div class="col" style="gap:6px">
+                <span class="btn green" style="text-align:center">보증보험 가입 안내 보기</span>
+                <span class="btn ghost" style="text-align:center">계약 전 체크리스트 (안심전세포털)</span>
+                <span class="btn ghost" style="text-align:center">이 결과로 AI 상담 이어가기</span>
+              </div>
+            </div>
+          </div>
+        </main>
+      </div>
+    </div>
+
+    <h3 class="screen-title">2-3 AI 전세상담 <span class="depth-chip">Depth 2</span><span class="flow-chip">핵심 데모 ②</span></h3>
+    <p class="screen-note">답변마다 근거 출처 카드(공식자료=블루 / 유사 상담사례=그린)를 구분 표기. 근거가 없으면 답변하지 않고 상담사 이관 버튼 노출.</p>
+    <div class="frame">
+      <div class="chrome"><span class="dots"><i></i><i></i><i></i></span><span class="urlbar"><b>ansimloop.kr</b>/tenant/counsel</span></div>
+      <div class="ui">
+        <nav class="gnb"><div class="logo">안심<em>루프</em></div>
+          <a>홈</a><a>안심 리포트</a><a class="on">AI 전세상담</a><a>전자계약</a><a>사고 접수</a><a>알림함</a>
+          <span class="role-tag">임차인 · 김세입</span></nav>
+        <main class="row">
+          <div class="grow col">
+            <div class="crumb">AI 전세상담 › <b>대화</b></div>
+            <div class="card grow chat">
+              <div class="bub me">진단에서 전세가율이 92%라고 나왔어요. 계약금 넣기 전인데 어떻게 해야 하나요?</div>
+              <div class="bub ai">전세가율 92%는 사고사례에서 반복되는 고위험 패턴입니다. 계약 전이라면 ① 보증금 감액 협의 ② 전세보증금반환보증 가입 가능 여부 확인 ③ 선순위 권리 재확인을 권합니다. 특히 다세대주택은 보증 가입으로 미반환 위험을 크게 줄일 수 있습니다.
+                <div class="src"><span class="official">공식 · 안심전세포털 깡통전세 예방</span><span class="official">공식 · 보증가입 안내</span><span class="case">사례 · 유사상담 3건</span></div>
+              </div>
+              <div class="bub me">임대인이 “곧 근저당 말소할 테니 걱정 말라”고 하는데요?</div>
+              <div class="bub ai">구두 약속만으로 계약하는 사례에서 분쟁이 자주 발생했습니다. <b>말소 조건을 특약으로 명시</b>하고, 잔금 전 등기부로 말소를 확인하세요. 유사 상담 사례에서는 “잔금일 전 근저당 말소, 미이행 시 계약 해제·배액 배상” 특약이 사용되었습니다.
+                <div class="src"><span class="case">사례 · G03-217 (다세대·근저당)</span><span class="official">공식 · 계약 체결 시 유의사항</span></div>
+              </div>
+            </div>
+            <div class="card" style="display:flex;gap:8px;align-items:center"><span class="muted grow">질문을 입력하세요…</span><span class="btn" style="font-size:10px">전송</span></div>
+          </div>
+          <div style="width:31%" class="col">
+            <div class="card">
+              <h5>이 대화의 분류 <span class="pill info">자동</span></h5>
+              <div style="font-size:11px">분쟁유형: <b>보증금 미반환 예방</b><br>진행단계: <b>계약 전 검토</b></div>
+            </div>
+            <div class="card">
+              <h5>전문 상담이 필요하신가요?</h5>
+              <div class="muted" style="font-size:10.5px;margin-bottom:8px">AI가 답할 수 없는 사안은 아이엔 상담사·변호사 상담으로 연결합니다</div>
+              <span class="btn green" style="font-size:10px;display:block;text-align:center">상담사 이관 요청</span>
+            </div>
+            <div class="card">
+              <h5>함께 본 자료</h5>
+              <div class="muted" style="font-size:10.5px">· 전세사기 유형별 대처방안<br>· 주택임대차보호법 제3조<br>· HUG 보증가입 절차</div>
+            </div>
+          </div>
+        </main>
+      </div>
+    </div>
+
+    <h3 class="screen-title">2-4 전자계약 공동세션 <span class="depth-chip">Depth 2–3</span><span class="flow-chip">상황: 임차인·임대인 동시 접속</span></h3>
+    <p class="screen-note">양측 접속 상태를 상단에 표시. AI 특약 추천은 위험진단 결과·상담사례 빈출 특약에서 생성. 서명 완료 시 계약서 해시를 체인에 앵커링하고 검증 화면(Depth 3)에서 위변조 데모.</p>
+    <div class="frame">
+      <div class="chrome"><span class="dots"><i></i><i></i><i></i></span><span class="urlbar"><b>ansimloop.kr</b>/contract/session/9f3a</span></div>
+      <div class="ui">
+        <nav class="gnb"><div class="logo">안심<em>루프</em></div>
+          <a>홈</a><a>안심 리포트</a><a>AI 전세상담</a><a class="on">전자계약</a><a>사고 접수</a><a>알림함</a>
+          <span class="role-tag">임차인 · 김세입</span></nav>
+        <main>
+          <div class="crumb">전자계약 › <b>공동세션</b></div>
+          <div class="row" style="margin-bottom:10px;align-items:center">
+            <span class="pill ok">● 임차인 김세입 접속중</span>
+            <span class="pill ok">● 임대인 박집주 접속중</span>
+            <span class="muted" style="margin-left:auto;font-size:10px">세션 9F3A · 실시간 동기화</span>
+          </div>
+          <div class="stepper">
+            <div class="done">1 조건 확인</div><div class="done">2 특약 합의</div><div class="now">3 서명</div><div>4 블록체인 기록</div>
+          </div>
+          <div class="row">
+            <div class="card grow">
+              <h5>계약 요약</h5>
+              <table class="t">
+                <tr><td class="muted">주소</td><td>부산 남구 ○○로 12, 301호</td></tr>
+                <tr><td class="muted">보증금</td><td><b>180,000,000원</b></td></tr>
+                <tr><td class="muted">기간</td><td>2026.08.01 – 2028.07.31</td></tr>
+                <tr><td class="muted">합의 특약</td><td>3건 (AI 추천 2건 포함)</td></tr>
+              </table>
+              <div style="margin-top:10px" class="row">
+                <span class="btn green grow" style="text-align:center">서명하기</span>
+                <span class="btn ghost grow" style="text-align:center">계약서 전문 보기</span>
+              </div>
+            </div>
+            <div class="card grow">
+              <h5>AI 특약 추천 <span class="pill info">위험진단 연동</span></h5>
+              <div class="signal"><span class="lamp g"></span><span>잔금일 전 근저당 말소, 미이행 시 계약 해제</span><span class="pill ok" style="margin-left:auto">합의됨</span></div>
+              <div class="signal"><span class="lamp g"></span><span>보증보험 가입 협조 의무 (임대인 서류 제공)</span><span class="pill ok" style="margin-left:auto">합의됨</span></div>
+              <div class="signal"><span class="lamp y"></span><span>계약 기간 중 매매 시 사전 고지</span><span class="pill warn" style="margin-left:auto">대기</span></div>
+              <div class="cap">근거: 상담사례 938건 중 유사 분쟁 빈출 특약</div>
+            </div>
+          </div>
+          <div class="card" style="margin-top:10px">
+            <h5>블록체인 기록 (서명 완료 시)</h5>
+            <div class="hash">contract_hash: 0x8c1f…e29a &nbsp;·&nbsp; anchored @ Polygon(testnet) tx 0x4b77…03d1 &nbsp;·&nbsp; 검증: <b style="color:#8FE3B8">일치 ✓</b></div>
+            <div class="cap">원본 해시 재계산 일치 여부로 위변조를 즉시 판별 — 사고·분쟁 시 증거력 확보</div>
+          </div>
+        </main>
+      </div>
+    </div>
+  </section>
+
+  <!-- ================= 3. 임대인 ================= -->
+  <section>
+    <div class="sec-head"><span class="sec-no">3</span><h2>임대인 — 경량 화면</h2></div>
+    <h3 class="screen-title">3-1 임대인 홈 + 계약 요청함 <span class="depth-chip">Depth 1</span><span class="flow-chip">상황: 계약 요청 수신</span></h3>
+    <p class="screen-note">전자계약의 상대방 역할에 집중. 내 물건의 보증 현황과 만기 일정을 보여줘 “임대인에게도 이득”인 구도를 만든다.</p>
+    <div class="frame">
+      <div class="chrome"><span class="dots"><i></i><i></i><i></i></span><span class="urlbar"><b>ansimloop.kr</b>/landlord</span></div>
+      <div class="ui">
+        <nav class="gnb g-slate"><div class="logo">안심<em>루프</em></div>
+          <a class="on">홈</a><a>전자계약 요청함</a><a>내 물건 관리</a>
+          <span class="role-tag">임대인 · 박집주</span></nav>
+        <main>
+          <div class="crumb">홈</div>
+          <h4>전자계약 요청 1건이 도착했어요</h4>
+          <div class="row">
+            <div class="card grow">
+              <h5>계약 요청함</h5>
+              <table class="t">
+                <tr><th>물건</th><th>임차인</th><th>보증금</th><th>상태</th><th></th></tr>
+                <tr><td>남구 ○○로 12, 301호</td><td>김세입</td><td>1.8억</td><td><span class="pill info">서명 대기</span></td><td><span class="btn" style="font-size:10px;padding:4px 10px">세션 입장</span></td></tr>
+              </table>
+            </div>
+            <div class="card" style="width:32%">
+              <h5>내 보증 현황</h5>
+              <div class="signal"><span class="lamp g"></span>임대보증금보증 유효 2건</div>
+              <div class="signal"><span class="lamp y"></span>만기 60일 이내 1건</div>
+              <div class="cap">만기 도래 시 갱신 안내 알림</div>
+            </div>
+          </div>
+        </main>
+      </div>
+    </div>
+  </section>
+
+  <!-- ================= 4. 상담사 ================= -->
+  <section>
+    <div class="sec-head"><span class="sec-no">4</span><h2>아이엔 상담사 — 상담 효율화</h2></div>
+    <h3 class="screen-title">4-1 상담 큐 + 상담 상세 <span class="depth-chip">Depth 1–2</span><span class="flow-chip">상황: 이관된 상담 처리</span></h3>
+    <p class="screen-note">챗봇이 근거를 찾지 못했거나 임차인이 이관을 요청한 건이 큐로 유입. 분쟁유형·진행단계는 텍스트 분류 모델이 자동 태깅.
+    상세 화면(우측)은 유사사례와 AI 답변 초안으로 상담사의 응대 시간을 줄인다.</p>
+    <div class="frame">
+      <div class="chrome"><span class="dots"><i></i><i></i><i></i></span><span class="urlbar"><b>ansimloop.kr</b>/advisor/queue</span></div>
+      <div class="ui">
+        <nav class="gnb g-amber"><div class="logo">안심<em>루프</em></div>
+          <a class="on">상담 큐</a><a>이관·예약 관리</a>
+          <span class="role-tag">상담사 · 아이엔</span></nav>
+        <main class="row">
+          <div class="grow">
+            <div class="crumb">상담 큐 <b>· 대기 7건</b></div>
+            <div class="card">
+              <table class="t">
+                <tr><th>접수</th><th>요약</th><th>분쟁유형(자동)</th><th>단계(자동)</th><th>우선순위</th></tr>
+                <tr style="background:#FBF7EA"><td>10:24</td><td>보증금 못 받고 이사날짜 임박</td><td><span class="pill bad">보증금 미반환</span></td><td><span class="pill warn">내용증명</span></td><td><b>높음</b></td></tr>
+                <tr><td>10:11</td><td>집이 경매에 넘어갔다는 통지</td><td><span class="pill bad">경매·공매</span></td><td><span class="pill info">상담·검토</span></td><td><b>높음</b></td></tr>
+                <tr><td>09:52</td><td>묵시적 갱신 후 해지 통보 기간</td><td><span class="pill info">일반문의</span></td><td><span class="pill info">상담·검토</span></td><td>보통</td></tr>
+                <tr><td>09:30</td><td>임차권등기 후 이사 가능 여부</td><td><span class="pill warn">임차권등기</span></td><td><span class="pill warn">임차권등기</span></td><td>보통</td></tr>
+              </table>
+            </div>
+          </div>
+          <div style="width:37%" class="col">
+            <div class="card">
+              <h5>선택 건 · 유사사례 <span class="pill ok">3건</span></h5>
+              <div class="signal"><span class="lamp g"></span><span>G05-114 · 미반환→내용증명→<b>지급명령 인용</b></span></div>
+              <div class="signal"><span class="lamp g"></span><span>G02-078 · 미반환→보증이행청구 <b>45일 회수</b></span></div>
+              <div class="signal"><span class="lamp y"></span><span>G07-233 · 미반환→소송 <b>진행중</b></span></div>
+            </div>
+            <div class="card">
+              <h5>AI 답변 초안</h5>
+              <div class="muted" style="font-size:10.5px;border:1px dashed var(--u-line);border-radius:8px;padding:8px">보증보험 가입자이므로 ① 갱신거절 통지 증빙 확보 ② 이행청구 서류 준비… <u>초안 전체 보기</u></div>
+              <div style="margin-top:8px" class="row"><span class="btn grow" style="font-size:10px;text-align:center">초안 사용</span><span class="btn ghost grow" style="font-size:10px;text-align:center">직접 작성</span></div>
+            </div>
+          </div>
+        </main>
+      </div>
+    </div>
+  </section>
+
+  <!-- ================= 5. HUG ================= -->
+  <section>
+    <div class="sec-head"><span class="sec-no">5</span><h2>HUG — 사고 후 회수 (소주제 ①)</h2></div>
+    <p class="sec-note">상황 시나리오: 대위변제가 완료된 채권 수만 건 중 “무엇부터 회수할 것인가”. 회수율·소요기간 예측과 우선순위 스코어로 답한다. 모든 수치에 “합성데이터 기준” 라벨.</p>
+
+    <h3 class="screen-title">5-1 회수 코크핏 <span class="depth-chip">Depth 1</span><span class="flow-chip">핵심 데모 ③</span></h3>
+    <div class="frame">
+      <div class="chrome"><span class="dots"><i></i><i></i><i></i></span><span class="urlbar"><b>ansimloop.kr</b>/hug/cockpit</span></div>
+      <div class="ui">
+        <nav class="gnb g-green"><div class="logo">안심<em>루프</em></div>
+          <a class="on">회수 코크핏</a><a>회수 시뮬레이터</a><a>사고 접수 큐</a><a>지역 위험 모니터</a>
+          <span class="role-tag">HUG 채권관리부</span></nav>
+        <main>
+          <div class="crumb">회수 코크핏 <span class="pill warn" style="margin-left:6px">합성데이터 기준</span></div>
+          <div class="row">
+            <div class="kpi"><div class="k-label">관리 채권</div><div class="k-val">28,961<small>건</small></div></div>
+            <div class="kpi"><div class="k-label">대위변제 잔고</div><div class="k-val">6.2<small>조원</small><span class="delta-up"> ▲</span></div></div>
+            <div class="kpi"><div class="k-label">예상 회수율(중앙값)</div><div class="k-val">75.8<small>%</small></div></div>
+            <div class="kpi"><div class="k-label">예상 배당 소요일(중앙값)</div><div class="k-val">456<small>일</small><span class="delta-dn"> ▼12</span></div></div>
+          </div>
+          <div class="row" style="margin-top:10px">
+            <div class="card grow">
+              <h5>회수 우선순위 상위 채권</h5>
+              <table class="t">
+                <tr><th>채권</th><th>채권구분</th><th>금액</th><th>예상회수율</th><th>등급</th><th>스코어</th></tr>
+                <tr><td>C-88231</td><td>소송대지급금</td><td>4.2억</td><td>96%</td><td><span class="pill ok">HIGH</span></td><td><b>91.2</b></td></tr>
+                <tr><td>C-91077</td><td>구상채권(신상품)</td><td>3.1억</td><td>81%</td><td><span class="pill ok">HIGH</span></td><td><b>84.5</b></td></tr>
+                <tr><td>C-77410</td><td>구상채권</td><td>2.9억</td><td>58%</td><td><span class="pill warn">MED</span></td><td><b>62.0</b></td></tr>
+                <tr><td>C-80066</td><td>구상채권</td><td>1.2억</td><td>31%</td><td><span class="pill bad">LOW</span></td><td><b>28.7</b></td></tr>
+              </table>
+            </div>
+            <div class="card" style="width:34%">
+              <h5>C-77410 · 요인 분석 (SHAP)</h5>
+              <div class="shap">
+                <div class="srow"><span>채권구분=구상</span><span class="bar"><i class="sbar" style="width:72%;background:#D64545"></i></span><span>-0.14</span></div>
+                <div class="srow"><span>물건=다세대</span><span class="bar"><i class="sbar" style="width:55%;background:#D64545"></i></span><span>-0.09</span></div>
+                <div class="srow"><span>강제경매</span><span class="bar"><i class="sbar" style="width:38%;background:#00A05C"></i></span><span>+0.06</span></div>
+                <div class="srow"><span>청구액 구간</span><span class="bar"><i class="sbar" style="width:30%;background:#00A05C"></i></span><span>+0.04</span></div>
+              </div>
+              <div class="cap">예측이 “왜” 나왔는지 설명 — 실무 수용성 확보</div>
+            </div>
+          </div>
+        </main>
+      </div>
+    </div>
+
+    <h3 class="screen-title">5-2 회수 시뮬레이터 <span class="depth-chip">Depth 2</span><span class="flow-chip">발표 킬러 장면</span></h3>
+    <p class="screen-note">동일 처리용량에서 “접수순 처리 vs 우선순위 스코어순 처리”의 회수액·기간을 비교. 가중치 슬라이더는 “HUG 실무 가중치로 추후 튜닝” 전제를 UI로 보여주는 장치.</p>
+    <div class="frame">
+      <div class="chrome"><span class="dots"><i></i><i></i><i></i></span><span class="urlbar"><b>ansimloop.kr</b>/hug/simulator</span></div>
+      <div class="ui">
+        <nav class="gnb g-green"><div class="logo">안심<em>루프</em></div>
+          <a>회수 코크핏</a><a class="on">회수 시뮬레이터</a><a>사고 접수 큐</a><a>지역 위험 모니터</a>
+          <span class="role-tag">HUG 채권관리부</span></nav>
+        <main>
+          <div class="crumb">회수 시뮬레이터 <span class="pill warn" style="margin-left:6px">합성데이터 기준 시뮬레이션</span></div>
+          <div class="row">
+            <div class="card grow">
+              <h5>12개월 누적 회수액 비교</h5>
+              <div class="row" style="align-items:flex-end;height:120px;padding:0 8px;gap:18px">
+                <div class="grow col" style="justify-content:flex-end;gap:4px">
+                  <div style="height:58px;background:#B9CBDB;border-radius:6px 6px 0 0"></div>
+                  <div class="cap" style="text-align:center">접수순<br><b style="color:#3C4F63">1.41조</b></div>
+                </div>
+                <div class="grow col" style="justify-content:flex-end;gap:4px">
+                  <div style="height:96px;background:linear-gradient(180deg,#00C878,#007A46);border-radius:6px 6px 0 0"></div>
+                  <div class="cap" style="text-align:center">스코어순<br><b style="color:#007A46">1.94조 (+37%)</b></div>
+                </div>
+              </div>
+            </div>
+            <div class="card grow">
+              <h5>가중치 설정</h5>
+              <div style="font-size:11px" class="col">
+                <div><div class="muted">예상 회수율</div><div class="bar"><i style="width:60%;background:#0A5CA8"></i></div></div>
+                <div><div class="muted">채권 금액</div><div class="bar"><i style="width:30%;background:#0A5CA8"></i></div></div>
+                <div><div class="muted">소요기간 페널티</div><div class="bar"><i style="width:45%;background:#0A5CA8"></i></div></div>
+              </div>
+              <div class="cap">실무 가중치는 HUG 협의로 재조정 가능한 구조</div>
+              <div style="margin-top:8px"><span class="btn green" style="font-size:10px">재시뮬레이션</span></div>
+            </div>
+          </div>
+          <div class="card" style="margin-top:10px">
+            <h5>평균 회수 소요기간</h5>
+            <div class="row" style="font-variant-numeric:tabular-nums;font-size:11px;align-items:center">
+              <span class="muted">접수순 512일</span>
+              <div class="bar grow"><i style="width:100%;background:#B9CBDB"></i></div>
+              <span class="muted">스코어순 <b style="color:#007A46">431일 (-81일)</b></span>
+              <div class="bar grow"><i style="width:84%;background:#00A05C"></i></div>
+            </div>
+          </div>
+        </main>
+      </div>
+    </div>
+  </section>
+
+  <!-- ================= 6. 토큰 ================= -->
+  <section>
+    <div class="sec-head"><span class="sec-no">6</span><h2>디자인 토큰 — HUG 컬러 시스템</h2></div>
+    <p class="sec-note">블루=신뢰·공공(내비게이션·주 액션), 그린=안심·긍정(안전 신호·HUG 영역·성공 상태), 화이트·스카이=바탕.
+    경고·위험(앰버·레드)은 시맨틱 컬러로 분리해 브랜드 컬러와 섞지 않는다. 역할별로 GNB 색을 달리해 “지금 누구의 화면인가”를 즉시 인지.</p>
+    <div class="tok">
+      <div class="sw"><i style="background:#0A5CA8"></i><p><b>HUG Blue #0A5CA8</b>주 액션·링크·임차인 GNB</p></div>
+      <div class="sw"><i style="background:#0B3D6E"></i><p><b>Deep Blue #0B3D6E</b>내비게이션·해시 패널</p></div>
+      <div class="sw"><i style="background:#00A05C"></i><p><b>HUG Green #00A05C</b>안심·성공·HUG 영역</p></div>
+      <div class="sw"><i style="background:#EAF2F9;border-bottom:1px solid #D8E2EC"></i><p><b>Sky #EAF2F9</b>정보 배경·칩</p></div>
+      <div class="sw"><i style="background:#E7F5EE;border-bottom:1px solid #D8E2EC"></i><p><b>Mint #E7F5EE</b>안전 상태 배경</p></div>
+      <div class="sw"><i style="background:linear-gradient(90deg,#E8A200 50%,#D64545 50%)"></i><p><b>Semantic</b>주의 #E8A200 · 위험 #D64545</p></div>
+    </div>
+  </section>
+
+  <footer>
+    안심루프 UI 시안 v1 · 2026-07-18 · 기획안(솔루션_재정비_기획안_260718.md) 3장 화면 구성 기준.
+    제품 화면은 라이트 테마 확정안이며, 본 문서 자체는 뷰어 테마(라이트/다크)를 따릅니다.
+  </footer>
+</div>

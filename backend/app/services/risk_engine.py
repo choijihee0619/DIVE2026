@@ -64,6 +64,19 @@ class RiskEngineInputs:
     dart_status: str = "missing"
     dart_disclosure_flag: bool | None = None
 
+    # 지역 사고율 (HUG 빅데이터 개방 포털 실집계 — 시군구 최근 3개월 평균)
+    region_risk_status: str = "missing"  # live | missing
+    region_accident_rate_pct: float | None = None
+    region_label: str | None = None  # 예: "부산 남구"
+    region_basis: str | None = None
+
+    # 악성임대인 공개명단 매칭 (법정 공개정보 — 일치 여부·근거만 사용)
+    landlord_disclosure_status: str = "missing"  # live | missing
+    landlord_match_level: str | None = None  # name_sido | name_only | None(불일치)
+    landlord_match_count: int = 0
+    landlord_match_base_date: str | None = None
+    landlord_match_legal_basis: str | None = None
+
 
 @dataclass
 class RiskEngineResult:
@@ -98,6 +111,8 @@ def evaluate(inputs: RiskEngineInputs) -> RiskEngineResult:
         "building_registry": inputs.building_registry_status,
         "business_status": inputs.business_status_source_status,
         "dart": inputs.dart_status,
+        "region_risk": inputs.region_risk_status,
+        "landlord_disclosure": inputs.landlord_disclosure_status,
     }
 
     forced_high = False
@@ -306,6 +321,91 @@ def evaluate(inputs: RiskEngineInputs) -> RiskEngineResult:
             )
     elif inputs.landlord_type == "CORPORATION":
         missing_fields.append("dart_disclosure")
+
+    # --- 지역 사고율 (HUG 실집계 — 시군구 최근 3개월 평균) ---
+    if inputs.region_risk_status == "live" and inputs.region_accident_rate_pct is not None:
+        rate = inputs.region_accident_rate_pct
+        label = inputs.region_label or "해당 지역"
+        basis = inputs.region_basis or "HUG 빅데이터 개방 포털 실집계"
+        if rate >= 3.0:
+            score += 15
+            risk_factors.append(
+                RiskFactorItem(
+                    code="REGION_ACCIDENT_RATE_HIGH",
+                    title="지역 보증사고율 높음",
+                    severity="high",
+                    description=f"{label}의 전세보증 사고율이 {rate:.1f}%로 전국 평균(1.6%)을 크게 웃돕니다. ({basis})",
+                )
+            )
+            risk_reasons.append("지역 보증사고율 높음")
+            recommended_actions.append("해당 지역은 사고 다발 지역이므로 보증보험 가입을 강력 권장합니다.")
+        elif rate >= 2.0:
+            score += 8
+            risk_factors.append(
+                RiskFactorItem(
+                    code="REGION_ACCIDENT_RATE_MEDIUM",
+                    title="지역 보증사고율 다소 높음",
+                    severity="medium",
+                    description=f"{label}의 전세보증 사고율이 {rate:.1f}%로 전국 평균(1.6%)보다 높습니다. ({basis})",
+                )
+            )
+            risk_reasons.append("지역 보증사고율 평균 상회")
+        elif rate < 1.0:
+            positive_factors.append(
+                RiskFactorItem(
+                    code="REGION_ACCIDENT_RATE_LOW",
+                    title="지역 보증사고율 낮음",
+                    severity="low",
+                    description=f"{label}의 전세보증 사고율은 {rate:.1f}%로 전국 평균(1.6%)보다 낮습니다. ({basis})",
+                )
+            )
+    else:
+        missing_fields.append("region_accident_rate")
+
+    # --- 악성임대인 공개명단 매칭 (법정 공개정보) ---
+    if inputs.landlord_disclosure_status == "live":
+        if inputs.landlord_match_level == "name_sido":
+            score += 30
+            forced_high = True
+            risk_factors.append(
+                RiskFactorItem(
+                    code="LANDLORD_DISCLOSURE_MATCH",
+                    title="악성임대인 공개명단 일치",
+                    severity="high",
+                    description=(
+                        f"임대인 성명과 주소 지역이 {inputs.landlord_match_legal_basis}에 따른 공개명단과 "
+                        f"일치합니다(기준일 {inputs.landlord_match_base_date}). 계약 진행 전 반드시 사실관계를 확인하세요."
+                    ),
+                )
+            )
+            risk_reasons.append("악성임대인 공개명단 일치")
+            unresolvable_risks.append("공개명단 등재 임대인과의 계약은 보증금 미반환 위험이 매우 높습니다.")
+        elif inputs.landlord_match_level == "name_only":
+            score += 15
+            risk_factors.append(
+                RiskFactorItem(
+                    code="LANDLORD_DISCLOSURE_NAME_MATCH",
+                    title="악성임대인 명단 동명 확인",
+                    severity="medium",
+                    description=(
+                        f"임대인과 같은 성명이 {inputs.landlord_match_legal_basis} 공개명단에 있습니다"
+                        f"(기준일 {inputs.landlord_match_base_date}). 동명이인일 수 있으므로 주소·신분 확인이 필요합니다."
+                    ),
+                )
+            )
+            risk_reasons.append("악성임대인 명단 동명 존재")
+            resolvable_risks.append("임대인 신분증·등기부 소유자 대조로 동명이인 여부를 확인하세요.")
+        else:
+            positive_factors.append(
+                RiskFactorItem(
+                    code="LANDLORD_DISCLOSURE_CLEAR",
+                    title="악성임대인 명단 미해당",
+                    severity="low",
+                    description="임대인이 상습 채무불이행자·보증금 미반환 임대사업자 공개명단에서 확인되지 않았습니다.",
+                )
+            )
+    else:
+        missing_fields.append("landlord_disclosure")
 
     # --- 전세보증보험(항상 권장) ---
     required_documents.append("전세보증보험 가입 확인서")

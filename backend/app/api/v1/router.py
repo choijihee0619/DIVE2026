@@ -2,7 +2,24 @@ from __future__ import annotations
 
 from fastapi import APIRouter
 
-from app.api.v1.endpoints import auth, blockchain, contracts, evidence, health, landlords, properties, rag, risk, users
+from app.api.v1.endpoints import (
+    auth,
+    blockchain,
+    contracts,
+    counsel_queue,
+    esign,
+    evidence,
+    health,
+    hug,
+    incidents,
+    landlords,
+    ml,
+    notifications,
+    properties,
+    rag,
+    risk,
+    users,
+)
 
 api_router = APIRouter()
 
@@ -16,3 +33,9 @@ api_router.include_router(evidence.router)
 api_router.include_router(risk.router)
 api_router.include_router(rag.router)
 api_router.include_router(blockchain.router)
+api_router.include_router(ml.router)
+api_router.include_router(hug.router)
+api_router.include_router(incidents.router)
+api_router.include_router(counsel_queue.router)
+api_router.include_router(esign.router)
+api_router.include_router(notifications.router)

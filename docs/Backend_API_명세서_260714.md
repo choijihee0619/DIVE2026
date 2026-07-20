@@ -1778,3 +1778,81 @@ REQ-SCHEDULER:
 | 13 | Definition of Done | Y(35장) |
 | 14 | Markdown/Mermaid 문법 오류 없음 | 저장 후 재검증 예정(39.1절) |
 | 15 | UTF-8 저장 | 저장 후 재검증 예정 |
+
+---
+
+## 40. 구현 동기화 (2026-07-20)
+
+이 장은 2026-07-20 기준 **실제 구현된 코드**와 본 설계 문서의 편차를 기록한다. 17장 설계표와
+다른 부분은 이 장이 우선한다. 전체 테스트: `backend/tests` 42개 통과.
+
+### 40.1 신규 구현 엔드포인트
+
+| Method/Path | 권한 | 내용 | 파일 | 테스트 |
+|---|---|---|---|---|
+| POST /api/v1/ml/recovery/predict | hug_admin, system_admin | 채권 단건 회수율·등급(LOW/MED/HIGH)·소요일·우선순위 스코어(포트폴리오 백분위)·SHAP 상위3요인 | `endpoints/ml.py`, `services/ml_service.py` | test_ml_hug.py |
+| POST /api/v1/ml/counsel/classify | advisor, hug_admin, system_admin | 상담 텍스트 → 분쟁유형/진행단계 top3 확률 (설계의 mlCounselPredict 대응) | 〃 | 〃 |
+| GET /api/v1/ml/models/info | advisor, hug_admin, system_admin | joblib 모델 목록 + 학습 지표(ml_metrics_*.json) | 〃 | 〃 |
+| GET /api/v1/hug/dashboard/summary | hug_admin, system_admin | KPI: 채권수·청구총액·기대회수총액·회수율/소요일 중앙값·등급분포·상품별 잔고 | `endpoints/hug.py`, `services/hug_dashboard_service.py` | 〃 |
+| GET /api/v1/hug/dashboard/priority | 〃 | 우선순위 스코어 내림차순 채권 목록 (grade/claim_type 필터, 페이지네이션) | 〃 | 〃 |
+| GET /api/v1/hug/dashboard/region-risk | 〃 | 시군구별 실집계 사고율(HOUSTA) 지도 데이터 (sido 필터) | 〃 | 〃 |
+| GET /api/v1/hug/dashboard/issuance | 〃 | 발급 시계열 (sido/housing_type 필터) | 〃 | 〃 |
+| GET /api/v1/hug/dashboard/victims | 〃 | 전세사기피해주택 시군구 분포 (year 필터) | 〃 | 〃 |
+| POST /api/v1/incidents | tenant | 사고 접수(유형 5종). 계약 연결 시 contract_status=IncidentReported 전이+타임라인 기록 | `endpoints/incidents.py`, `services/incident_service.py` | test_incidents_counsel_notifications.py |
+| GET /api/v1/incidents | tenant(본인)/hug_admin(전체) | 상태·유형 필터 목록 | 〃 | 〃 |
+| GET /api/v1/incidents/{id} | 본인, advisor, hug_admin | 상세+타임라인+상태별 next_steps(포털 피해지원 절차 기반) | 〃 | 〃 |
+| PATCH /api/v1/incidents/{id}/status | hug_admin, system_admin | Received→Reviewing→TransferredToRecovery→Closed 전이 검증, 위반 시 422 | 〃 | 〃 |
+| POST /api/v1/counsel-queue | tenant, landlord | 상담 이관 접수. ML 자동분류 태깅+우선순위 규칙(high/normal) | `endpoints/counsel_queue.py`, `services/counsel_queue_service.py` | 〃 |
+| GET /api/v1/counsel-queue | advisor·hug(전체, high→오래된순) / tenant(본인) | 상태·우선순위 필터 | 〃 | 〃 |
+| GET /api/v1/counsel-queue/{id} | 〃 | 상세 (설계의 getCounselDetail 대응, prefix 통일) | 〃 | 〃 |
+| PATCH /api/v1/counsel-queue/{id} | advisor, hug_admin, system_admin | Waiting→InProgress→Answered→Closed + 답변 등록(Answered 시 요청자 알림) | 〃 | 〃 |
+| GET /api/v1/notifications | 로그인 전체(본인) | 목록+unread_count (unread_only 필터) | `endpoints/notifications.py`, `services/notification_service.py` | 〃 |
+| PATCH /api/v1/notifications/{id}/read | 〃 | 읽음 처리 (설계는 POST /read였으나 PATCH로 통일) | 〃 | 〃 |
+| PATCH /api/v1/notifications/read-all | 〃 | 전체 읽음 | 〃 | 〃 |
+| POST /api/v1/notifications/demo-seed | 〃 (MOCK_MODE 한정) | 데모용 샘플 알림 3종(등기변동·확정일자·보증만기, 본문에 "(모의 알림)" 표기) | 〃 | 〃 |
+
+### 40.2 설계 대비 주요 편차
+
+1. **ML 서빙 방식**: 19장의 별도 ML Inference 서비스 대신, FastAPI 프로세스 내 joblib 로드
+   + 스레드풀 추론으로 구현했다(`DATA_DIR` 설정으로 아티팩트 경로 주입). `/ml/risk/predict`,
+   `/ml/duration/predict`는 미구현 — 위험진단은 rule-based 엔진이 담당하고 소요기간은
+   recovery/predict 응답에 포함된다.
+2. **HUG 대시보드**: 설계의 단일 `GET /hug/dashboard` 대신 용도별 5개 서브경로로 분리했다.
+   데이터 소스는 DB가 아니라 `processed/` 산출물 CSV(프로세스 캐시)다.
+3. **위험진단 신호 2종 추가**(설계 외 확장): `risk_engine`에 ①지역 사고율(HOUSTA 실집계,
+   adm_cd 5자리→주소 토큰 순 매칭, ≥3.0% high/≥2.0% medium) ②악성임대인 공개명단 매칭
+   (name_sido 일치 시 +30·HIGH 강제, name_only는 +15·동명이인 안내)을 추가했다.
+   `source_status`에 `region_risk`, `landlord_disclosure` 키가 추가되었다.
+4. **알림 생성원**: 24장의 D-90 스케줄러 연동 대신 도메인 이벤트(사고 접수/상태 변경,
+   상담 답변)와 demo-seed로 한정했다(모니터링 배치는 미구현).
+5. **공용 데이터 로더**: `services/public_data.py`가 HOUSTA·악성임대인·우선순위 CSV를
+   glob 최신 파일 기준으로 lru_cache 로드한다. 파일 부재 시 신호 missing 처리(서비스 불사).
+
+### 40.3 신규 컬렉션
+
+| Collection | 인덱스 | 비고 |
+|---|---|---|
+| incidents | (reporter_user_id, created_at desc), (status) | timeline 배열 내장 |
+| counsel_queue | (status, priority_rank, created_at), (requester_user_id) | classification 내장, priority_rank 0=high |
+| notifications | (user_id, created_at desc), (user_id, is_read) | |
+
+### 40.4 등기부 조회·전자계약 (2026-07-20 추가 구현)
+
+| Method/Path | 권한 | 내용 |
+|---|---|---|
+| POST /api/v1/properties/{id}/registry/refresh | 로그인 전체 | **CODEF 샌드박스 실호출**(OAuth+RSA 암호화 password) → 등기부 파싱(채권최고액 dedupe 합산, 활성 압류·가압류 행 집계, 권리 키워드) → registry_snapshots에 `source_system="api_live"` 저장. `?deposit=` 지정 시 보증금 대비 채권최고액 비율 계산, `?scenario=normal|mortgage|complex_rights`는 mock 경로. 실패 시 mock 폴백 |
+| GET /api/v1/properties/{id}/registry/latest | 로그인 전체 | 최신 등기부 스냅샷 조회 |
+| POST /api/v1/esign/sessions | tenant(본인 계약) | 전자계약 공동세션 생성. **AI 특약 추천** 자동 생성(위험진단 risk_factors 코드→특약 템플릿 + 상담사례 빈출 특약 2종), 4자리 세션 코드 발급 |
+| POST /api/v1/esign/sessions/join | landlord | 세션 코드로 참여. 계약 landlord_user_id 미지정 시 바인딩 |
+| GET /api/v1/esign/sessions/{id} | 세션 당사자 | 상태 폴링(접속·특약·서명·앵커) — 동시접속 표시는 폴링 기반 |
+| POST /api/v1/esign/sessions/{id}/terms | 세션 당사자 | 특약 수동 제안(제안자 자동 agree) |
+| POST /api/v1/esign/sessions/{id}/terms/{term_id} | 세션 당사자 | agree/withdraw. 상대방 제안 특약은 철회 불가(403), 양측 agree 시 확정 |
+| POST /api/v1/esign/sessions/{id}/sign | 세션 당사자 | 서명. 양측 미접속(409)·미합의 특약 존재(409) 차단. **양측 서명 완료 시 canonical JSON 계약문서의 SHA-256을 BlockchainService로 자동 앵커링**(event_type=ContractSigned, 멱등) → 계약 상태 ContractFinalized + 타임라인 + 양측 알림 |
+| POST /api/v1/esign/contracts/{contract_id}/verify | 당사자·advisor·hug_admin | 저장 문서 해시 재계산 vs 온체인(모의) 해시 비교. `tampered_fields`(예: {"deposit": 200000000}) 지정 시 변조 불일치 데모 |
+
+- CODEF 검증 결과(2026-07-20): 샌드박스 OAuth 200, real-estate-register/status CF-00000 성공.
+  샌드박스는 주소와 무관하게 고정 샘플 등기부(집합건물·근저당 8건 합산 2.8억·활성 압류 6행)를
+  반환하므로 데모에 충분. 파서는 휴리스틱이며 features.parser_note에 한계 명시.
+- `.env`의 CODEF 키 4종이 비어 있던 문제를 원본(backend_env_설정_260714.txt)에서 보충함.
+- 신규 컬렉션 `esign_sessions` 인덱스: (contract_id), (session_code).
+- 블록체인은 BLOCKCHAIN_MODE=mock 기본(오프라인 시연 가능). Polygon 어댑터는 스켈레톤 유지.

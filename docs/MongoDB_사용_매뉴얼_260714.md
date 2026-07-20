@@ -233,7 +233,7 @@ MONGODB_VECTOR_INDEX=rag_chunks_vector_index
 임베딩 생성과 인덱스 설정:
 
 ```bash
-/usr/local/bin/python3 scripts/embed_rag_chunks.py
+backend/.venv/bin/python scripts/embed_rag_chunks.py
 ```
 
 이 스크립트는 이미 같은 모델·차원·원문 해시로 처리된 청크를 건너뛴다. 전체를 다시 만들 때만 `--force`를 사용한다.

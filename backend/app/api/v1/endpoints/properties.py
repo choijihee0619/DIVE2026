@@ -43,3 +43,32 @@ async def get_property(
 ):
     result = await PropertyService(db).get(property_id)
     return success_response(result, request_id)
+
+
+@router.post("/{property_id}/registry/refresh", status_code=201)
+async def refresh_registry(
+    property_id: str,
+    deposit: int | None = Query(None, ge=0, description="보증금(원). 지정 시 보증금 대비 채권최고액 비율 계산"),
+    scenario: str | None = Query(None, description="mock 시나리오(normal|mortgage|complex_rights). 미지정 시 CODEF 실호출"),
+    current_user: CurrentUser = Depends(get_current_user),
+    db: AsyncIOMotorDatabase = Depends(get_db),
+    request_id: str = Depends(get_request_id),
+):
+    """주소 기반 등기부 조회 → registry_snapshots 저장. 실패 시 mock 폴백."""
+    from app.services.registry_service import RegistryService
+
+    result = await RegistryService(db).refresh(property_id, deposit=deposit, scenario=scenario)
+    return success_response(result, request_id, status_code=201)
+
+
+@router.get("/{property_id}/registry/latest")
+async def get_latest_registry(
+    property_id: str,
+    current_user: CurrentUser = Depends(get_current_user),
+    db: AsyncIOMotorDatabase = Depends(get_db),
+    request_id: str = Depends(get_request_id),
+):
+    from app.services.registry_service import RegistryService
+
+    result = await RegistryService(db).latest(property_id)
+    return success_response(result, request_id)

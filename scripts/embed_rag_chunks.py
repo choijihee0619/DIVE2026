@@ -13,7 +13,7 @@ from pathlib import Path
 import certifi
 from openai import OpenAI
 from pymongo import MongoClient, UpdateOne
-from pymongo.errors import OperationFailure
+from pymongo.errors import OperationFailure, ServerSelectionTimeoutError
 from pymongo.operations import SearchIndexModel
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -190,7 +190,22 @@ def main() -> int:
     index_name = env.get("MONGODB_VECTOR_INDEX", "rag_chunks_vector_index").strip()
 
     mongo = MongoClient(uri, tlsCAFile=certifi.where(), serverSelectionTimeoutMS=15000)
-    mongo.admin.command("ping")
+    try:
+        mongo.admin.command("ping")
+    except ServerSelectionTimeoutError as exc:
+        print("MongoDB Atlas 연결 실패.", file=sys.stderr)
+        print(
+            "Atlas의 Security > Network Access에서 현재 공인 IP를 허용하고, "
+            "클러스터가 실행 중인지 확인하세요.",
+            file=sys.stderr,
+        )
+        print(
+            "또한 방화벽에서 Atlas 호스트의 TCP 27017 아웃바운드 연결이 "
+            "허용되어야 합니다.",
+            file=sys.stderr,
+        )
+        print(f"원본 오류: {exc}", file=sys.stderr)
+        return 2
     collection = mongo[db_name].rag_chunks
     pending = select_pending(collection, model, dimensions, args.force)
     if args.limit > 0:

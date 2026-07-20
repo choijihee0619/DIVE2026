@@ -27,7 +27,9 @@
       "Bash(pip show *)",
       "Bash(ps -o pid,time,stat,%cpu -p 74178)",
       "Bash(sort -rk3)",
-      "Bash(ls -la /Users/choijihee/Projects/DIVE2026 2>&1 || echo \"TARGET_NOT_EXISTS\")"
+      "Bash(ls -la /Users/choijihee/Projects/DIVE2026 2>&1 || echo \"TARGET_NOT_EXISTS\")",
+      "Bash(claude plugin *)",
+      "WebFetch(domain:github.com)"
     ]
   }
 }

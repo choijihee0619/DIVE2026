@@ -55,6 +55,15 @@ async def ensure_indexes(db: AsyncIOMotorDatabase) -> None:
     await safe_index("rag_chunks", [("chunk_id", ASCENDING)], unique=True, sparse=True)
     await safe_index("rag_search_logs", [("user_id", ASCENDING), ("created_at", DESCENDING)])
 
+    await safe_index("incidents", [("reporter_user_id", ASCENDING), ("created_at", DESCENDING)])
+    await safe_index("incidents", [("status", ASCENDING)])
+    await safe_index("counsel_queue", [("status", ASCENDING), ("priority_rank", ASCENDING), ("created_at", ASCENDING)])
+    await safe_index("counsel_queue", [("requester_user_id", ASCENDING)])
+    await safe_index("notifications", [("user_id", ASCENDING), ("created_at", DESCENDING)])
+    await safe_index("notifications", [("user_id", ASCENDING), ("is_read", ASCENDING)])
+    await safe_index("esign_sessions", [("contract_id", ASCENDING)])
+    await safe_index("esign_sessions", [("session_code", ASCENDING)])
+
     await safe_index(
         "blockchain_transactions",
         [("event_type", ASCENDING), ("reference_id", ASCENDING)],

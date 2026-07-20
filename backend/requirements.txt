@@ -17,3 +17,11 @@ certifi==2024.8.30
 pytest==8.3.3
 pytest-asyncio==0.24.0
 mongomock-motor==0.0.34
+
+# ML 추론·대시보드 (scripts/train_ml_models.py 산출물 서빙)
+pandas>=2.2
+joblib>=1.4
+scikit-learn>=1.5
+lightgbm>=4.5
+shap>=0.46
+numpy>=2.0

@@ -1,0 +1,9 @@
+﻿kind,region,year,cnt,amt_100m_won
+accident,서울,2020,988,2111.0
+accident,서울,2021,1217,2809.0
+accident,서울,2022,1870,4548.0
+accident,서울,2023,5065,13204.0
+subrogation,서울,2020,951,2054.90317672
+subrogation,서울,2021,1097,2496.059214
+subrogation,서울,2022,1514,3670.2873637
+subrogation,서울,2023,4229,10902.82835

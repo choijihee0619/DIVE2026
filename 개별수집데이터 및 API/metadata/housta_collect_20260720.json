@@ -1,0 +1,102 @@
+[
+  {
+    "articleId": 34712,
+    "slug": "지역별_전세보증_사고현황",
+    "desc": "시도·시군구별 최근 3개월 평균 사고건수·금액·사고율(%)",
+    "datago_url": "https://www.data.go.kr/data/15134221/fileData.do",
+    "status": "ok",
+    "orig_filename": "45. ì£¼íëìë³´ì¦ê³µì¬_ì§ì­ë³ ì ì¸ê¸ë°íë³´ì¦ ì¬ê³ íí©_20250831.xlsx",
+    "saved": "개별수집데이터 및 API/raw/housta/raw_housta_20260720_지역별_전세보증_사고현황.xlsx",
+    "bytes": 28153
+  },
+  {
+    "articleId": 34707,
+    "slug": "전세보증_발급현황",
+    "desc": "전세보증금반환보증 발급현황(정상 모수)",
+    "datago_url": "https://www.data.go.kr/data/15002531/fileData.do",
+    "status": "ok",
+    "orig_filename": "ì£¼íëìë³´ì¦ê³µì¬_ì ì¸ë³´ì¦ê¸ë°íë³´ì¦ ë°ê¸íí©_26ë 1ë¶ê¸°ê¹ì§.csv",
+    "saved": "개별수집데이터 및 API/raw/housta/raw_housta_20260720_전세보증_발급현황.csv",
+    "bytes": 36095
+  },
+  {
+    "articleId": 34706,
+    "slug": "전세보증_상세현황",
+    "desc": "전세보증금반환보증 상세현황",
+    "datago_url": "https://www.data.go.kr/data/15033824/fileData.do",
+    "status": "ok",
+    "orig_filename": "ì£¼íëìë³´ì¦ê³µì¬_ì ì¸ë³´ì¦ì² ìì¸ë´ì­_26ë 1ë¶ê¸°ê¹ì§.csv",
+    "saved": "개별수집데이터 및 API/raw/housta/raw_housta_20260720_전세보증_상세현황.csv",
+    "bytes": 409065
+  },
+  {
+    "articleId": 37002,
+    "slug": "서울_연도별_사고_대위변제",
+    "desc": "연도별 서울특별시 사고 및 대위변제 현황",
+    "datago_url": "https://www.data.go.kr/data/15139307/fileData.do",
+    "status": "ok",
+    "orig_filename": "ì£¼íëìë³´ì¦ê³µì¬_ì°ëë³ ì ì¸ë³´ì¦ê¸ë°íë³´ì¦ ìì¸í¹ë³ì ì¬ê³  íí©.xlsx",
+    "saved": "개별수집데이터 및 API/raw/housta/raw_housta_20260720_서울_연도별_사고_대위변제.xlsx",
+    "bytes": 13779
+  },
+  {
+    "articleId": 35499,
+    "slug": "경공매지원_피해주택_소재지",
+    "desc": "경공매지원서비스 신청자의 전세사기피해주택 소재지(시군구)",
+    "datago_url": "https://www.data.go.kr/data/15139145/fileData.do",
+    "status": "ok",
+    "orig_filename": "âê²½ê³µë§¤ì§ììë¹ì¤ ì ì²­ìì ì ì¸ì¬ê¸°í¼í´ì£¼í ìì¬ì§íí©(ìêµ°êµ¬ê¸°ì¤)_251231ê¸°ì¤.xlsx",
+    "saved": "개별수집데이터 및 API/raw/housta/raw_housta_20260720_경공매지원_피해주택_소재지.xlsx",
+    "bytes": 22830
+  },
+  {
+    "articleId": 34713,
+    "slug": "안심대출_신청_사고건수",
+    "desc": "전세금안심대출보증 신청건수·보증사고건수 및 금액",
+    "datago_url": "https://www.data.go.kr/data/15128044/fileData.do",
+    "status": "ok",
+    "orig_filename": "ì ì¸ê¸ìì¬ëì¶ë³´ì¦ ì ì²­ê±´ì ë° ë³´ì¦ì¬ê³ ê±´ì ë° ê¸ì¡.csv",
+    "saved": "개별수집데이터 및 API/raw/housta/raw_housta_20260720_안심대출_신청_사고건수.csv",
+    "bytes": 354
+  },
+  {
+    "articleId": 34711,
+    "slug": "안심대출_발급현황",
+    "desc": "전세금안심대출보증 발급현황",
+    "datago_url": "https://www.data.go.kr/data/15134019/fileData.do",
+    "status": "ok",
+    "orig_filename": "(250825) ì ì¸ê¸ìì¬ëì¶ë³´ì¦ ë°ê¸íí©.csv",
+    "saved": "개별수집데이터 및 API/raw/housta/raw_housta_20260720_안심대출_발급현황.csv",
+    "bytes": 258
+  },
+  {
+    "articleId": 36986,
+    "slug": "임대보증_법인_발급현황",
+    "desc": "임대보증금보증(사용검사 후_법인) 발급현황",
+    "datago_url": "https://www.data.go.kr/data/15149825/fileData.do",
+    "status": "ok",
+    "orig_filename": "ì£¼íëìë³´ì¦ê³µì¬_ìëë³´ì¦ê¸ë³´ì¦(ì¬ì©ê²ì¬í_ë²ì¸) ë°ê¸íí©_20241231.csv",
+    "saved": "개별수집데이터 및 API/raw/housta/raw_housta_20260720_임대보증_법인_발급현황.csv",
+    "bytes": 142
+  },
+  {
+    "articleId": 36982,
+    "slug": "임대보증_개인_발급현황",
+    "desc": "개인임대사업자 임대보증금보증 발급현황",
+    "datago_url": "https://www.data.go.kr/data/15149819/fileData.do",
+    "status": "ok",
+    "orig_filename": "ì£¼íëìë³´ì¦ê³µì¬_ê°ì¸ìëì¬ìì ìëë³´ì¦ê¸ë³´ì¦ ë°ê¸íí©_20241231.csv",
+    "saved": "개별수집데이터 및 API/raw/housta/raw_housta_20260720_임대보증_개인_발급현황.csv",
+    "bytes": 132
+  },
+  {
+    "articleId": 36998,
+    "slug": "전세관련_현황",
+    "desc": "전세관련 현황",
+    "datago_url": "https://www.data.go.kr/data/15144220/fileData.do",
+    "status": "ok",
+    "orig_filename": "ì£¼íëìë³´ì¦ê³µì¬_ì ì¸ê´ë ¨ íí©_20250531.xlsx",
+    "saved": "개별수집데이터 및 API/raw/housta/raw_housta_20260720_전세관련_현황.xlsx",
+    "bytes": 38132
+  }
+]

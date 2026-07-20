@@ -71,6 +71,26 @@ class Settings(BaseSettings):
     )
     polygon_chain_id: int = Field(default=80002, validation_alias="POLYGON_CHAIN_ID")
 
+    # --- CODEF 등기부 (샌드박스 검증 완료 2026-07-20) ---
+    codef_env: str = Field(default="sandbox", validation_alias="CODEF_ENV")
+    codef_sandbox_client_id: str = Field(default="", validation_alias="CODEF_SANDBOX_CLIENT_ID")
+    codef_sandbox_client_secret: str = Field(default="", validation_alias="CODEF_SANDBOX_CLIENT_SECRET")
+    codef_demo_client_id: str = Field(default="", validation_alias="CODEF_DEMO_CLIENT_ID")
+    codef_demo_client_secret: str = Field(default="", validation_alias="CODEF_DEMO_CLIENT_SECRET")
+    codef_oauth_url: str = Field(default="https://oauth.codef.io/oauth/token", validation_alias="CODEF_OAUTH_URL")
+    codef_sandbox_base_url: str = Field(default="https://sandbox.codef.io", validation_alias="CODEF_SANDBOX_BASE_URL")
+    codef_demo_base_url: str = Field(default="https://development.codef.io", validation_alias="CODEF_DEMO_BASE_URL")
+    codef_public_key_path: str = Field(default="secrets/codef_public_key.pem", validation_alias="CODEF_PUBLIC_KEY_PATH")
+    # 샌드박스 열람용 더미 비밀번호(실계정 아님). 운영 전환 시 사용자 입력으로 대체.
+    codef_register_password: str = Field(default="dive2026!", validation_alias="CODEF_REGISTER_PASSWORD")
+
+    # --- 수집 데이터/ML 아티팩트 경로 ---
+    # 기본값은 저장소 루트의 "개별수집데이터 및 API". 배포 환경에서는 DATA_DIR로 재지정한다.
+    data_dir: str = Field(
+        default=str(BACKEND_DIR.parent / "개별수집데이터 및 API"),
+        validation_alias="DATA_DIR",
+    )
+
     # --- CORS ---
     cors_allow_origins: str = Field(default="*", validation_alias="CORS_ALLOW_ORIGINS")
 

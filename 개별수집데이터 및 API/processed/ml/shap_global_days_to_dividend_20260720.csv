@@ -1,0 +1,8 @@
+﻿feature,label,mean_abs_shap
+filing_year,경공매 신청연도,51.424806312832494
+incurred_gap_days,신청→채권발생 간격,15.961758706389865
+log_incurred,발생금액,14.260649752778017
+filing_month,경공매 신청월,13.940674408786991
+log_claimed,청구금액,13.149531677298087
+claim_type,채권구분,6.234841937096568
+product_name,상품,1.6843419792928669

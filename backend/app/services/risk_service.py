@@ -14,6 +14,7 @@ from app.repositories.risk_repository import (
     RiskAssessmentRepository,
 )
 from app.schemas.risk import RiskAssessmentResponse, RiskDiagnoseRequest, RiskFactor
+from app.services import public_data
 from app.services.risk_engine import RiskEngineInputs, evaluate
 from app.utils.datetime_utils import now_kst_iso, new_uuid
 
@@ -91,6 +92,26 @@ class RiskService:
                 dart_status = "live"
                 dart_disclosure_flag = bool(landlord_doc.get("dart_corp_name"))
 
+        # --- 신규 신호 1: 지역 사고율 (HUG 빅데이터 개방 포털 실집계, 파일 캐시 조회) ---
+        address = property_doc.get("address") or {}
+        road_address = address.get("road_address")
+        adm_cd = address.get("adm_cd")
+        region_row = public_data.find_region_row(road_address, adm_cd)
+        region_status = "live" if region_row else "missing"
+        region_rate = region_label = None
+        if region_row:
+            region_rate = float(region_row["accident_rate_pct"])
+            sigungu = region_row.get("sigungu", "")
+            region_label = f"{region_row.get('sido', '')} {sigungu if sigungu != '소계' else ''}".strip()
+
+        # --- 신규 신호 2: 악성임대인 공개명단 매칭 (법정 공개정보 — 일치 여부만) ---
+        landlord_name = (landlord_doc or {}).get("display_name")
+        disclosure_status = "missing"
+        landlord_match = None
+        if landlord_name and public_data.bad_landlords() is not None:
+            disclosure_status = "live"
+            landlord_match = public_data.match_bad_landlord(landlord_name, road_address)
+
         engine_inputs = RiskEngineInputs(
             deposit=payload.deposit,
             landlord_type=payload.landlord_type.value,
@@ -108,6 +129,15 @@ class RiskService:
             business_closed_flag=business_closed_flag,
             dart_status=dart_status,
             dart_disclosure_flag=dart_disclosure_flag,
+            region_risk_status=region_status,
+            region_accident_rate_pct=region_rate,
+            region_label=region_label,
+            region_basis=public_data.region_risk_basis() if region_row else None,
+            landlord_disclosure_status=disclosure_status,
+            landlord_match_level=(landlord_match or {}).get("match_level"),
+            landlord_match_count=(landlord_match or {}).get("count", 0),
+            landlord_match_base_date=(landlord_match or {}).get("base_date"),
+            landlord_match_legal_basis=(landlord_match or {}).get("legal_basis"),
         )
         result = evaluate(engine_inputs)
 

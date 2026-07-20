@@ -22,3 +22,21 @@ RAG용 데이터는 `processed/rag/rag_chunks_260714.jsonl`(938건 상담 -> 1,0
 - CODEF는 토큰 발급까지만 성공한 상태다. 실제 등기부등본 상품 API 호출과 결과 파싱은 아직 구현/검증 전이므로 등기부 권리관계 Feature(`mortgage_ratio`, `rights_burden_ratio`, `has_seizure`)는 계속 `mock_registry_*.json`을 사용한다.
 - 공시가격 3종은 디지털트윈국토/VWorld 인증키로 확인되었고, 등록 서비스 URL(`https://www.khug.or.kr/index.jsp`)은 API endpoint가 아니다. 실제 API URL/레이어명 및 key/domain 또는 Referer 처리 방식 확인 전까지 `mock_official_price_success.json`을 사용한다.
 - 개발 시작에는 충분하다. 다만 RiskClassification의 권리관계·담보가치 Feature는 live가 아니라 mock 기반이므로 PoC/화면/파이프라인 개발용으로 쓰고, 성능 검증용 학습 데이터로 과해석하지 않는다.
+
+## 2026-07-20 갱신 — ML 모델 학습 완료 (`scripts/train_ml_models.py`)
+
+합성데이터/비식별 상담데이터 기준 패턴 학습. 실제 HUG 성능이 아니며, 실데이터 확보 시 동일 파이프라인으로 재학습한다.
+
+| 모델 | 데이터 | 테스트 성능 | 산출물 |
+|---|---|---|---|
+| 예상 회수율 (LightGBM 회귀) | 배당내역 28,961 | MAE 0.113 · R² 0.40 · 등급(LOW/MED/HIGH) 정확도 72% | `models/recovery_ratio_lgbm.joblib` |
+| 예상 배당 소요기간 (LightGBM 회귀) | 〃 (음수 소요일 38건 제외) | MAE 101일 · 중앙절대오차 79일 | `models/days_to_dividend_lgbm.joblib` |
+| 회수 우선순위 스코어 (파생) | 위 2모델 예측 | 가중치 회수기대액 0.6 / 신속성 0.4 (HUG 협의로 조정 가능) | `recovery_priority_scores_20260720.csv` (28,961건, 건별 상위 3 SHAP 요인 포함 — HUG 코크핏 데모용) |
+| 분쟁유형 분류 (TF-IDF char 2-4 + LogReg) | 상담 935건 (희소 3클래스는 기타로 통합) | acc 73.8% · macro-F1 0.72 | `models/dispute_clf.joblib` |
+| 진행단계 분류 (〃, 상고심→판결·집행 통합) | 〃 | acc 66.8% · macro-F1 0.61 | `models/stage_clf.joblib` |
+
+- 전역 SHAP 중요도: `shap_global_recovery_ratio_20260720.csv`, `shap_global_days_to_dividend_20260720.csv`
+  (회수율 상위 요인: 발생금액 > 채권구분 > 경공매 신청연도)
+- 분류 상세 리포트: `clf_report_dispute_clf_20260720.txt`, `clf_report_stage_clf_20260720.txt`
+- 지표 요약: `ml_metrics_20260720.json`
+- 등급 기준: HIGH ≥ 0.9, MED 0.5~0.9, LOW < 0.5
