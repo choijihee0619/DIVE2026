@@ -31,7 +31,7 @@ RAG용 데이터는 `processed/rag/rag_chunks_260714.jsonl`(938건 상담 -> 1,0
 |---|---|---|---|
 | 예상 회수율 (LightGBM 회귀) | 배당내역 28,961 | MAE 0.113 · R² 0.40 · 등급(LOW/MED/HIGH) 정확도 72% | `models/recovery_ratio_lgbm.joblib` |
 | 예상 배당 소요기간 (LightGBM 회귀) | 〃 (음수 소요일 38건 제외) | MAE 101일 · 중앙절대오차 79일 | `models/days_to_dividend_lgbm.joblib` |
-| 회수 우선순위 스코어 (파생) | 위 2모델 예측 | 가중치 회수기대액 0.6 / 신속성 0.4 (HUG 협의로 조정 가능) | `recovery_priority_scores_20260720.csv` (28,961건, 건별 상위 3 SHAP 요인 포함 — HUG 코크핏 데모용) |
+| 회수 우선순위 스코어 (파생) | 위 2모델 예측 | 가중치 회수기대액 0.6 / 신속성 0.4 (HUG 협의로 조정 가능) | `recovery_priority_scores_20260720.csv` (28,961건, 건별 상위 3 SHAP 요인 포함 — HUG 채권회수 대시보드 데모용) |
 | 분쟁유형 분류 (TF-IDF char 2-4 + LogReg) | 상담 935건 (희소 3클래스는 기타로 통합) | acc 73.8% · macro-F1 0.72 | `models/dispute_clf.joblib` |
 | 진행단계 분류 (〃, 상고심→판결·집행 통합) | 〃 | acc 66.8% · macro-F1 0.61 | `models/stage_clf.joblib` |
 

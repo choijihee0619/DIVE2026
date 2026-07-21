@@ -65,6 +65,33 @@ async def refresh_registry(
     return success_response(result, request_id, status_code=201)
 
 
+@router.post("/{property_id}/official-price/refresh", status_code=201)
+async def refresh_official_price(
+    property_id: str,
+    current_user: CurrentUser = Depends(get_current_user),
+    db: AsyncIOMotorDatabase = Depends(get_db),
+    request_id: str = Depends(get_request_id),
+):
+    """VWorld NED 공시가격 3종 live 조회 → official_price_snapshots 저장 (전세가율 신호 입력)."""
+    from app.services.official_price_service import OfficialPriceService
+
+    result = await OfficialPriceService(db).refresh(property_id)
+    return success_response(result, request_id, status_code=201)
+
+
+@router.get("/{property_id}/official-price/latest")
+async def get_latest_official_price(
+    property_id: str,
+    current_user: CurrentUser = Depends(get_current_user),
+    db: AsyncIOMotorDatabase = Depends(get_db),
+    request_id: str = Depends(get_request_id),
+):
+    from app.services.official_price_service import OfficialPriceService
+
+    result = await OfficialPriceService(db).latest(property_id)
+    return success_response(result, request_id)
+
+
 @router.get("/{property_id}/registry/latest")
 async def get_latest_registry(
     property_id: str,

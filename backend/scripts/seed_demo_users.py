@@ -31,7 +31,7 @@ DEMO_USERS = [
     {"email": "hugadmin01@example.com", "display_name": "HUG 담당자 데모", "role": "hug_admin"},
     {"email": "sysadmin01@example.com", "display_name": "시스템 관리자 데모", "role": "system_admin"},
 ]
-DEMO_PASSWORD = "P@ssw0rd!"
+DEMO_PASSWORD = "0000"  # 데모 편의용. 로그인 스키마 min_length=1이라 통과함.
 
 
 async def main() -> None:
@@ -50,7 +50,17 @@ async def main() -> None:
     for demo in DEMO_USERS:
         existing = await db.users.find_one({"email": demo["email"]})
         if existing:
-            print(f"skip (exists): {demo['email']}")
+            # 기존 계정도 비밀번호를 DEMO_PASSWORD로 재설정(idempotent upsert).
+            await db.users.update_one(
+                {"_id": existing["_id"]},
+                {"$set": {
+                    "password_hash": hash_password(DEMO_PASSWORD),
+                    "role": demo["role"],
+                    "display_name": demo["display_name"],
+                    "is_active": True,
+                }},
+            )
+            print(f"updated (password reset): {demo['email']} ({demo['role']})")
             continue
         doc = {
             "_id": str(uuid.uuid4()),

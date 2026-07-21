@@ -1,0 +1,54 @@
+{
+  "trained_at": "2026-07-21",
+  "model": "accident_clf_poc (LightGBM binary, case-control)",
+  "n_case": 18054,
+  "n_control": 18765,
+  "case_control_ratio": 0.96,
+  "features": [
+    "sido",
+    "housing_type",
+    "log_deposit"
+  ],
+  "roc_auc": 0.9208,
+  "pr_auc": 0.9121,
+  "brier": 0.1119,
+  "single_feature_auc": {
+    "log_deposit": 0.8078,
+    "sido+housing_type": 0.7826
+  },
+  "shared_sido": [
+    "경기도",
+    "경상남도",
+    "경상북도",
+    "대구광역시",
+    "대전광역시",
+    "부산광역시",
+    "서울특별시",
+    "인천광역시"
+  ],
+  "train_pos_rate": 0.4903,
+  "feature_importance": {
+    "log_deposit": 7703,
+    "housing_type": 1641,
+    "sido": 1103
+  },
+  "sample_sido_accident_share": {
+    "부산광역시": 0.639,
+    "경기도": 0.592,
+    "서울특별시": 0.546,
+    "경상북도": 0.545,
+    "대구광역시": 0.396,
+    "경상남도": 0.265,
+    "인천광역시": 0.1,
+    "대전광역시": 0.034
+  },
+  "control_source": "rtms_jeonse_controls_260721.csv",
+  "basis": "합성 사고군 + RTMS 전세 실거래 정상군 혼합 기준. 실제 HUG 성능 아님. 실데이터 재학습 전제.",
+  "limitations": [
+    "AUC는 정상군 표본 구성에 민감하다 — 저위험 고가 지역(강남·분당) 포함이 보증금 분포를 넓혀 분리도를 키운다. 전국 균형표본으로 재측정 필요",
+    "누출 방지 조치: (1) 정상군에만 있는 area_m2·build_year 제외, (2) 두 군 공유 시도로 support 제한(정상군 표집이 없는 시도가 자동 '사고'가 되는 것 차단)",
+    "전세가율(최강 신호)은 정상군에 주택가액이 없어 baseline 제외 — 확장 시 VWorld 공시가격 per-control 또는 RTMS 매매 지역중앙값으로 산출",
+    "사고군은 합성데이터, 정상군은 실거래 — 분포 이질성 존재",
+    "대조군 라벨 노이즈: 정상 계약 일부가 실제 사고일 수 있음(사고율 수 % 수준)"
+  ]
+}

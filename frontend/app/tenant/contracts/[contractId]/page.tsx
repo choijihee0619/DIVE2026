@@ -157,7 +157,9 @@ export default function ContractDetailPage() {
     propertyService
       .refreshRegistry(contract.property_id, { deposit: contract.deposit, dong, ho })
       .then((snapshot) => {
-        if (snapshot.source_system !== "api_live") {
+        if (snapshot.source_system === "demo_scenario") {
+          toast.info("샌드박스는 주소 무관 고정표본이라, 매물 주소별 데모 시나리오로 진단합니다.");
+        } else if (snapshot.source_system !== "api_live") {
           toast.warning("등기부 실조회에 실패해 Mock 데이터로 진단합니다.");
         }
       })

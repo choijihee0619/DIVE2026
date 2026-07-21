@@ -22,7 +22,16 @@ from app.utils.datetime_utils import now_kst_iso, new_uuid
 def _status_of(doc: dict | None) -> str:
     if not doc:
         return "missing"
-    return "live" if doc.get("source_system") == "api_live" else "mock"
+    if doc.get("source_system") == "api_live":
+        return "live"
+    # 샌드박스 고정표본 대체용 데모 시나리오 — 실데이터는 아니지만 시나리오 권리관계로 채점 가능.
+    # 출처는 'demo'로 정직 표기(프론트가 '데모 시나리오' 배지로 구분).
+    if doc.get("source_system") == "demo_scenario":
+        return "demo"
+    # VWorld 실호출은 됐지만 해당 필지 가격 데이터가 없는 경우 — mock이 아니라 미확보로 본다
+    if doc.get("source_system") == "api_live_no_data":
+        return "missing"
+    return "mock"
 
 
 def _building_age_years(doc: dict | None) -> int | None:
@@ -42,6 +51,7 @@ def _building_age_years(doc: dict | None) -> int | None:
 
 class RiskService:
     def __init__(self, db: AsyncIOMotorDatabase):
+        self._db = db
         self._risk_assessments = RiskAssessmentRepository(db)
         self._properties = PropertyRepository(db)
         self._landlords = LandlordRepository(db)
@@ -57,6 +67,15 @@ class RiskService:
         registry_doc = await self._registry.find_latest_by_property(payload.property_id)
         building_doc = await self._building.find_latest_by_property(payload.property_id)
         official_price_doc = await self._official_price.find_latest_by_property(payload.property_id)
+        if official_price_doc is None:
+            # 스냅샷이 없으면 VWorld 공시가격 live 수집을 1회 시도한다(실패해도 진단은 계속).
+            try:
+                from app.services.official_price_service import OfficialPriceService
+
+                await OfficialPriceService(self._db).refresh(payload.property_id)
+                official_price_doc = await self._official_price.find_latest_by_property(payload.property_id)
+            except Exception:  # noqa: BLE001 - 미확보 상태(missing)로 정직하게 보고
+                official_price_doc = None
 
         landlord_doc = None
         if payload.landlord_id:
@@ -67,7 +86,7 @@ class RiskService:
         building_status = _status_of(building_doc)
 
         has_seizure = mortgage_ratio = rights_burden_ratio = None
-        if registry_status == "live":
+        if registry_status in ("live", "demo"):
             features = (registry_doc or {}).get("features") or {}
             has_seizure = features.get("has_seizure")
             mortgage_ratio = features.get("mortgage_ratio")

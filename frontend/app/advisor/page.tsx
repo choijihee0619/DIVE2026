@@ -44,7 +44,7 @@ function timeLabel(iso: string) {
   return new Date(iso).toLocaleTimeString("ko-KR", { hour: "numeric", minute: "2-digit" });
 }
 
-/** ADV-00 상담 큐(시안 4-1): 자동분류 태그·우선순위 + 선택 건 유사사례·AI 답변 초안·상태 처리. */
+/** ADV-00 상담 현황(시안 4-1): 자동분류 태그·우선순위 + 선택 건 유사사례·AI 답변 초안·상태 처리. */
 export default function AdvisorQueuePage() {
   const [items, setItems] = useState<CounselQueueItem[] | null>(null);
   const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -63,7 +63,7 @@ export default function AdvisorQueuePage() {
         setSelectedId((prev) => prev ?? data.items[0]?.counsel_id ?? null);
       })
       .catch((error: unknown) =>
-        setErrorMessage(error instanceof ApiError ? error.message : "상담 큐를 불러오지 못했습니다."),
+        setErrorMessage(error instanceof ApiError ? error.message : "상담 현황을 불러오지 못했습니다."),
       );
   }, []);
 
@@ -119,7 +119,7 @@ export default function AdvisorQueuePage() {
       <motion.div variants={fadeUp}>
         <h1 className="flex items-center gap-2 text-2xl font-extrabold tracking-tight">
           <ListTodo size={22} className="text-hug-blue" />
-          상담 큐
+          상담 현황
           {items ? (
             <span className="rounded-full bg-warning-100 px-2.5 py-0.5 text-xs font-bold text-warning-700 tnum">
               대기 {waitingCount}건

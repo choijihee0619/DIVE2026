@@ -43,8 +43,10 @@ export interface RegisterDetail {
 export interface RegistrySnapshot {
   registry_snapshot_id: string;
   property_id: string;
-  source_system: "api_live" | "mock";
+  source_system: "api_live" | "mock" | "demo_scenario";
   provider: string | null;
+  demo_scenario: string | null;
+  demo_notice: string | null;
   fallback_reason: string | null;
   query_address: string | null;
   features: {

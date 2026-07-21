@@ -11,7 +11,7 @@
 - models/*.joblib
 - ml_metrics_<날짜>.json
 - shap_global_<모델>_<날짜>.csv (전역 중요도)
-- recovery_priority_scores_<날짜>.csv (전 채권 예측+스코어+상위요인, HUG 코크핏 데모용)
+- recovery_priority_scores_<날짜>.csv (전 채권 예측+스코어+상위요인, HUG 채권회수 대시보드 데모용)
 
 주의: 전부 합성데이터 기준 패턴이며 실제 HUG 성능을 의미하지 않는다.
 

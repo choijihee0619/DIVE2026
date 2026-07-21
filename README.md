@@ -14,13 +14,13 @@
 
 | 소주제 | 문제 | 안심이음의 대응 |
 |---|---|---|
-| ① 사고 후 회수 | HUG 대위변제 채권의 회수 우선순위 판단이 어려움 | ML 기반 회수율·소요기간 예측 + 회수 우선순위 스코어 → **HUG 회수 코크핏** |
+| ① 사고 후 회수 | HUG 대위변제 채권의 회수 우선순위 판단이 어려움 | ML 기반 회수율·소요기간 예측 + 회수 우선순위 스코어 → **HUG 채권회수 대시보드** |
 | ② 계약 전 예방 | 임차인이 계약 전 위험 신호를 알기 어려움 | 등기부 실시간 조회 + 공공데이터 결합 **rule-based 위험진단** + 악성임대인 명단 대조 |
 
 ### 핵심 차별점
 
 1. **역할 4종 통합 생태계** — 임차인·임대인·상담사·HUG가 같은 데이터 위에서 각자의 화면을 사용
-2. **HUG 채권회수 코크핏** — HOUSTA 실집계 + ML 예측으로 회수 업무 지원
+2. **HUG 채권회수 대시보드** — HOUSTA 실집계 + ML 예측으로 회수 업무 지원
 3. **RAG 상담엔진** — 비식별 상담사례 938건 + 안심전세포털 공식자료를 근거로 한 출처 표시형 AI 상담
 4. **전자계약 블록체인 앵커링** — 계약 원본 해시를 체인에 기록해 사고 후 분쟁·회수 단계의 증거력 확보
 
@@ -32,8 +32,8 @@
 |---|---|---|
 | **임차인** (tenant) | `tenant01@example.com` | 계약 등록, 위험진단 리포트, AI 전세상담, 증빙 요청, 사고 접수, 전자계약 |
 | **임대인** (landlord) | `landlord01@example.com` | 증빙 제출, 반환계획 등록, 전자계약 상대방 플로우 |
-| **상담사** (advisor) | `advisor01@example.com` | 증빙 검증 큐, 상담 큐(ML 자동분류 태그), 유사사례 검색 |
-| **HUG 담당자** (hug_admin) | `hugadmin01@example.com` | 회수 코크핏(우선순위 채권·사고율 지도·발급 시계열·피해 분포), 사고 큐 |
+| **상담사** (advisor) | `advisor01@example.com` | 증빙 검증 큐, 상담 현황(ML 자동분류 태그), 유사사례 검색 |
+| **HUG 담당자** (hug_admin) | `hugadmin01@example.com` | 채권회수 대시보드(우선순위 채권·사고율 지도·발급 시계열·피해 분포), 사고 큐 |
 | **시스템 관리자** (system_admin) | `sysadmin01@example.com` | 사용자 관리, 블록체인 트랜잭션 로그 조회 |
 
 공통 비밀번호: `P@ssw0rd!` (`backend/scripts/seed_demo_users.py`로 idempotent 시드)
@@ -55,7 +55,7 @@
 | **전자계약 (esign)** | 임차인·임대인 공동세션 → 특약 합의 → 양측 서명 → 계약서 해시 자동 앵커 → 위변조 검증 | ✅ 구현 |
 | **ML 회수 예측** | 예상 회수율·등급, 배당 소요기간, SHAP 요인 설명, 상담 자동분류 | ✅ 구현 |
 | **HUG 대시보드** | 회수 우선순위, 지역 사고율 지도, 발급 시계열, 피해주택 분포 (HOUSTA 실집계) | ✅ 구현 |
-| **사고 접수·상담 큐·알림** | 사고 접수→상태 추적, 챗봇→상담사 이관 큐, 모니터링 알림 | ✅ 구현 |
+| **사고 접수·상담 현황·알림** | 사고 접수→상태 추적, 챗봇→상담사 이관 큐, 모니터링 알림 | ✅ 구현 |
 
 ---
 
@@ -106,7 +106,7 @@
     ↓
 [거주 중]  증빙 요청·제출·검증 → 반환계획 관리 → 타임라인·알림 모니터링
     ↓
-[사고 후]  사고 접수 → HUG 회수 코크핏 → ML 회수율·우선순위 예측 → 회수 진행 추적
+[사고 후]  사고 접수 → HUG 채권회수 대시보드 → ML 회수율·우선순위 예측 → 회수 진행 추적
 ```
 
 ---
@@ -151,8 +151,8 @@
 
 | 데이터 | 사유 | 대체 방식 |
 |---|---|---|
-| 공시가격 3종 (개별공시지가·개별주택·공동주택) | VWorld 키는 발급됐으나 실제 API URL·레이어명 확정 전 | 진단 엔진이 `official_price_status`를 `missing`으로 처리 — **mock 값으로 채점하지 않음** |
-| 온비드 공매 | API 미발급 | 서비스 도메인에서 제외 |
+| ~~공시가격 3종~~ | **260721 live 전환 완료** — VWorld NED 데이터 API(`getApartHousingPriceAttr`·`getIndvdHousingPriceAttr`·`getIndvdLandPriceAttr`, `domain=등록 서비스 URL` 필수) 실호출 검증 | `POST /properties/{id}/official-price/refresh` → `official_price_snapshots` 저장, 전세가율 신호 실계산. 가격 미제공 필지는 `missing` 유지 |
+| 온비드 공매 | **배제 확정(260721)** — API 미발급, mock 파일도 삭제 | 서비스 도메인에서 완전 제외 |
 
 > **데이터 정직성 원칙**: 등기부·공시가격 파생 지표(`jeonse_ratio`, `mortgage_ratio` 등)는 출처가 `live`일 때만 계산합니다. 데이터가 없으면 "위험 낮음"으로 채점하는 대신 `missing_fields`로 보고하고, 프론트에는 mock 여부 라벨 대신 **데이터 출처 상태(`source_status`)** 를 전달합니다.
 
@@ -207,7 +207,7 @@ FastAPI 서비스 계층에서 소비
 | 외부 데이터 스냅샷 | `registry_snapshots` `building_registry_snapshots` `rtms_transactions` `official_price_snapshots` `api_raw_snapshots` `api_call_logs` `data_sources` | API 응답 원본·파싱 결과, 출처(`source_system`: api_live/mock) 추적 |
 | 위험진단 | `risk_assessments` | case_id별 진단 결과·근거·완결성 |
 | 증빙·검증 | `evidence_requests` `evidences` `verifications` | 요청→제출(파일 해시)→검증 결정 |
-| 생애주기 | `timeline_events` `return_plans` `incidents` `counsels` `counsel_queue` `referrals` `notifications` | 타임라인, 반환계획, 사고, 상담 큐, 알림 |
+| 생애주기 | `timeline_events` `return_plans` `incidents` `counsels` `counsel_queue` `referrals` `notifications` | 타임라인, 반환계획, 사고, 상담 현황, 알림 |
 | 전자계약 | `esign_sessions` | 공동세션·특약·서명·앵커 상태 |
 | RAG·LLM | `rag_chunks` `rag_search_logs` `llm_conversations` `llm_messages` `llm_answer_logs` | 임베딩 청크, 검색·답변 로그 |
 | ML·블록체인 | `recovery_predictions` `model_versions` `blockchain_transactions` | 예측 이력, 모델 버전, 트랜잭션 |
@@ -284,12 +284,13 @@ FastAPI 서비스 계층에서 소비
 
 ## 10. RAG·LLM 시스템
 
-### 코퍼스 (총 1,079 청크, `dive2026.rag_chunks`)
+### 코퍼스 (총 **1,230 청크**, `dive2026.rag_chunks` — 260721 적재·임베딩 완료)
 
 | 소스 | 청크 수 | 내용 |
 |---|---:|---|
 | 비식별 상담데이터 | 1,009 | 변호사 심층상담 938건 기반, 500~900자 청크 (overlap 80~150자) |
-| 안심전세포털 공식자료 (`khug_portal`) | 70 | 전세사기 유형별 사례·대처방안, 계약 단계별 유의사항, 보증가입, 피해지원 프로그램, 경공매 지원 특별법 등 23페이지 (`scripts/crawl_khug_portal.py`) |
+| 안심전세포털 공식자료 (`khug_portal`) | 97 | 전세사기 유형별 사례·대처방안, 계약 단계별 유의사항, 보증가입, 피해지원 프로그램, 경공매 지원 특별법, FAQ·피해확인서·든든전세주택 등 33페이지 (`scripts/crawl_khug_portal.py`, 260721 사이트맵 대조로 10페이지 보강) |
+| 법령 조문 (`law`) | 124 | 주택임대차보호법(47)·전세사기피해자 지원 특별법(77) 조문 단위 청크, 국가법령정보센터 DRF API (`scripts/collect_law_chunks.py`, OC=hugin) — 벡터검색 실동작 확인 |
 
 ### 검색·답변 흐름
 
@@ -338,14 +339,14 @@ FastAPI 서비스 계층에서 소비
 
 | 상태 | 내용 |
 |---|---|
-| ✅ 구현 완료 | 인증·사용자·매물·임대인·계약·위험진단·증빙·검증·타임라인·반환계획·RAG·블록체인·전자계약(7)·HUG 대시보드(5)·상담 큐(4)·사고(3)·알림(4)·ML(3) |
+| ✅ 구현 완료 | 인증·사용자·매물·임대인·계약·위험진단·증빙·검증·타임라인·반환계획·RAG·블록체인·전자계약(7)·HUG 대시보드(5)·상담 현황(4)·사고(3)·알림(4)·ML(3) |
 | 🔶 Fallback 동작 | RAG (OpenAI 키 없으면 키워드 검색), 등기부 (CODEF 실패 시 시나리오 폴백), 블록체인 (Mock Chain) |
-| ⬜ 설계만 존재 | Polygon 실연동, 공시가격 3종 live 수집, 온비드, `GET /admin/system-logs` |
+| ⬜ 설계만 존재 | Polygon 실연동, `GET /admin/system-logs` |
 
 ### 프론트엔드 — 전 역할 화면 + 실데이터 연동
 
 - 2026-07-21 전면 리디자인: HUG 디자인 토큰(`frontend/styles/globals.css`), 시각화 컴포넌트 8종(`components/viz/` — DonutGauge, ShapBars, ContractStepper, RiskSignals, TimelineList 등), 전 역할 공통 셸
-- 실데이터 연동 완료: 로그인/세션, 임차인 대시보드·계약 등록·계약 상세(진단·타임라인·반환계획·증빙), AI 상담(채팅형), 임대인 홈, 상담사 검증 큐, HUG 코크핏, 관리자(사용자·블록체인 로그), 블록체인 검증 상세
+- 실데이터 연동 완료: 로그인/세션, 임차인 대시보드·계약 등록·계약 상세(진단·타임라인·반환계획·증빙), AI 상담(채팅형), 임대인 홈, 상담사 검증 큐, HUG 채권회수 대시보드, 관리자(사용자·블록체인 로그), 블록체인 검증 상세
 - 서비스 계층 15개 모듈(`frontend/services/`)이 백엔드 61 op 대응 — HUG 전용 대시보드 5종·알림·전자계약 화면 연동은 진행 중 (`docs/구현현황_문서정합_260721.md` 3장의 우선순위 로드맵 참조)
 
 ### 테스트
@@ -355,7 +356,7 @@ backend$ pytest -q
 45 passed  (2026-07-21 실측)
 ```
 
-`mongomock-motor`로 Atlas 없이 전량 실행 가능 — 인증·계약·위험진단·증빙·RAG·블록체인·전자계약·사고/상담큐/알림·ML/HUG·PII 마스킹·OpenAPI 정합 커버.
+`mongomock-motor`로 Atlas 없이 전량 실행 가능 — 인증·계약·위험진단·증빙·RAG·블록체인·전자계약·사고/상담 현황/알림·ML/HUG·PII 마스킹·OpenAPI 정합 커버.
 
 ---
 
@@ -509,19 +510,19 @@ cd backend && pytest -q    # Atlas 없이 mongomock으로 45건 전량 실행
 
 ### 현재 한계
 
-- **공시가격 3종 미연동** — VWorld 키는 발급됐으나 API URL·레이어명 확정 전. 전세가율 신호가 `missing` 처리됨 (mock으로 채점하지 않는 원칙 유지)
+- ~~공시가격 3종 미연동~~ → **260721 해소**: VWorld NED 3종 live 연동, 진단 시 자동 수집(best-effort). 공동주택은 동·호 미지정 시 단지 중앙값 사용을 `price_basis`에 명시
 - **ML 학습데이터 한계** — 합성데이터 기준 성능이며 실제 HUG 성능이 아님. 정상 계약 대조군 부재로 사고확률 모델 불가, 파일 간 공통 사건 ID 부재로 사건 단위 조인 불가
 - **블록체인 Mock Chain** — Polygon Amoy는 어댑터 인터페이스만 완성
 - **RAG PII 사람 검수 미완** — 정규식 스캔 0건이나 자유서술 실명 가능성으로 보수적 처리 중
-- **프론트 미연동 잔여분** — HUG 전용 대시보드 API 5종·알림·전자계약 화면 연결 (백엔드는 완성, 우선순위 로드맵 수립됨)
+- ~~프론트 미연동 잔여분~~ → **260721 해소**: HUG 대시보드 5종 API·알림·전자계약 화면·회수 시뮬레이터(RecoveryPredictCard) 연동 완료
 
 ### 향후 계획
 
 1. **Polygon Amoy 실연동** — 어댑터 교체만으로 전환 가능한 구조 완성됨 (`BLOCKCHAIN_MODE=polygon`)
 2. **실제 운영데이터 확보 및 모델 재학습** — HUG 실데이터로 동일 파이프라인 재학습·검증 (재학습 전제 아키텍처)
-3. **공시가격 3종 live 수집** → 전세가율 신호 실계산 활성화
-4. **프론트엔드 고도화** — HUG 코크핏에 전용 API 5종 연결, 전자계약·알림 화면 완성, 회수 시뮬레이터
-5. **RAG 코퍼스 확장** — 주택임대차보호법·전세사기특별법 법령 청크 추가, PII 사람 검수 완료
+3. ~~공시가격 3종 live 수집~~ ✅ 260721 완료 — 전세가율 신호 실계산 활성화
+4. ~~프론트엔드 고도화~~ ✅ 260721 완료 — HUG 채권회수 대시보드 5종 API·전자계약·알림 화면·회수 시뮬레이터
+5. **RAG 코퍼스 확장** — ✅ 완료(260721): 안심전세포털 97청크(누락 10페이지 보강) + 법령 124청크(주택임대차보호법·전세사기특별법). Atlas 적재·1024차원 임베딩·벡터검색 실동작까지 확인. PII 사람 검수는 계속 진행
 
 ---
 

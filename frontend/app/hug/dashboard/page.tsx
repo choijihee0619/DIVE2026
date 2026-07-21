@@ -79,7 +79,7 @@ function parseTopFactors(raw: string): ShapFactor[] {
     .filter((f): f is ShapFactor => f !== null);
 }
 
-/** HUG-01 회수 코크핏: /hug/dashboard 5종(HOUSTA 실집계 + ML 시뮬레이션) + 플랫폼 계약 큐 실데이터. */
+/** HUG-01 채권회수 대시보드: /hug/dashboard 5종(HOUSTA 실집계 + ML 시뮬레이션) + 플랫폼 계약 큐 실데이터. */
 export default function HugDashboardPage() {
   const { contracts, errorMessage, reload } = useContractList();
   const [filter, setFilter] = useState<string>("all");
@@ -242,7 +242,7 @@ export default function HugDashboardPage() {
     <motion.div variants={staggerContainer} initial="hidden" animate="show" className="flex flex-col gap-6">
       <motion.div variants={fadeUp} className="flex flex-wrap items-center gap-3">
         <div>
-          <h1 className="text-2xl font-extrabold tracking-tight">회수 코크핏</h1>
+          <h1 className="text-2xl font-extrabold tracking-tight">채권회수 대시보드</h1>
           <p className="mt-1.5 text-muted-foreground">
             대위변제 채권 {summary ? summary.portfolio_count.toLocaleString("ko-KR") : "—"}건, 무엇부터 회수할
             것인가 — 회수율·소요기간 예측과 우선순위 스코어로 답합니다.

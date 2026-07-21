@@ -45,6 +45,13 @@ const PROVIDER_LABEL: Record<string, string> = {
   codef_prod: "CODEF 운영",
 };
 
+const DEMO_SCENARIO_LABEL: Record<string, string> = {
+  normal: "정상 (권리관계 양호)",
+  mortgage: "근저당 설정",
+  complex_rights: "복합 권리부담",
+  seizure: "압류·가압류",
+};
+
 function publishDateLabel(raw?: string) {
   if (!raw || raw.length !== 8) return raw ?? "-";
   return `${raw.slice(0, 4)}-${raw.slice(4, 6)}-${raw.slice(6, 8)}`;
@@ -97,6 +104,8 @@ export default function RegistryViewerPage() {
         setNoSnapshot(false);
         if (s.source_system === "api_live") {
           toast.success("등기부를 조회했습니다.");
+        } else if (s.source_system === "demo_scenario") {
+          toast.info("샌드박스는 주소 무관 고정표본이라, 매물 주소별 데모 시나리오로 표시합니다.");
         } else {
           toast.warning("등기부 실조회에 실패해 Mock 데이터로 대체되었습니다.");
         }
@@ -108,6 +117,7 @@ export default function RegistryViewerPage() {
   };
 
   const isLive = snapshot?.source_system === "api_live";
+  const isDemo = snapshot?.source_system === "demo_scenario";
   const detail = snapshot?.register_detail ?? null;
   const features = snapshot?.features ?? {};
   const roadAddress = property?.address.road_address ?? "";
@@ -160,6 +170,13 @@ export default function RegistryViewerPage() {
                     <Badge variant="secondary">
                       실조회 · {PROVIDER_LABEL[snapshot.provider ?? ""] ?? snapshot.provider}
                     </Badge>
+                  ) : isDemo ? (
+                    <Badge variant="secondary">
+                      데모 시나리오 · 주소별
+                      {snapshot.demo_scenario
+                        ? ` (${DEMO_SCENARIO_LABEL[snapshot.demo_scenario] ?? snapshot.demo_scenario})`
+                        : ""}
+                    </Badge>
                   ) : (
                     <Badge variant="outline">Mock 폴백</Badge>
                   )
@@ -202,7 +219,24 @@ export default function RegistryViewerPage() {
               </motion.div>
             ) : null}
 
-            {snapshot && !isLive ? (
+            {snapshot && isDemo ? (
+              <motion.div variants={fadeUp}>
+                <Card className="rounded-2xl border-hug-sky bg-hug-sky/30 shadow-card">
+                  <CardContent className="flex items-start gap-3 py-4">
+                    <ShieldAlert size={18} className="mt-0.5 shrink-0 text-hug-blue" />
+                    <div className="text-sm text-hug-navy">
+                      <p className="font-bold">주소별 데모 시나리오입니다 (실제 권리관계 아님).</p>
+                      <p className="mt-0.5">
+                        {snapshot.demo_notice ??
+                          "CODEF 샌드박스는 주소와 무관하게 고정 표본을 반환하므로, 매물 주소로 배정한 데모 시나리오를 표시합니다."}
+                      </p>
+                    </div>
+                  </CardContent>
+                </Card>
+              </motion.div>
+            ) : null}
+
+            {snapshot && !isLive && !isDemo ? (
               <motion.div variants={fadeUp}>
                 <Card className="rounded-2xl border-warning-200 bg-warning-100/50 shadow-card">
                   <CardContent className="flex items-start gap-3 py-4">

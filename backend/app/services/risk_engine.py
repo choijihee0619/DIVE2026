@@ -1,7 +1,7 @@
 """위험진단 Rule-based Fallback 엔진.
 
 정식 ML 학습용 feature table(processed_risk_features_v1.parquet)이 없고, CODEF 등기부는 여전히
-100% mock, 공시가격 3종도 VWorld URL 미확정으로 mock 상태다(docs_summary.md 충돌사항 6 참고).
+100% mock이었으나, 공시가격 3종은 260721 VWorld NED 실연동으로 live 전환됨(official_price_service.py).
 따라서 이 모듈은 ML 추론을 흉내내지 않고, "확인된 사실만 점수화 + 데이터 공백은 확신도/완결성으로
 별도 표기"하는 규칙 기반 엔진만 구현한다.
 
@@ -117,8 +117,9 @@ def evaluate(inputs: RiskEngineInputs) -> RiskEngineResult:
 
     forced_high = False
 
-    # --- 등기부(근저당/권리부담/압류) : live일 때만 계산 ---
-    if inputs.registry_status == "live":
+    # --- 등기부(근저당/권리부담/압류) : live 또는 demo 시나리오일 때 계산 ---
+    #     (demo = 샌드박스 고정표본 대체용 주소별 데모 시나리오. source_status엔 'demo'로 표기됨)
+    if inputs.registry_status in ("live", "demo"):
         if inputs.has_seizure:
             score += 40
             forced_high = True
@@ -411,23 +412,25 @@ def evaluate(inputs: RiskEngineInputs) -> RiskEngineResult:
     required_documents.append("전세보증보험 가입 확인서")
 
     # --- data_completeness / confidence 계산 ---
+    # demo(데모 시나리오)는 실데이터가 아니므로 mock과 동일하게 낮은 신뢰도(0.3)로 반영한다.
+    def _weight_factor(status: str) -> float:
+        if status == "live":
+            return 1.0
+        if status in ("mock", "demo"):
+            return 0.3
+        return 0.0
+
     resolved_weight = 0.0
     for category, weight in _COMPLETENESS_WEIGHTS.items():
-        status = source_status.get(category, "missing")
-        if status == "live":
-            resolved_weight += weight
-        elif status == "mock":
-            resolved_weight += weight * 0.3  # mock은 "일부 참고 가능"이지만 신뢰도는 낮게 반영
+        resolved_weight += weight * _weight_factor(source_status.get(category, "missing"))
     data_completeness = round(resolved_weight, 2)
 
     critical_weight = _COMPLETENESS_WEIGHTS["registry"] + _COMPLETENESS_WEIGHTS["official_price"]
     critical_resolved = 0.0
     for category in ("registry", "official_price"):
-        status = source_status.get(category, "missing")
-        if status == "live":
-            critical_resolved += _COMPLETENESS_WEIGHTS[category]
-        elif status == "mock":
-            critical_resolved += _COMPLETENESS_WEIGHTS[category] * 0.3
+        critical_resolved += _COMPLETENESS_WEIGHTS[category] * _weight_factor(
+            source_status.get(category, "missing")
+        )
     confidence = round(critical_resolved / critical_weight, 2) if critical_weight else 0.0
 
     # --- 등급 산정 ---

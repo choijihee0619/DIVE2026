@@ -1,4 +1,4 @@
-"""HUG 회수 코크핏 대시보드 엔드포인트 (hug_admin 전용).
+"""HUG 채권회수 대시보드 대시보드 엔드포인트 (hug_admin 전용).
 
 - GET /hug/dashboard/summary     : KPI 요약(채권 수·잔고·예상 회수율/소요일 중앙값·등급 분포)
 - GET /hug/dashboard/priority    : 회수 우선순위 채권 목록 (스코어 내림차순, 등급/채권구분 필터)

@@ -84,6 +84,14 @@ class Settings(BaseSettings):
     # 샌드박스 열람용 더미 비밀번호(실계정 아님). 운영 전환 시 사용자 입력으로 대체.
     codef_register_password: str = Field(default="dive2026!", validation_alias="CODEF_REGISTER_PASSWORD")
 
+    # --- VWorld NED 공시가격 3종 (개발키, domain=등록 서비스 URL 필수) ---
+    official_price_apt_api_key: str = Field(default="", validation_alias="OFFICIAL_PRICE_APT_API_KEY")
+    official_price_house_api_key: str = Field(default="", validation_alias="OFFICIAL_PRICE_HOUSE_API_KEY")
+    official_price_land_api_key: str = Field(default="", validation_alias="OFFICIAL_PRICE_LAND_API_KEY")
+    official_price_domain: str = Field(
+        default="", validation_alias="OFFICIAL_PRICE_REGISTERED_SERVICE_URL"
+    )
+
     # --- 수집 데이터/ML 아티팩트 경로 ---
     # 기본값은 저장소 루트의 "개별수집데이터 및 API". 배포 환경에서는 DATA_DIR로 재지정한다.
     data_dir: str = Field(

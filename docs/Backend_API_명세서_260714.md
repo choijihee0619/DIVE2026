@@ -954,7 +954,7 @@ MongoDB는 조인을 강제하지 않으므로 위 도표는 물리적 FK가 아
 | counsel_text | str\|null | N | 비식별 처리 | Counsel.counsel_text |
 | prediction | CounselPrediction(subdoc)\|null | N | | Counsel.prediction |
 | created_at | datetime | Y | | Counsel.created_at |
-| assigned_advisor_id | UUID\|null | N(내부) | 상담 큐 담당자 배정 | 없음(내부 전용) |
+| assigned_advisor_id | UUID\|null | N(내부) | 상담 현황 담당자 배정 | 없음(내부 전용) |
 
 ### 14.17 recovery_groups / entity_risk_groups / system_logs / model_versions / api_call_logs / referrals
 
@@ -1011,7 +1011,7 @@ MongoDB는 조인을 강제하지 않으므로 위 도표는 물리적 FK가 아
 | ReturnPlanService | D-90 반환계획 제출/조회 | 반환계획 제출, 조기경보 판단 | ReturnPlanRepository, ContractRepository | NotificationService | D90Requested→ReturnPlanSubmitted | submitReturnPlan, getReturnPlan |
 | IncidentService | 사고 접수 및 HUG 인계 | 사고 등록, 자동 인계, 담당자 액션 기록 | IncidentRepository, ContractRepository | RecoveryService, NotificationService | AtRisk→IncidentReported→TransferredToHUG | createIncident, getIncident |
 | RecoveryService | 회수등급·처리기간 우선순위 보조 | 예측 요청, 유사사건 비교, 법인 집단위험 조회 | RecoveryPredictionRepository | MLInferenceService | TransferredToHUG→RecoveryInProgress | getRecoveryPrediction, getSimilarRecoveryCases, getEntityRiskGroup, mlRecoveryPredict/mlDurationPredict 경유 |
-| CounselService | 상담 큐/상세 관리 | 큐 조회, 상세+RAG 근거 | CounselRepository | RAGService, MLInferenceService | - | listCounselQueue, getCounselDetail, mlCounselPredict 경유 |
+| CounselService | 상담 현황/상세 관리 | 큐 조회, 상세+RAG 근거 | CounselRepository | RAGService, MLInferenceService | - | listCounselQueue, getCounselDetail, mlCounselPredict 경유 |
 | ReferralService | 전문가 이관 기록 | 이관 생성 | ReferralRepository | NotificationService | - | createReferral |
 | NotificationService | 알림 생성/조회/읽음처리 | 이벤트 기반 알림 생성, 목록/읽음 | NotificationRepository | Notification Adapter(Email/InApp) | - | listNotifications, markNotificationRead |
 | BlockchainService | 온체인 기록 요청/조회 | anchor 접수, 상태 조회, receipt polling | BlockchainTransactionRepository | Blockchain Adapter(ethers.js 서비스) | NotRequested→Pending→Confirmed/Failed | anchorBlockchain, getBlockchainTransaction |

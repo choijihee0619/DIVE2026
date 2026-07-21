@@ -39,13 +39,13 @@ const SIDEBAR_ITEMS: Record<string, SidebarItem[]> = {
     { href: "/notifications", label: "알림", icon: Bell },
   ],
   [UserRole.ADVISOR]: [
-    { href: "/advisor", label: "상담 큐", icon: ListTodo },
+    { href: "/advisor", label: "상담 현황", icon: ListTodo },
     { href: "/advisor/verifications", label: "증빙 검증", icon: ShieldCheck },
     { href: "/advisor/counsel", label: "AI 상담 지원", icon: MessagesSquare },
     { href: "/notifications", label: "알림", icon: Bell },
   ],
   [UserRole.HUG_ADMIN]: [
-    { href: "/hug/dashboard", label: "회수 코크핏", icon: LayoutDashboard },
+    { href: "/hug/dashboard", label: "채권회수 대시보드", icon: LayoutDashboard },
     { href: "/hug/incidents", label: "사고 접수 큐", icon: Siren },
     { href: "/notifications", label: "알림", icon: Bell },
   ],
