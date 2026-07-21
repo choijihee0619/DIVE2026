@@ -4,6 +4,12 @@
 
 작성 기준일: 2026년 7월 14일 (KST) · 문서 버전: 1.0 · 상태: 초안(구현 착수 기준)
 
+> **⚠️ [260721 갱신 공지]** 구현이 본 명세를 넘어섰다(명세 40 op → 실구현 61 op). 엔드포인트 목록·경로는
+> `API_Contract_260721.yaml`(실구현 재생성본)을 기준으로 하고, 차이 상세는 `구현현황_문서정합_260721.md` 1장을 보라.
+> 본 문서의 아키텍처·공통 응답 봉투·오류코드(11장)·인증/권한(9장)·MongoDB 설계(12~14장)는 여전히 유효하다.
+> 주요 변경: `/hug/dashboard` 1개→5분할, `POST /notifications/{id}/read`→`PATCH`, `/ml/counsel/predict`→`/ml/counsel/classify`,
+> verifications 경로변수 `verification_id`→`evidence_id`, esign·counsel-queue·incidents·landlords·properties 도메인 신설.
+
 ---
 
 ## 0. 문서 개요

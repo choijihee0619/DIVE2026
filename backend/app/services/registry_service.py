@@ -7,6 +7,10 @@
 
 파서는 휴리스틱이다(전산화 등기부 텍스트 기반): 채권최고액 합산, 압류·가압류 행 중
 같은 행에 '말소' 표기가 없는 것만 유효로 집계한다. 한계는 features.parser_note에 명시한다.
+
+# MODIFIED 2026-07-21: (1) 등기부 조회 주소에 동·호수 반영(집합건물은 동·호까지 있어야 특정 가능),
+#   refresh 시 dong/ho를 property.address에 저장. (2) CODEF 응답의 표제부/갑구/을구 원문을
+#   화면 표시용 구조(register_detail)로 파싱해 스냅샷에 저장 — 임대인/임차인/상담사/HUG 등기부 열람 화면용.
 """
 
 from __future__ import annotations
@@ -121,26 +125,110 @@ def parse_register_features(codef_body: dict) -> dict:
     }
 
 
+def _clean_cell(raw: str) -> str:
+    """CODEF 등기부 셀 텍스트 정리: 말소 마커(&), 위치 마커(숫자^), 구분자(|)를 제거한다."""
+    text = raw.replace("&", "")
+    text = re.sub(r"\d+\^", "", text)
+    text = text.replace("|", "\n")
+    lines = [line.strip() for line in text.split("\n")]
+    return "\n".join(line for line in lines if line)
+
+
+def parse_register_detail(codef_body: dict) -> dict:
+    """CODEF 응답의 표제부/갑구/을구 원문을 화면 표시용 표 구조로 변환한다.
+
+    CODEF 표기 규칙: `&...&`로 감싼 내용은 말소된 기재사항(취소선 대상)이며,
+    `숫자^`는 원문 지면상의 위치 마커라 표시에서 제거한다.
+    """
+    entries = codef_body.get("data", {}).get("resRegisterEntriesList", [])
+    entry = entries[0] if entries else {}
+    sections: list[dict] = []
+    for his in entry.get("resRegistrationHisList", []):
+        headers: list[str] = []
+        rows: list[dict] = []
+        for content in his.get("resContentsList", []):
+            details = sorted(
+                content.get("resDetailList", []),
+                key=lambda d: int(d.get("resNumber", 0) or 0),
+            )
+            cells_raw = [str(d.get("resContents", "")) for d in details]
+            if str(content.get("resType2", "")) == "1":
+                headers = [_clean_cell(c) for c in cells_raw]
+                continue
+            non_empty = [c for c in cells_raw if c.strip()]
+            canceled_count = sum(1 for c in non_empty if "&" in c)
+            rows.append({
+                "cells": [_clean_cell(c) for c in cells_raw],
+                # 비어있지 않은 셀 과반이 말소 마커면 행 전체를 말소 기재로 본다
+                "canceled": bool(non_empty) and canceled_count * 2 >= len(non_empty),
+            })
+        sections.append({
+            "section": his.get("resType", ""),
+            "title": his.get("resType1", ""),
+            "headers": headers,
+            "rows": rows,
+        })
+    return {
+        "doc_title": entry.get("resDocTitle", ""),
+        "realty": entry.get("resRealty", ""),
+        "publish_date": entry.get("resPublishDate", ""),
+        "publish_office": entry.get("resPublishRegistryOffice", ""),
+        "unique_no": entry.get("commUniqueNo", ""),
+        "competent_office": entry.get("commCompetentRegistryOffice", ""),
+        "sections": sections,
+    }
+
+
+def build_register_query_address(address: dict) -> str:
+    """등기부 조회용 주소 조합. 집합건물은 동·호수까지 있어야 특정 가능하다."""
+    road = (address.get("road_address") or "").strip()
+    parts = [road]
+    dong = str(address.get("dong") or "").strip()
+    ho = str(address.get("ho") or "").strip()
+    if dong:
+        parts.append(dong if dong.endswith("동") else f"{dong}동")
+    if ho:
+        parts.append(ho if ho.endswith("호") else f"{ho}호")
+    return " ".join(part for part in parts if part)
+
+
 class RegistryService:
     def __init__(self, db: AsyncIOMotorDatabase):
         self._properties = PropertyRepository(db)
         self._snapshots = RegistrySnapshotRepository(db)
 
     async def refresh(
-        self, property_id: str, deposit: int | None = None, scenario: str | None = None
+        self,
+        property_id: str,
+        deposit: int | None = None,
+        scenario: str | None = None,
+        dong: str | None = None,
+        ho: str | None = None,
     ) -> dict:
         prop = await self._properties.get_by_id(property_id)
         if not prop:
             raise ResourceNotFoundError("매물 정보를 찾을 수 없습니다.")
-        address = (prop.get("address") or {}).get("road_address", "")
+
+        address = dict(prop.get("address") or {})
+        # 동·호수가 새로 입력되면 매물 주소에 저장해 이후 조회에 재사용한다
+        updates = {}
+        if dong and dong.strip():
+            address["dong"] = dong.strip()
+            updates["address.dong"] = dong.strip()
+        if ho and ho.strip():
+            address["ho"] = ho.strip()
+            updates["address.ho"] = ho.strip()
+        if updates:
+            await self._properties.update_fields(property_id, updates)
 
         if scenario:
             if scenario not in MOCK_SCENARIOS:
                 raise ValidationAppError(f"scenario는 {sorted(MOCK_SCENARIOS)} 중 하나여야 합니다.")
             return await self._mock_snapshot(property_id, scenario, deposit)
 
+        query_address = build_register_query_address(address)
         try:
-            body = await codef_client.fetch_register(address)
+            body = await codef_client.fetch_register(query_address)
         except Exception as exc:  # noqa: BLE001 - 실패 시 mock 폴백 (기존 수집 정책과 동일)
             logger.warning("CODEF 등기부 호출 실패, mock 폴백: %s", exc)
             return await self._mock_snapshot(
@@ -161,7 +249,9 @@ class RegistryService:
             "source_system": "api_live",
             "provider": f"codef_{get_settings().codef_env}",
             "transaction_id": body.get("result", {}).get("transactionId"),
+            "query_address": query_address,
             "features": features,
+            "register_detail": parse_register_detail(body),
             "created_at": now_kst_iso(),
         }
         await self._snapshots.insert(doc)
@@ -203,6 +293,8 @@ def _to_summary(doc: dict) -> dict:
         "source_system": doc["source_system"],
         "provider": doc.get("provider"),
         "fallback_reason": doc.get("fallback_reason"),
+        "query_address": doc.get("query_address"),
         "features": doc.get("features", {}),
+        "register_detail": doc.get("register_detail"),
         "created_at": doc["created_at"],
     }

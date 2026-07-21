@@ -3,6 +3,10 @@
 
 문서 버전 1.0 · 작성 기준일 2026-07-14(KST) · 형식 Markdown(UTF-8)
 
+> **⚠️ [260721 갱신 공지]** anchor/조회는 mock 모드로 구현·동작 중(`POST /blockchain/anchor`, `GET /blockchain`,
+> `GET /blockchain/{tx_id}`). 본 설계서 이후 전자계약 esign 도메인 7종이 추가되어 계약서 해시 앵커·위변조 검증의
+> 실제 진입점은 `POST /esign/contracts/{contract_id}/verify`다. 목록: `API_Contract_260721.yaml`.
+
 ---
 
 ## 0. 문서 개요

@@ -1,6 +1,8 @@
 "use client";
 
-import { Badge } from "@/components/ui/badge";
+import Link from "next/link";
+import { motion } from "framer-motion";
+import { ScrollText } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
@@ -12,7 +14,8 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import type { Contract } from "@/types/contract";
-import { CONTRACT_STATUS_LABEL, contractStatusBadgeVariant, formatDeposit } from "@/lib/contract-labels";
+import { formatDeposit } from "@/lib/contract-labels";
+import { StatusChip } from "@/components/viz/StatusChip";
 
 interface ContractTableProps {
   /** null이면 로딩 스켈레톤을 표시한다. */
@@ -60,33 +63,50 @@ export function ContractTable({
   return (
     <Table>
       <TableHeader>
-        <TableRow>
-          <TableHead>계약 ID</TableHead>
-          <TableHead>상태</TableHead>
-          <TableHead className="text-right">보증금</TableHead>
-          <TableHead>계약 기간</TableHead>
-          <TableHead>최근 변경</TableHead>
+        <TableRow className="border-b border-line hover:bg-transparent">
+          <TableHead className="text-xs font-bold text-muted-foreground">계약</TableHead>
+          <TableHead className="text-xs font-bold text-muted-foreground">상태</TableHead>
+          <TableHead className="text-right text-xs font-bold text-muted-foreground">보증금</TableHead>
+          <TableHead className="text-xs font-bold text-muted-foreground">계약 기간</TableHead>
+          <TableHead className="text-xs font-bold text-muted-foreground">최근 변경</TableHead>
+          <TableHead className="text-xs font-bold text-muted-foreground">등기부</TableHead>
         </TableRow>
       </TableHeader>
       <TableBody>
-        {contracts.map((contract) => (
-          <TableRow
+        {contracts.map((contract, index) => (
+          <motion.tr
             key={contract.contract_id}
-            className={onRowClick ? "cursor-pointer" : undefined}
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.35, delay: index * 0.05, ease: "easeOut" }}
+            className={
+              "border-b border-line/70 transition-colors last:border-b-0 hover:bg-neutral-100 " +
+              (onRowClick ? "cursor-pointer" : "")
+            }
             onClick={onRowClick ? () => onRowClick(contract) : undefined}
           >
             <TableCell className="font-mono text-xs">{contract.contract_id}</TableCell>
             <TableCell>
-              <Badge variant={contractStatusBadgeVariant(contract.contract_status)}>
-                {CONTRACT_STATUS_LABEL[contract.contract_status] ?? contract.contract_status}
-              </Badge>
+              <StatusChip status={contract.contract_status} />
             </TableCell>
-            <TableCell className="text-right">{formatDeposit(contract.deposit)}</TableCell>
-            <TableCell className="text-sm text-muted-foreground">
+            <TableCell className="text-right font-semibold tnum">{formatDeposit(contract.deposit)}</TableCell>
+            <TableCell className="text-sm text-muted-foreground tnum">
               {contract.contract_start_date} ~ {contract.contract_end_date}
             </TableCell>
-            <TableCell className="text-sm text-muted-foreground">{contract.updated_at.slice(0, 10)}</TableCell>
-          </TableRow>
+            <TableCell className="text-sm text-muted-foreground tnum">
+              {contract.updated_at.slice(0, 10)}
+            </TableCell>
+            <TableCell>
+              <Link
+                href={`/registry/${contract.property_id}`}
+                onClick={(event) => event.stopPropagation()}
+                className="inline-flex items-center gap-1 rounded-full border border-line px-2.5 py-1 text-xs font-bold text-hug-blue transition-colors hover:bg-hug-sky"
+              >
+                <ScrollText size={12} />
+                열람
+              </Link>
+            </TableCell>
+          </motion.tr>
         ))}
       </TableBody>
     </Table>

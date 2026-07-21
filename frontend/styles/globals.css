@@ -7,7 +7,7 @@
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-sans);
+  --font-sans: var(--font-body);
   --font-mono: ui-monospace, "SFMono-Regular", Menlo, monospace;
   --color-sidebar-ring: var(--sidebar-ring);
   --color-sidebar-border: var(--sidebar-border);
@@ -48,168 +48,170 @@
 }
 
 /*
- * 웹사이트 UI 디자인 요청/ds/styles.css 토큰을 그대로 이식(절대원칙 3절).
- * --color-process-yellow와 .halftone/.cmyk* 인쇄 전용 장식 클래스는 ds/styles.css 자체 주석에
- * "인터페이스 액센트가 아님(body copy와 chrome은 사용하지 않음)"이라고 명시돼 있어 앱 UI에 이식하지 않는다.
- * danger/warning/success 램프는 ds에 없어 neutral-500(#9b9797)과 동일한 명도대 기준으로 사용자 확인 후
- * 표준 red/amber/emerald(Tailwind 기본 팔레트)를 추가했다.
+ * 안심루프 디자인 시스템 — docs/안심루프_UI시안_260718.html 6장 토큰 + 260721 목업 이미지 기준.
+ * 블루=신뢰·공공(주 액션·임차인), 그린=안심·긍정(성공·HUG 영역), 스카이·민트=배경 틴트.
+ * 경고·위험(앰버·레드)은 시맨틱 컬러로 분리해 브랜드 컬러와 섞지 않는다.
  */
 @theme {
-  --color-ds-bg: #f3f2f2;
-  --color-ds-surface: #eae9e9;
-  --color-ds-text: #201e1d;
-  --color-divider: color-mix(in srgb, #201e1d 16%, transparent);
+  /* 브랜드 */
+  --color-hug-blue: #0a5ca8;
+  --color-hug-navy: #0b3d6e;
+  --color-hug-green: #00a05c;
+  --color-hug-green-deep: #007a46;
+  --color-hug-sky: #eaf2f9;
+  --color-hug-mint: #e7f5ee;
+  /* 목업 이미지의 밝은 KPI 필 컬러 */
+  --color-brand-cyan: #2ea7e0;
+  --color-brand-lime: #7ac943;
 
-  --color-neutral-100: #f8f4f4;
-  --color-neutral-200: #eae7e7;
-  --color-neutral-300: #d7d3d3;
-  --color-neutral-400: #bab6b6;
-  --color-neutral-500: #9b9797;
-  --color-neutral-600: #7d7979;
-  --color-neutral-700: #605d5d;
-  --color-neutral-800: #444141;
-  --color-neutral-900: #2d2b2b;
+  /* 잉크·라인 */
+  --color-ink: #15283c;
+  --color-ink-soft: #4e6076;
+  --color-line: #d8e2ec;
 
-  --color-accent-100: #e9f8ff;
-  --color-accent-200: #cbeeff;
-  --color-accent-300: #99e0ff;
-  --color-accent-400: #62c5ee;
-  --color-accent-500: #38a6cf;
-  --color-accent-600: #1186ac;
-  --color-accent-700: #006786;
-  --color-accent-800: #004961;
-  --color-accent-900: #0a303e;
-  --color-accent: #0088b0;
+  --color-neutral-100: #f5f8fb;
+  --color-neutral-200: #eaf0f6;
+  --color-neutral-300: #d8e2ec;
+  --color-neutral-400: #aebfd0;
+  --color-neutral-500: #7a93ad;
+  --color-neutral-600: #4e6076;
+  --color-neutral-700: #3a4d63;
+  --color-neutral-800: #253850;
+  --color-neutral-900: #15283c;
 
-  --color-accent2-100: #fff1f4;
-  --color-accent2-200: #ffdee6;
-  --color-accent2-300: #ffc0d0;
-  --color-accent2-400: #ff90b1;
-  --color-accent2-500: #ff458e;
-  --color-accent2-600: #d82071;
-  --color-accent2-700: #aa0b56;
-  --color-accent2-800: #790e3d;
-  --color-accent2-900: #4b1528;
-  --color-accent2: #d6006c;
+  /* accent = HUG 블루 계열(구 ds accent 유틸 호환) */
+  --color-accent-100: #eaf2f9;
+  --color-accent-200: #cfe3f4;
+  --color-accent-300: #a4cbe9;
+  --color-accent-400: #6facd9;
+  --color-accent-500: #3c8ac4;
+  --color-accent-600: #0a5ca8;
+  --color-accent-700: #094e8e;
+  --color-accent-800: #0b3d6e;
+  --color-accent-900: #0a2c4e;
+  --color-accent: #0a5ca8;
 
-  /* 표준 red/amber/emerald, neutral-500와 동일 명도대 기준(사용자 확인 완료). */
-  --color-danger-100: #fee2e2;
-  --color-danger-200: #fecaca;
-  --color-danger-300: #fca5a5;
-  --color-danger-400: #f87171;
-  --color-danger-500: #ef4444;
-  --color-danger-600: #dc2626;
-  --color-danger-700: #b91c1c;
-  --color-danger-800: #991b1b;
-  --color-danger-900: #7f1d1d;
-  --color-danger: #ef4444;
+  /* 시맨틱 */
+  --color-danger-100: #fae4e4;
+  --color-danger-200: #f5c6c6;
+  --color-danger-300: #eb9c9c;
+  --color-danger-400: #e07070;
+  --color-danger-500: #d64545;
+  --color-danger-600: #c03a3a;
+  --color-danger-700: #9c2e2e;
+  --color-danger-800: #7a2424;
+  --color-danger-900: #5c1b1b;
+  --color-danger: #d64545;
 
-  --color-warning-100: #fef3c7;
-  --color-warning-200: #fde68a;
-  --color-warning-300: #fcd34d;
-  --color-warning-400: #fbbf24;
-  --color-warning-500: #f59e0b;
-  --color-warning-600: #d97706;
-  --color-warning-700: #b45309;
-  --color-warning-800: #92400e;
-  --color-warning-900: #78350f;
-  --color-warning: #f59e0b;
+  --color-warning-100: #fbf1d9;
+  --color-warning-200: #f5dfa8;
+  --color-warning-300: #efcd78;
+  --color-warning-400: #ebbc42;
+  --color-warning-500: #e8a200;
+  --color-warning-600: #c08700;
+  --color-warning-700: #8a6a00;
+  --color-warning-800: #6b5200;
+  --color-warning-900: #4d3b00;
+  --color-warning: #e8a200;
 
-  --color-success-100: #d1fae5;
-  --color-success-200: #a7f3d0;
-  --color-success-300: #6ee7b7;
-  --color-success-400: #34d399;
-  --color-success-500: #10b981;
-  --color-success-600: #059669;
-  --color-success-700: #047857;
-  --color-success-800: #065f46;
-  --color-success-900: #064e3b;
-  --color-success: #10b981;
+  --color-success-100: #e7f5ee;
+  --color-success-200: #cbe9da;
+  --color-success-300: #a6dcc0;
+  --color-success-400: #6fdda9;
+  --color-success-500: #00a05c;
+  --color-success-600: #009150;
+  --color-success-700: #007a46;
+  --color-success-800: #0c4a31;
+  --color-success-900: #0a3a27;
+  --color-success: #00a05c;
 
-  --font-heading: var(--font-source-serif), Georgia, "Times New Roman", serif;
-  --font-body: var(--font-source-serif), Georgia, "Times New Roman", serif;
-  --font-sans: var(--font-source-serif), Georgia, "Times New Roman", serif;
+  --font-heading: "Pretendard Variable", "Pretendard", "Apple SD Gothic Neo", "Noto Sans KR", "Malgun Gothic", system-ui, sans-serif;
+  --font-body: "Pretendard Variable", "Pretendard", "Apple SD Gothic Neo", "Noto Sans KR", "Malgun Gothic", system-ui, sans-serif;
 
-  --spacing-ds-1: 5px;
-  --spacing-ds-2: 10px;
-  --spacing-ds-3: 15px;
-  --spacing-ds-4: 20px;
-  --spacing-ds-6: 30px;
-  --spacing-ds-8: 40px;
+  --shadow-card: 0 1px 3px rgba(11, 61, 110, 0.08), 0 8px 24px rgba(11, 61, 110, 0.07);
+  --shadow-card-lg: 0 2px 6px rgba(11, 61, 110, 0.1), 0 16px 40px rgba(11, 61, 110, 0.12);
 
-  /* ds의 sharp print 톤(반경이 아주 작음)을 shadcn 파생 스케일(sm/md/lg/xl 등)보다 우선한다. */
-  --radius-sm: 1px;
-  --radius-md: 2px;
-  --radius-lg: 4px;
-
-  --shadow-ds-sm: 0 1px 2px color-mix(in srgb, #2d2b2b 14%, transparent);
-  --shadow-ds-md: 0 3px 10px color-mix(in srgb, #2d2b2b 16%, transparent);
-  --shadow-ds-lg: 0 12px 32px color-mix(in srgb, #2d2b2b 22%, transparent);
+  --animate-pulse-soft: pulse-soft 2.4s ease-in-out infinite;
+  @keyframes pulse-soft {
+    0%,
+    100% {
+      opacity: 1;
+    }
+    50% {
+      opacity: 0.45;
+    }
+  }
 }
 
 :root {
-  --background: var(--color-ds-bg);
-  --foreground: var(--color-ds-text);
-  --card: var(--color-ds-surface);
-  --card-foreground: var(--color-ds-text);
-  --popover: var(--color-ds-surface);
-  --popover-foreground: var(--color-ds-text);
-  --primary: var(--color-accent);
-  --primary-foreground: var(--color-ds-bg);
-  --secondary: var(--color-neutral-200);
-  --secondary-foreground: var(--color-ds-text);
+  --background: #f5f8fb;
+  --foreground: var(--color-ink);
+  --card: #ffffff;
+  --card-foreground: var(--color-ink);
+  --popover: #ffffff;
+  --popover-foreground: var(--color-ink);
+  --primary: var(--color-hug-blue);
+  --primary-foreground: #ffffff;
+  --secondary: var(--color-hug-sky);
+  --secondary-foreground: var(--color-hug-navy);
   --muted: var(--color-neutral-200);
-  --muted-foreground: var(--color-neutral-600);
-  --accent: var(--color-accent-100);
-  --accent-foreground: var(--color-accent-800);
+  --muted-foreground: var(--color-ink-soft);
+  --accent: var(--color-hug-sky);
+  --accent-foreground: var(--color-hug-navy);
   --destructive: var(--color-danger-600);
-  --destructive-foreground: var(--color-ds-bg);
-  --border: var(--color-divider);
-  --input: var(--color-divider);
-  --ring: var(--color-accent);
-  --radius: 4px;
-  --sidebar: var(--color-ds-surface);
-  --sidebar-foreground: var(--color-ds-text);
-  --sidebar-primary: var(--color-accent);
-  --sidebar-primary-foreground: var(--color-ds-bg);
-  --sidebar-accent: var(--color-accent-100);
-  --sidebar-accent-foreground: var(--color-accent-800);
-  --sidebar-border: var(--color-divider);
-  --sidebar-ring: var(--color-accent);
+  --destructive-foreground: #ffffff;
+  --border: var(--color-line);
+  --input: var(--color-line);
+  --ring: var(--color-hug-blue);
+  --radius: 12px;
+  --chart-1: var(--color-hug-blue);
+  --chart-2: var(--color-hug-green);
+  --chart-3: var(--color-warning-500);
+  --chart-4: var(--color-danger-500);
+  --chart-5: var(--color-neutral-500);
+  --sidebar: #ffffff;
+  --sidebar-foreground: var(--color-ink);
+  --sidebar-primary: var(--color-hug-blue);
+  --sidebar-primary-foreground: #ffffff;
+  --sidebar-accent: var(--color-hug-sky);
+  --sidebar-accent-foreground: var(--color-hug-navy);
+  --sidebar-border: var(--color-line);
+  --sidebar-ring: var(--color-hug-blue);
 }
 
+/* 제품 화면은 라이트 테마 확정안(시안 각주). 다크는 뷰어 문서용으로만 유지. */
 .dark {
-  --background: oklch(0.145 0 0);
-  --foreground: oklch(0.985 0 0);
-  --card: oklch(0.205 0 0);
-  --card-foreground: oklch(0.985 0 0);
-  --popover: oklch(0.205 0 0);
-  --popover-foreground: oklch(0.985 0 0);
-  --primary: oklch(0.922 0 0);
-  --primary-foreground: oklch(0.205 0 0);
-  --secondary: oklch(0.269 0 0);
-  --secondary-foreground: oklch(0.985 0 0);
-  --muted: oklch(0.269 0 0);
-  --muted-foreground: oklch(0.708 0 0);
-  --accent: oklch(0.269 0 0);
-  --accent-foreground: oklch(0.985 0 0);
-  --destructive: oklch(0.704 0.191 22.216);
-  --border: oklch(1 0 0 / 10%);
-  --input: oklch(1 0 0 / 15%);
-  --ring: oklch(0.556 0 0);
-  --chart-1: oklch(0.87 0 0);
-  --chart-2: oklch(0.556 0 0);
-  --chart-3: oklch(0.439 0 0);
-  --chart-4: oklch(0.371 0 0);
-  --chart-5: oklch(0.269 0 0);
-  --sidebar: oklch(0.205 0 0);
-  --sidebar-foreground: oklch(0.985 0 0);
-  --sidebar-primary: oklch(0.488 0.243 264.376);
-  --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.269 0 0);
-  --sidebar-accent-foreground: oklch(0.985 0 0);
-  --sidebar-border: oklch(1 0 0 / 10%);
-  --sidebar-ring: oklch(0.556 0 0);
+  --background: #0f1822;
+  --foreground: #e6eef6;
+  --card: #16222f;
+  --card-foreground: #e6eef6;
+  --popover: #16222f;
+  --popover-foreground: #e6eef6;
+  --primary: #4d9fe8;
+  --primary-foreground: #0b1c2c;
+  --secondary: #12283c;
+  --secondary-foreground: #cfe2f3;
+  --muted: #1c2b3b;
+  --muted-foreground: #93a6ba;
+  --accent: #12283c;
+  --accent-foreground: #cfe2f3;
+  --destructive: #e07070;
+  --border: #26384b;
+  --input: #26384b;
+  --ring: #4d9fe8;
+  --chart-1: #4d9fe8;
+  --chart-2: #2fbf7f;
+  --chart-3: #ebbc42;
+  --chart-4: #e07070;
+  --chart-5: #7a93ad;
+  --sidebar: #16222f;
+  --sidebar-foreground: #e6eef6;
+  --sidebar-primary: #4d9fe8;
+  --sidebar-primary-foreground: #0b1c2c;
+  --sidebar-accent: #12283c;
+  --sidebar-accent-foreground: #cfe2f3;
+  --sidebar-border: #26384b;
+  --sidebar-ring: #4d9fe8;
 }
 
 @layer base {
@@ -219,6 +221,7 @@
   body {
     @apply bg-background text-foreground;
     font-family: var(--font-body);
+    -webkit-font-smoothing: antialiased;
   }
   h1,
   h2,
@@ -227,6 +230,18 @@
   h5,
   h6 {
     font-family: var(--font-heading);
-    font-weight: 600;
+    font-weight: 700;
+    letter-spacing: -0.01em;
+  }
+  b,
+  strong {
+    font-weight: 700;
+  }
+}
+
+@layer utilities {
+  /* 수치 표기는 항상 탭ular — 대시보드 숫자 정렬 */
+  .tnum {
+    font-variant-numeric: tabular-nums;
   }
 }

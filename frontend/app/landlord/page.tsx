@@ -22,8 +22,13 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { useRouter } from "next/navigation";
+import { FileSignature } from "lucide-react";
+import { toast } from "sonner";
 import { evidenceService } from "@/services/evidenceService";
 import { contractService } from "@/services/contractService";
+import { esignService } from "@/services/esignService";
+import { RegistryAccessCard } from "@/components/common/RegistryAccessCard";
 import { ApiError } from "@/services/apiClient";
 import type { EvidenceRequest } from "@/types/evidence";
 import type { Contract } from "@/types/contract";
@@ -38,6 +43,9 @@ const selectClass =
 
 /** LAND-00 임대인 홈: 증빙 요청 목록·파일 제출(POST /evidence) + 반환계획 제출(POST /return-plans). */
 export default function LandlordHomePage() {
+  const router = useRouter();
+  const [sessionCode, setSessionCode] = useState("");
+  const [isJoining, setIsJoining] = useState(false);
   const [requests, setRequests] = useState<EvidenceRequest[] | null>(null);
   const [contracts, setContracts] = useState<Contract[] | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -113,10 +121,53 @@ export default function LandlordHomePage() {
       .finally(() => setIsSubmittingPlan(false));
   };
 
+  const joinEsign = (event: React.FormEvent) => {
+    event.preventDefault();
+    const code = sessionCode.trim().toUpperCase();
+    if (code.length < 4 || isJoining) return;
+    setIsJoining(true);
+    esignService
+      .join(code)
+      .then((session) => {
+        toast.success(`세션 ${session.session_code}에 참여했습니다.`);
+        router.push(`/esign/${session.session_id}`);
+      })
+      .catch((error: unknown) =>
+        toast.error(error instanceof ApiError ? error.message : "세션 참여에 실패했습니다."),
+      )
+      .finally(() => setIsJoining(false));
+  };
+
   return (
     <div className="flex flex-col gap-6">
       {notice ? <p className="text-sm text-primary">{notice}</p> : null}
       {errorMessage ? <p className="text-sm text-destructive">{errorMessage}</p> : null}
+
+      <Card className="rounded-2xl border-line shadow-card">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2 text-base font-extrabold">
+            <FileSignature size={16} className="text-hug-blue" />
+            전자계약 세션 입장
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <form className="flex flex-wrap items-center gap-2" onSubmit={joinEsign}>
+            <input
+              value={sessionCode}
+              onChange={(event) => setSessionCode(event.target.value.toUpperCase())}
+              placeholder="세션 코드 (예: 9F3A)"
+              maxLength={8}
+              className="h-10 w-44 rounded-full border border-line bg-card px-4 font-mono text-sm uppercase outline-none placeholder:font-sans placeholder:normal-case placeholder:text-muted-foreground focus-visible:border-ring"
+            />
+            <Button type="submit" className="h-10 rounded-full" disabled={sessionCode.trim().length < 4 || isJoining}>
+              {isJoining ? "입장 중..." : "세션 입장"}
+            </Button>
+            <span className="text-xs text-muted-foreground">
+              임차인이 전달한 초대 코드로 공동세션에 참여해 특약 합의·서명을 진행합니다.
+            </span>
+          </form>
+        </CardContent>
+      </Card>
 
       <Card>
         <CardHeader>
@@ -165,6 +216,8 @@ export default function LandlordHomePage() {
           )}
         </CardContent>
       </Card>
+
+      <RegistryAccessCard />
 
       <Card>
         <CardHeader>

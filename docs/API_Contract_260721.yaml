@@ -1,0 +1,2538 @@
+# =============================================================================
+# API Contract v2 (260721) — 실제 구현 기준 재생성본
+# =============================================================================
+# 원천: 백엔드 라이브 OpenAPI (GET /openapi.json, app 버전 0.1.0, 2026-07-21 기준)
+# 61개 operation (경로 /api/v1 프리픽스 포함, /health 루트 별칭 1건 별도).
+#
+# 구버전 API_Contract_260714.yaml(40 op) 대비 변경 요약:
+#   - 개명·대체 6: GET /counsel/{id}→/counsel-queue/{id}, GET /hug/dashboard→5개 분할,
+#     POST /notifications/{id}/read→PATCH, POST /ml/counsel/predict→/ml/counsel/classify,
+#     /verifications 경로변수 verification_id→evidence_id (GET·decision)
+#   - 미구현 잔여 10: /admin/blockchain-logs·model-status·system-logs,
+#     /entity-risk-groups/{id}, /recovery-predictions/{id}(+/similar),
+#     /address/normalize, /ml/duration/predict, /ml/risk/predict, /referrals
+#   - 신규 31: esign 7, hug/dashboard 5, counsel-queue 3, incidents 2(목록·상태변경),
+#     landlords 3, properties 5, notifications 3, ml 2, rag/answer, blockchain 목록,
+#     auth/signup, users/{id}, evidence-requests 생성 등
+# 상세 대조표: docs/구현현황_문서정합_260721.md
+# =============================================================================
+
+openapi: 3.1.0
+info:
+  title: HUG 안심전세 체인 Backend
+  description: HUG × 아이엔 안심전세 체인 API_Contract_260714.yaml 기반 FastAPI MVP 백엔드
+  version: 0.1.0
+paths:
+  /health:
+    get:
+      tags:
+      - Admin
+      summary: Health
+      operationId: health_health_get
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema: {}
+  /api/v1/health:
+    get:
+      tags:
+      - Admin
+      summary: Health
+      operationId: health_api_v1_health_get
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema: {}
+  /api/v1/auth/signup:
+    post:
+      tags:
+      - Auth
+      summary: Signup
+      operationId: signup_api_v1_auth_signup_post
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SignupRequest'
+        required: true
+      responses:
+        '201':
+          description: Successful Response
+          content:
+            application/json:
+              schema: {}
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/v1/auth/login:
+    post:
+      tags:
+      - Auth
+      summary: Login
+      operationId: login_api_v1_auth_login_post
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LoginRequest'
+        required: true
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema: {}
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/v1/auth/me:
+    get:
+      tags:
+      - Auth
+      summary: Read Me
+      operationId: read_me_api_v1_auth_me_get
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema: {}
+      security:
+      - BearerAuth: []
+  /api/v1/auth/logout:
+    post:
+      tags:
+      - Auth
+      summary: Logout
+      operationId: logout_api_v1_auth_logout_post
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema: {}
+      security:
+      - BearerAuth: []
+  /api/v1/admin/users:
+    get:
+      tags:
+      - Admin
+      summary: List Admin Users
+      operationId: list_admin_users_api_v1_admin_users_get
+      security:
+      - BearerAuth: []
+      parameters:
+      - name: search
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Search
+      - name: role
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Role
+      - name: page
+        in: query
+        required: false
+        schema:
+          type: integer
+          minimum: 1
+          default: 1
+          title: Page
+      - name: size
+        in: query
+        required: false
+        schema:
+          type: integer
+          maximum: 100
+          minimum: 1
+          default: 20
+          title: Size
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema: {}
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/v1/users/{user_id}:
+    get:
+      tags:
+      - Admin
+      summary: Get User
+      operationId: get_user_api_v1_users__user_id__get
+      security:
+      - BearerAuth: []
+      parameters:
+      - name: user_id
+        in: path
+        required: true
+        schema:
+          type: string
+          title: User Id
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema: {}
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/v1/properties:
+    post:
+      tags:
+      - Property-Risk
+      summary: Create Property
+      operationId: create_property_api_v1_properties_post
+      security:
+      - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PropertyCreateRequest'
+      responses:
+        '201':
+          description: Successful Response
+          content:
+            application/json:
+              schema: {}
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+    get:
+      tags:
+      - Property-Risk
+      summary: List Properties
+      operationId: list_properties_api_v1_properties_get
+      security:
+      - BearerAuth: []
+      parameters:
+      - name: page
+        in: query
+        required: false
+        schema:
+          type: integer
+          minimum: 1
+          default: 1
+          title: Page
+      - name: size
+        in: query
+        required: false
+        schema:
+          type: integer
+          maximum: 100
+          minimum: 1
+          default: 20
+          title: Size
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema: {}
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/v1/properties/{property_id}:
+    get:
+      tags:
+      - Property-Risk
+      summary: Get Property
+      operationId: get_property_api_v1_properties__property_id__get
+      security:
+      - BearerAuth: []
+      parameters:
+      - name: property_id
+        in: path
+        required: true
+        schema:
+          type: string
+          title: Property Id
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema: {}
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/v1/properties/{property_id}/registry/refresh:
+    post:
+      tags:
+      - Property-Risk
+      summary: Refresh Registry
+      description: 주소 기반 등기부 조회 → registry_snapshots 저장. 실패 시 mock 폴백.
+      operationId: refresh_registry_api_v1_properties__property_id__registry_refresh_post
+      security:
+      - BearerAuth: []
+      parameters:
+      - name: property_id
+        in: path
+        required: true
+        schema:
+          type: string
+          title: Property Id
+      - name: deposit
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: integer
+            minimum: 0
+          - type: 'null'
+          description: 보증금(원). 지정 시 보증금 대비 채권최고액 비율 계산
+          title: Deposit
+        description: 보증금(원). 지정 시 보증금 대비 채권최고액 비율 계산
+      - name: scenario
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          description: mock 시나리오(normal|mortgage|complex_rights). 미지정 시 CODEF 실호출
+          title: Scenario
+        description: mock 시나리오(normal|mortgage|complex_rights). 미지정 시 CODEF 실호출
+      responses:
+        '201':
+          description: Successful Response
+          content:
+            application/json:
+              schema: {}
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/v1/properties/{property_id}/registry/latest:
+    get:
+      tags:
+      - Property-Risk
+      summary: Get Latest Registry
+      operationId: get_latest_registry_api_v1_properties__property_id__registry_latest_get
+      security:
+      - BearerAuth: []
+      parameters:
+      - name: property_id
+        in: path
+        required: true
+        schema:
+          type: string
+          title: Property Id
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema: {}
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/v1/landlords:
+    post:
+      tags:
+      - Property-Risk
+      summary: Create Landlord
+      operationId: create_landlord_api_v1_landlords_post
+      security:
+      - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LandlordCreateRequest'
+      responses:
+        '201':
+          description: Successful Response
+          content:
+            application/json:
+              schema: {}
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+    get:
+      tags:
+      - Property-Risk
+      summary: List Landlords
+      operationId: list_landlords_api_v1_landlords_get
+      security:
+      - BearerAuth: []
+      parameters:
+      - name: landlord_type
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Landlord Type
+      - name: page
+        in: query
+        required: false
+        schema:
+          type: integer
+          minimum: 1
+          default: 1
+          title: Page
+      - name: size
+        in: query
+        required: false
+        schema:
+          type: integer
+          maximum: 100
+          minimum: 1
+          default: 20
+          title: Size
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema: {}
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/v1/landlords/{landlord_id}:
+    get:
+      tags:
+      - Property-Risk
+      summary: Get Landlord
+      operationId: get_landlord_api_v1_landlords__landlord_id__get
+      security:
+      - BearerAuth: []
+      parameters:
+      - name: landlord_id
+        in: path
+        required: true
+        schema:
+          type: string
+          title: Landlord Id
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema: {}
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/v1/contracts:
+    post:
+      tags:
+      - Contract
+      summary: Create Contract
+      operationId: create_contract_api_v1_contracts_post
+      security:
+      - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ContractCreateRequest'
+      responses:
+        '201':
+          description: Successful Response
+          content:
+            application/json:
+              schema: {}
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+    get:
+      tags:
+      - Contract
+      summary: List Contracts
+      operationId: list_contracts_api_v1_contracts_get
+      security:
+      - BearerAuth: []
+      parameters:
+      - name: contract_status
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Contract Status
+      - name: page
+        in: query
+        required: false
+        schema:
+          type: integer
+          minimum: 1
+          default: 1
+          title: Page
+      - name: size
+        in: query
+        required: false
+        schema:
+          type: integer
+          maximum: 100
+          minimum: 1
+          default: 20
+          title: Size
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema: {}
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/v1/contracts/{contract_id}:
+    get:
+      tags:
+      - Contract
+      summary: Get Contract
+      operationId: get_contract_api_v1_contracts__contract_id__get
+      security:
+      - BearerAuth: []
+      parameters:
+      - name: contract_id
+        in: path
+        required: true
+        schema:
+          type: string
+          title: Contract Id
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema: {}
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/v1/contracts/{contract_id}/timeline:
+    get:
+      tags:
+      - Contract
+      summary: Get Contract Timeline
+      operationId: get_contract_timeline_api_v1_contracts__contract_id__timeline_get
+      security:
+      - BearerAuth: []
+      parameters:
+      - name: contract_id
+        in: path
+        required: true
+        schema:
+          type: string
+          title: Contract Id
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema: {}
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/v1/contracts/{contract_id}/return-plan:
+    get:
+      tags:
+      - Contract
+      summary: Get Return Plan
+      operationId: get_return_plan_api_v1_contracts__contract_id__return_plan_get
+      security:
+      - BearerAuth: []
+      parameters:
+      - name: contract_id
+        in: path
+        required: true
+        schema:
+          type: string
+          title: Contract Id
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema: {}
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/v1/return-plans:
+    post:
+      tags:
+      - Contract
+      summary: Submit Return Plan
+      operationId: submit_return_plan_api_v1_return_plans_post
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ReturnPlanCreateRequest'
+        required: true
+      responses:
+        '201':
+          description: Successful Response
+          content:
+            application/json:
+              schema: {}
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+      security:
+      - BearerAuth: []
+  /api/v1/evidence-requests:
+    post:
+      tags:
+      - Evidence-Verification
+      summary: Create Evidence Request
+      operationId: create_evidence_request_api_v1_evidence_requests_post
+      security:
+      - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EvidenceRequestCreateRequest'
+      responses:
+        '201':
+          description: Successful Response
+          content:
+            application/json:
+              schema: {}
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+    get:
+      tags:
+      - Evidence-Verification
+      summary: List Evidence Requests
+      operationId: list_evidence_requests_api_v1_evidence_requests_get
+      security:
+      - BearerAuth: []
+      parameters:
+      - name: case_id
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Case Id
+      - name: contract_id
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Contract Id
+      - name: page
+        in: query
+        required: false
+        schema:
+          type: integer
+          minimum: 1
+          default: 1
+          title: Page
+      - name: size
+        in: query
+        required: false
+        schema:
+          type: integer
+          maximum: 100
+          minimum: 1
+          default: 20
+          title: Size
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema: {}
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/v1/evidence-requests/{evidence_request_id}:
+    get:
+      tags:
+      - Evidence-Verification
+      summary: Get Evidence Request
+      operationId: get_evidence_request_api_v1_evidence_requests__evidence_request_id__get
+      security:
+      - BearerAuth: []
+      parameters:
+      - name: evidence_request_id
+        in: path
+        required: true
+        schema:
+          type: string
+          title: Evidence Request Id
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema: {}
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/v1/evidence:
+    post:
+      tags:
+      - Evidence-Verification
+      summary: Submit Evidence
+      operationId: submit_evidence_api_v1_evidence_post
+      security:
+      - BearerAuth: []
+      parameters:
+      - name: evidence_request_id
+        in: query
+        required: true
+        schema:
+          type: string
+          title: Evidence Request Id
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/Body_submit_evidence_api_v1_evidence_post'
+      responses:
+        '201':
+          description: Successful Response
+          content:
+            application/json:
+              schema: {}
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/v1/verifications/{evidence_id}:
+    get:
+      tags:
+      - Evidence-Verification
+      summary: Get Verification
+      operationId: get_verification_api_v1_verifications__evidence_id__get
+      security:
+      - BearerAuth: []
+      parameters:
+      - name: evidence_id
+        in: path
+        required: true
+        schema:
+          type: string
+          title: Evidence Id
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema: {}
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/v1/verifications/{evidence_id}/decision:
+    post:
+      tags:
+      - Evidence-Verification
+      summary: Decide Verification
+      operationId: decide_verification_api_v1_verifications__evidence_id__decision_post
+      security:
+      - BearerAuth: []
+      parameters:
+      - name: evidence_id
+        in: path
+        required: true
+        schema:
+          type: string
+          title: Evidence Id
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/VerificationDecisionRequest'
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema: {}
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/v1/risk/diagnose:
+    post:
+      tags:
+      - Property-Risk
+      summary: Diagnose Risk
+      operationId: diagnose_risk_api_v1_risk_diagnose_post
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RiskDiagnoseRequest'
+        required: true
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema: {}
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+      security:
+      - BearerAuth: []
+  /api/v1/risk/{case_id}:
+    get:
+      tags:
+      - Property-Risk
+      summary: Get Risk Result
+      operationId: get_risk_result_api_v1_risk__case_id__get
+      security:
+      - BearerAuth: []
+      parameters:
+      - name: case_id
+        in: path
+        required: true
+        schema:
+          type: string
+          title: Case Id
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema: {}
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/v1/rag/search:
+    post:
+      tags:
+      - Property-Risk
+      summary: Rag Search
+      operationId: rag_search_api_v1_rag_search_post
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RagSearchRequest'
+        required: true
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema: {}
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+      security:
+      - BearerAuth: []
+  /api/v1/rag/answer:
+    post:
+      tags:
+      - Property-Risk
+      summary: Rag Answer
+      operationId: rag_answer_api_v1_rag_answer_post
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RagAnswerRequest'
+        required: true
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema: {}
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+      security:
+      - BearerAuth: []
+  /api/v1/blockchain/anchor:
+    post:
+      tags:
+      - Blockchain
+      summary: Anchor Blockchain
+      operationId: anchor_blockchain_api_v1_blockchain_anchor_post
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AnchorRequest'
+        required: true
+      responses:
+        '202':
+          description: Successful Response
+          content:
+            application/json:
+              schema: {}
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+      security:
+      - BearerAuth: []
+  /api/v1/blockchain/{tx_id}:
+    get:
+      tags:
+      - Blockchain
+      summary: Get Blockchain Transaction
+      operationId: get_blockchain_transaction_api_v1_blockchain__tx_id__get
+      security:
+      - BearerAuth: []
+      parameters:
+      - name: tx_id
+        in: path
+        required: true
+        schema:
+          type: string
+          title: Tx Id
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema: {}
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/v1/blockchain:
+    get:
+      tags:
+      - Blockchain
+      summary: List Blockchain Transactions
+      operationId: list_blockchain_transactions_api_v1_blockchain_get
+      security:
+      - BearerAuth: []
+      parameters:
+      - name: blockchain_status
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Blockchain Status
+      - name: page
+        in: query
+        required: false
+        schema:
+          type: integer
+          minimum: 1
+          default: 1
+          title: Page
+      - name: size
+        in: query
+        required: false
+        schema:
+          type: integer
+          maximum: 100
+          minimum: 1
+          default: 20
+          title: Size
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema: {}
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/v1/ml/recovery/predict:
+    post:
+      tags:
+      - ML
+      summary: Predict Recovery
+      operationId: predict_recovery_api_v1_ml_recovery_predict_post
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RecoveryPredictRequest'
+        required: true
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema: {}
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+      security:
+      - BearerAuth: []
+  /api/v1/ml/counsel/classify:
+    post:
+      tags:
+      - ML
+      summary: Classify Counsel
+      operationId: classify_counsel_api_v1_ml_counsel_classify_post
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CounselClassifyRequest'
+        required: true
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema: {}
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+      security:
+      - BearerAuth: []
+  /api/v1/ml/models/info:
+    get:
+      tags:
+      - ML
+      summary: Models Info
+      operationId: models_info_api_v1_ml_models_info_get
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema: {}
+      security:
+      - BearerAuth: []
+  /api/v1/hug/dashboard/summary:
+    get:
+      tags:
+      - HUG-Dashboard
+      summary: Dashboard Summary
+      operationId: dashboard_summary_api_v1_hug_dashboard_summary_get
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema: {}
+      security:
+      - BearerAuth: []
+  /api/v1/hug/dashboard/priority:
+    get:
+      tags:
+      - HUG-Dashboard
+      summary: Dashboard Priority
+      operationId: dashboard_priority_api_v1_hug_dashboard_priority_get
+      security:
+      - BearerAuth: []
+      parameters:
+      - name: page
+        in: query
+        required: false
+        schema:
+          type: integer
+          minimum: 1
+          default: 1
+          title: Page
+      - name: size
+        in: query
+        required: false
+        schema:
+          type: integer
+          maximum: 100
+          minimum: 1
+          default: 20
+          title: Size
+      - name: grade
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: string
+            pattern: ^(LOW|MED|HIGH)$
+          - type: 'null'
+          title: Grade
+      - name: claim_type
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Claim Type
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema: {}
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/v1/hug/dashboard/region-risk:
+    get:
+      tags:
+      - HUG-Dashboard
+      summary: Dashboard Region Risk
+      operationId: dashboard_region_risk_api_v1_hug_dashboard_region_risk_get
+      security:
+      - BearerAuth: []
+      parameters:
+      - name: sido
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Sido
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema: {}
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/v1/hug/dashboard/issuance:
+    get:
+      tags:
+      - HUG-Dashboard
+      summary: Dashboard Issuance
+      operationId: dashboard_issuance_api_v1_hug_dashboard_issuance_get
+      security:
+      - BearerAuth: []
+      parameters:
+      - name: sido
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Sido
+      - name: housing_type
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Housing Type
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema: {}
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/v1/hug/dashboard/victims:
+    get:
+      tags:
+      - HUG-Dashboard
+      summary: Dashboard Victims
+      operationId: dashboard_victims_api_v1_hug_dashboard_victims_get
+      security:
+      - BearerAuth: []
+      parameters:
+      - name: year
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Year
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema: {}
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/v1/incidents:
+    post:
+      tags:
+      - Incident
+      summary: Create Incident
+      operationId: create_incident_api_v1_incidents_post
+      security:
+      - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/IncidentCreateRequest'
+      responses:
+        '201':
+          description: Successful Response
+          content:
+            application/json:
+              schema: {}
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+    get:
+      tags:
+      - Incident
+      summary: List Incidents
+      operationId: list_incidents_api_v1_incidents_get
+      security:
+      - BearerAuth: []
+      parameters:
+      - name: status
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Status
+      - name: incident_type
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Incident Type
+      - name: page
+        in: query
+        required: false
+        schema:
+          type: integer
+          minimum: 1
+          default: 1
+          title: Page
+      - name: size
+        in: query
+        required: false
+        schema:
+          type: integer
+          maximum: 100
+          minimum: 1
+          default: 20
+          title: Size
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema: {}
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/v1/incidents/{incident_id}:
+    get:
+      tags:
+      - Incident
+      summary: Get Incident
+      operationId: get_incident_api_v1_incidents__incident_id__get
+      security:
+      - BearerAuth: []
+      parameters:
+      - name: incident_id
+        in: path
+        required: true
+        schema:
+          type: string
+          title: Incident Id
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema: {}
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/v1/incidents/{incident_id}/status:
+    patch:
+      tags:
+      - Incident
+      summary: Update Incident Status
+      operationId: update_incident_status_api_v1_incidents__incident_id__status_patch
+      security:
+      - BearerAuth: []
+      parameters:
+      - name: incident_id
+        in: path
+        required: true
+        schema:
+          type: string
+          title: Incident Id
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/IncidentStatusUpdateRequest'
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema: {}
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/v1/counsel-queue:
+    post:
+      tags:
+      - Counsel
+      summary: Create Counsel Request
+      operationId: create_counsel_request_api_v1_counsel_queue_post
+      security:
+      - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CounselQueueCreateRequest'
+      responses:
+        '201':
+          description: Successful Response
+          content:
+            application/json:
+              schema: {}
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+    get:
+      tags:
+      - Counsel
+      summary: List Counsel Queue
+      operationId: list_counsel_queue_api_v1_counsel_queue_get
+      security:
+      - BearerAuth: []
+      parameters:
+      - name: status
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Status
+      - name: priority
+        in: query
+        required: false
+        schema:
+          anyOf:
+          - type: string
+            pattern: ^(high|normal)$
+          - type: 'null'
+          title: Priority
+      - name: page
+        in: query
+        required: false
+        schema:
+          type: integer
+          minimum: 1
+          default: 1
+          title: Page
+      - name: size
+        in: query
+        required: false
+        schema:
+          type: integer
+          maximum: 100
+          minimum: 1
+          default: 20
+          title: Size
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema: {}
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/v1/counsel-queue/{counsel_id}:
+    get:
+      tags:
+      - Counsel
+      summary: Get Counsel Request
+      operationId: get_counsel_request_api_v1_counsel_queue__counsel_id__get
+      security:
+      - BearerAuth: []
+      parameters:
+      - name: counsel_id
+        in: path
+        required: true
+        schema:
+          type: string
+          title: Counsel Id
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema: {}
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+    patch:
+      tags:
+      - Counsel
+      summary: Update Counsel Request
+      operationId: update_counsel_request_api_v1_counsel_queue__counsel_id__patch
+      security:
+      - BearerAuth: []
+      parameters:
+      - name: counsel_id
+        in: path
+        required: true
+        schema:
+          type: string
+          title: Counsel Id
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CounselQueueUpdateRequest'
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema: {}
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/v1/esign/sessions:
+    post:
+      tags:
+      - Contract-Esign
+      summary: Create Session
+      operationId: create_session_api_v1_esign_sessions_post
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EsignSessionCreateRequest'
+        required: true
+      responses:
+        '201':
+          description: Successful Response
+          content:
+            application/json:
+              schema: {}
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+      security:
+      - BearerAuth: []
+  /api/v1/esign/sessions/join:
+    post:
+      tags:
+      - Contract-Esign
+      summary: Join Session
+      operationId: join_session_api_v1_esign_sessions_join_post
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EsignJoinRequest'
+        required: true
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema: {}
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+      security:
+      - BearerAuth: []
+  /api/v1/esign/sessions/{session_id}:
+    get:
+      tags:
+      - Contract-Esign
+      summary: Get Session
+      operationId: get_session_api_v1_esign_sessions__session_id__get
+      security:
+      - BearerAuth: []
+      parameters:
+      - name: session_id
+        in: path
+        required: true
+        schema:
+          type: string
+          title: Session Id
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema: {}
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/v1/esign/sessions/{session_id}/terms:
+    post:
+      tags:
+      - Contract-Esign
+      summary: Propose Term
+      operationId: propose_term_api_v1_esign_sessions__session_id__terms_post
+      security:
+      - BearerAuth: []
+      parameters:
+      - name: session_id
+        in: path
+        required: true
+        schema:
+          type: string
+          title: Session Id
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TermProposeRequest'
+      responses:
+        '201':
+          description: Successful Response
+          content:
+            application/json:
+              schema: {}
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/v1/esign/sessions/{session_id}/terms/{term_id}:
+    post:
+      tags:
+      - Contract-Esign
+      summary: Act On Term
+      operationId: act_on_term_api_v1_esign_sessions__session_id__terms__term_id__post
+      security:
+      - BearerAuth: []
+      parameters:
+      - name: session_id
+        in: path
+        required: true
+        schema:
+          type: string
+          title: Session Id
+      - name: term_id
+        in: path
+        required: true
+        schema:
+          type: string
+          title: Term Id
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TermActionRequest'
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema: {}
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/v1/esign/sessions/{session_id}/sign:
+    post:
+      tags:
+      - Contract-Esign
+      summary: Sign Session
+      operationId: sign_session_api_v1_esign_sessions__session_id__sign_post
+      security:
+      - BearerAuth: []
+      parameters:
+      - name: session_id
+        in: path
+        required: true
+        schema:
+          type: string
+          title: Session Id
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema: {}
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/v1/esign/contracts/{contract_id}/verify:
+    post:
+      tags:
+      - Contract-Esign
+      summary: Verify Contract
+      operationId: verify_contract_api_v1_esign_contracts__contract_id__verify_post
+      security:
+      - BearerAuth: []
+      parameters:
+      - name: contract_id
+        in: path
+        required: true
+        schema:
+          type: string
+          title: Contract Id
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EsignVerifyRequest'
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema: {}
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/v1/notifications:
+    get:
+      tags:
+      - Notification
+      summary: List Notifications
+      operationId: list_notifications_api_v1_notifications_get
+      security:
+      - BearerAuth: []
+      parameters:
+      - name: unread_only
+        in: query
+        required: false
+        schema:
+          type: boolean
+          default: false
+          title: Unread Only
+      - name: page
+        in: query
+        required: false
+        schema:
+          type: integer
+          minimum: 1
+          default: 1
+          title: Page
+      - name: size
+        in: query
+        required: false
+        schema:
+          type: integer
+          maximum: 100
+          minimum: 1
+          default: 20
+          title: Size
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema: {}
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/v1/notifications/read-all:
+    patch:
+      tags:
+      - Notification
+      summary: Mark All Read
+      operationId: mark_all_read_api_v1_notifications_read_all_patch
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema: {}
+      security:
+      - BearerAuth: []
+  /api/v1/notifications/{notification_id}/read:
+    patch:
+      tags:
+      - Notification
+      summary: Mark Read
+      operationId: mark_read_api_v1_notifications__notification_id__read_patch
+      security:
+      - BearerAuth: []
+      parameters:
+      - name: notification_id
+        in: path
+        required: true
+        schema:
+          type: string
+          title: Notification Id
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema: {}
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+  /api/v1/notifications/demo-seed:
+    post:
+      tags:
+      - Notification
+      summary: Demo Seed
+      operationId: demo_seed_api_v1_notifications_demo_seed_post
+      responses:
+        '201':
+          description: Successful Response
+          content:
+            application/json:
+              schema: {}
+      security:
+      - BearerAuth: []
+components:
+  schemas:
+    AddressInput:
+      properties:
+        road_address:
+          type: string
+          title: Road Address
+        jibun_address:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Jibun Address
+        adm_cd:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Adm Cd
+        bd_mgt_sn:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Bd Mgt Sn
+        zip_no:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Zip No
+        dong:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Dong
+        ho:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Ho
+      type: object
+      required:
+      - road_address
+      title: AddressInput
+    AnchorRequest:
+      properties:
+        event_type:
+          type: string
+          title: Event Type
+        reference_id:
+          type: string
+          title: Reference Id
+        result_hash:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Result Hash
+        payload:
+          anyOf:
+          - type: object
+          - type: 'null'
+          title: Payload
+        model_version:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Model Version
+      type: object
+      required:
+      - event_type
+      - reference_id
+      title: AnchorRequest
+    Body_submit_evidence_api_v1_evidence_post:
+      properties:
+        file:
+          type: string
+          format: binary
+          title: File
+      type: object
+      required:
+      - file
+      title: Body_submit_evidence_api_v1_evidence_post
+    ContractCreateRequest:
+      properties:
+        property_id:
+          type: string
+          title: Property Id
+        deposit:
+          type: integer
+          exclusiveMinimum: 0.0
+          title: Deposit
+        contract_start_date:
+          type: string
+          format: date
+          title: Contract Start Date
+        contract_end_date:
+          type: string
+          format: date
+          title: Contract End Date
+        landlord_type:
+          $ref: '#/components/schemas/LandlordType'
+        housing_type:
+          $ref: '#/components/schemas/HousingType'
+        landlord_id:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Landlord Id
+      type: object
+      required:
+      - property_id
+      - deposit
+      - contract_start_date
+      - contract_end_date
+      - landlord_type
+      - housing_type
+      title: ContractCreateRequest
+    CounselClassifyRequest:
+      properties:
+        text:
+          type: string
+          maxLength: 8000
+          minLength: 10
+          title: Text
+          description: 상담 상황 요약 텍스트
+      type: object
+      required:
+      - text
+      title: CounselClassifyRequest
+    CounselQueueCreateRequest:
+      properties:
+        text:
+          type: string
+          maxLength: 8000
+          minLength: 10
+          title: Text
+          description: 상담 요청 본문
+        source:
+          type: string
+          enum:
+          - chatbot_escalation
+          - direct
+          - incident_followup
+          title: Source
+          default: chatbot_escalation
+        contract_id:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Contract Id
+        region_sido:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Region Sido
+      type: object
+      required:
+      - text
+      title: CounselQueueCreateRequest
+    CounselQueueUpdateRequest:
+      properties:
+        status:
+          type: string
+          enum:
+          - Waiting
+          - InProgress
+          - Answered
+          - Closed
+          title: Status
+        answer_note:
+          anyOf:
+          - type: string
+            maxLength: 8000
+          - type: 'null'
+          title: Answer Note
+      type: object
+      required:
+      - status
+      title: CounselQueueUpdateRequest
+    EsignJoinRequest:
+      properties:
+        session_code:
+          type: string
+          maxLength: 8
+          minLength: 4
+          title: Session Code
+          description: 세션 초대 코드
+      type: object
+      required:
+      - session_code
+      title: EsignJoinRequest
+    EsignSessionCreateRequest:
+      properties:
+        contract_id:
+          type: string
+          title: Contract Id
+      type: object
+      required:
+      - contract_id
+      title: EsignSessionCreateRequest
+    EsignVerifyRequest:
+      properties:
+        tampered_fields:
+          anyOf:
+          - type: object
+          - type: 'null'
+          title: Tampered Fields
+          description: '예: {"deposit": 200000000} — 지정 시 변조 시나리오 검증'
+      type: object
+      title: EsignVerifyRequest
+      description: '위변조 검증 데모용: 필드를 넘기면 해당 값으로 변조된 문서의 해시를 비교한다.'
+    EvidenceRequestCreateRequest:
+      properties:
+        contract_id:
+          type: string
+          title: Contract Id
+        reason:
+          type: string
+          title: Reason
+        evidence_type:
+          $ref: '#/components/schemas/EvidenceType'
+        risk_assessment_id:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Risk Assessment Id
+        due_date:
+          anyOf:
+          - type: string
+            format: date
+          - type: 'null'
+          title: Due Date
+      type: object
+      required:
+      - contract_id
+      - reason
+      - evidence_type
+      title: EvidenceRequestCreateRequest
+    EvidenceType:
+      type: string
+      enum:
+      - REGISTRY_CANCELLATION_PROOF
+      - BUSINESS_STATUS_PROOF
+      - OWNERSHIP_PROOF
+      - INSURANCE_PROOF
+      - RETURN_PLAN_DOCUMENT
+      - CONTRACT_DOCUMENT
+      - OTHER
+      title: EvidenceType
+    HTTPValidationError:
+      properties:
+        detail:
+          items:
+            $ref: '#/components/schemas/ValidationError'
+          type: array
+          title: Detail
+      type: object
+      title: HTTPValidationError
+    HousingType:
+      type: string
+      enum:
+      - MULTI_HOUSEHOLD
+      - MULTI_FAMILY
+      - APARTMENT
+      - OFFICETEL
+      - SINGLE_FAMILY
+      - ROW_HOUSE
+      - OTHER
+      title: HousingType
+    IncidentCreateRequest:
+      properties:
+        incident_type:
+          type: string
+          enum:
+          - DEPOSIT_NOT_RETURNED
+          - AUCTION_STARTED
+          - LANDLORD_UNREACHABLE
+          - FRAUD_SUSPECTED
+          - OTHER
+          title: Incident Type
+        description:
+          type: string
+          maxLength: 4000
+          minLength: 10
+          title: Description
+          description: 상황 설명
+        contract_id:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Contract Id
+        property_id:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Property Id
+        deposit_amount:
+          anyOf:
+          - type: integer
+            minimum: 0.0
+          - type: 'null'
+          title: Deposit Amount
+        occurred_date:
+          anyOf:
+          - type: string
+            format: date
+          - type: 'null'
+          title: Occurred Date
+      type: object
+      required:
+      - incident_type
+      - description
+      title: IncidentCreateRequest
+    IncidentStatusUpdateRequest:
+      properties:
+        status:
+          type: string
+          enum:
+          - Received
+          - Reviewing
+          - TransferredToRecovery
+          - Closed
+          title: Status
+        note:
+          anyOf:
+          - type: string
+            maxLength: 1000
+          - type: 'null'
+          title: Note
+      type: object
+      required:
+      - status
+      title: IncidentStatusUpdateRequest
+    LandlordCreateRequest:
+      properties:
+        landlord_type:
+          $ref: '#/components/schemas/LandlordType'
+        display_name:
+          type: string
+          title: Display Name
+        business_registration_number:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Business Registration Number
+        dart_corp_name:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Dart Corp Name
+      type: object
+      required:
+      - landlord_type
+      - display_name
+      title: LandlordCreateRequest
+    LandlordType:
+      type: string
+      enum:
+      - INDIVIDUAL
+      - INDIVIDUAL_BUSINESS
+      - CORPORATION
+      title: LandlordType
+    LoginRequest:
+      properties:
+        email:
+          type: string
+          format: email
+          title: Email
+        password:
+          type: string
+          minLength: 1
+          title: Password
+      type: object
+      required:
+      - email
+      - password
+      title: LoginRequest
+    PropertyCreateRequest:
+      properties:
+        address:
+          $ref: '#/components/schemas/AddressInput'
+        housing_type:
+          anyOf:
+          - $ref: '#/components/schemas/HousingType'
+          - type: 'null'
+      type: object
+      required:
+      - address
+      title: PropertyCreateRequest
+    RagAnswerRequest:
+      properties:
+        topic:
+          type: string
+          minLength: 1
+          title: Topic
+        question:
+          type: string
+          minLength: 1
+          title: Question
+        region:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Region
+        consultation_stage:
+          anyOf:
+          - type: string
+            enum:
+            - 계약전
+            - 계약중
+            - 사고후
+          - type: 'null'
+          title: Consultation Stage
+        top_k:
+          type: integer
+          maximum: 10.0
+          minimum: 1.0
+          title: Top K
+          default: 3
+      type: object
+      required:
+      - topic
+      - question
+      title: RagAnswerRequest
+    RagSearchRequest:
+      properties:
+        topic:
+          type: string
+          minLength: 1
+          title: Topic
+        question:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Question
+          description: 임베딩 질의에 포함할 질문 원문(유사도 향상용)
+        region:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Region
+        consultation_stage:
+          anyOf:
+          - type: string
+            enum:
+            - 계약전
+            - 계약중
+            - 사고후
+          - type: 'null'
+          title: Consultation Stage
+        top_k:
+          type: integer
+          maximum: 10.0
+          minimum: 1.0
+          title: Top K
+          default: 3
+      type: object
+      required:
+      - topic
+      title: RagSearchRequest
+    RecoveryPredictRequest:
+      properties:
+        product_name:
+          type: string
+          title: Product Name
+          description: 상품명
+          examples:
+          - 전세보증금반환보증
+          - 개인임대사업자임대보증금보증
+        claim_type:
+          type: string
+          title: Claim Type
+          description: 채권구분
+          examples:
+          - 소송대지급금
+          - 구상채권(신상품)
+          - 구상채권
+        claimed_amount:
+          type: integer
+          minimum: 0.0
+          title: Claimed Amount
+          description: 신청청구금액(원)
+        incurred_amount:
+          type: integer
+          minimum: 0.0
+          title: Incurred Amount
+          description: 발생금액(원)
+        auction_filed_date:
+          type: string
+          format: date
+          title: Auction Filed Date
+          description: 경/공매 신청일자
+        incurred_date:
+          type: string
+          format: date
+          title: Incurred Date
+          description: 채권 발생일자
+      type: object
+      required:
+      - product_name
+      - claim_type
+      - claimed_amount
+      - incurred_amount
+      - auction_filed_date
+      - incurred_date
+      title: RecoveryPredictRequest
+    ReturnPlanCreateRequest:
+      properties:
+        contract_id:
+          type: string
+          title: Contract Id
+        planned_return_date:
+          type: string
+          format: date
+          title: Planned Return Date
+        return_method:
+          type: string
+          title: Return Method
+        note:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Note
+      type: object
+      required:
+      - contract_id
+      - planned_return_date
+      - return_method
+      title: ReturnPlanCreateRequest
+    RiskDiagnoseRequest:
+      properties:
+        property_id:
+          type: string
+          title: Property Id
+        deposit:
+          type: integer
+          title: Deposit
+        contract_start_date:
+          type: string
+          format: date
+          title: Contract Start Date
+        contract_end_date:
+          type: string
+          format: date
+          title: Contract End Date
+        landlord_type:
+          $ref: '#/components/schemas/LandlordType'
+        housing_type:
+          $ref: '#/components/schemas/HousingType'
+        landlord_id:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Landlord Id
+        contract_id:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Contract Id
+      type: object
+      required:
+      - property_id
+      - deposit
+      - contract_start_date
+      - contract_end_date
+      - landlord_type
+      - housing_type
+      title: RiskDiagnoseRequest
+    SignupRequest:
+      properties:
+        email:
+          type: string
+          format: email
+          title: Email
+        password:
+          type: string
+          maxLength: 128
+          minLength: 8
+          title: Password
+        display_name:
+          type: string
+          maxLength: 100
+          minLength: 1
+          title: Display Name
+        role:
+          $ref: '#/components/schemas/UserRole'
+          default: tenant
+      type: object
+      required:
+      - email
+      - password
+      - display_name
+      title: SignupRequest
+    TermActionRequest:
+      properties:
+        action:
+          type: string
+          enum:
+          - agree
+          - withdraw
+          title: Action
+      type: object
+      required:
+      - action
+      title: TermActionRequest
+    TermProposeRequest:
+      properties:
+        text:
+          type: string
+          maxLength: 500
+          minLength: 5
+          title: Text
+      type: object
+      required:
+      - text
+      title: TermProposeRequest
+    UserRole:
+      type: string
+      enum:
+      - tenant
+      - landlord
+      - advisor
+      - hug_admin
+      - system_admin
+      - verifier
+      title: UserRole
+    ValidationError:
+      properties:
+        loc:
+          items:
+            anyOf:
+            - type: string
+            - type: integer
+          type: array
+          title: Location
+        msg:
+          type: string
+          title: Message
+        type:
+          type: string
+          title: Error Type
+      type: object
+      required:
+      - loc
+      - msg
+      - type
+      title: ValidationError
+    VerificationDecisionRequest:
+      properties:
+        decision:
+          type: string
+          enum:
+          - approve
+          - reject
+          - hold
+          title: Decision
+        reviewer_comment:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Reviewer Comment
+      type: object
+      required:
+      - decision
+      title: VerificationDecisionRequest
+  securitySchemes:
+    BearerAuth:
+      type: http
+      description: POST /api/v1/auth/login에서 발급받은 access_token을 입력하세요.
+      scheme: bearer
+      bearerFormat: JWT
