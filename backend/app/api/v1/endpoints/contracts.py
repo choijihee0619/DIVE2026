@@ -47,7 +47,7 @@ async def get_contract(
     db: AsyncIOMotorDatabase = Depends(get_db),
     request_id: str = Depends(get_request_id),
 ):
-    result = await ContractService(db).get(contract_id, current_user.user_id)
+    result = await ContractService(db).get(contract_id, current_user.user_id, current_user.role)
     return success_response(result, request_id)
 
 
@@ -58,18 +58,19 @@ async def get_contract_timeline(
     db: AsyncIOMotorDatabase = Depends(get_db),
     request_id: str = Depends(get_request_id),
 ):
-    result = await ContractService(db).get_timeline(contract_id, current_user.user_id)
+    result = await ContractService(db).get_timeline(contract_id, current_user.user_id, current_user.role)
     return success_response(result, request_id)
 
 
 @router.get("/contracts/{contract_id}/return-plan")
 async def get_return_plan(
     contract_id: str,
-    current_user: CurrentUser = Depends(require_roles("tenant", "landlord")),
+    # 계약 후 관리 화면(19.1)에서 HUG도 반환 D-day를 공동 확인한다.
+    current_user: CurrentUser = Depends(require_roles("tenant", "landlord", "hug_admin")),
     db: AsyncIOMotorDatabase = Depends(get_db),
     request_id: str = Depends(get_request_id),
 ):
-    result = await ContractService(db).get_return_plan(contract_id, current_user.user_id)
+    result = await ContractService(db).get_return_plan(contract_id, current_user.user_id, current_user.role)
     return success_response(result, request_id)
 
 

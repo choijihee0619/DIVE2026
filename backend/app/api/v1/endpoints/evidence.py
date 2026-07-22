@@ -28,7 +28,8 @@ async def list_evidence_requests(
     contract_id: str | None = None,
     page: int = Query(1, ge=1),
     size: int = Query(20, ge=1, le=100),
-    current_user: CurrentUser = Depends(require_roles("tenant", "landlord", "advisor", "system_admin")),
+    # hug_admin은 계약 후 관리 화면(19.1)에서 증빙 현황을 공동 확인한다.
+    current_user: CurrentUser = Depends(require_roles("tenant", "landlord", "advisor", "system_admin", "hug_admin")),
     db: AsyncIOMotorDatabase = Depends(get_db),
     request_id: str = Depends(get_request_id),
 ):

@@ -556,7 +556,7 @@ cd backend && pytest -q    # Atlas 없이 mongomock으로 45건 전량 실행
 
 > 상태 범례: 🧩 데이터/기반 준비됨 · ⬜ 미착수 · 🔗 기존 기능 확장 · ✅ 완료
 
-### 19.1 계약 후 관리 화면 — 3자(임차인·임대인·HUG) 공동 열람 ⬜
+### 19.1 계약 후 관리 화면 — 3자(임차인·임대인·HUG) 공동 열람 ✅ (260722)
 
 계약 **진행 중** 건과 계약 **후 관리** 건을 UI에서 분리하고, 계약 전반(계약 내용·변경사항·증빙 제출 이력)을 세 주체가 **동시 접속 없이도 동일하게** 확인할 수 있는 공유 화면.
 
@@ -564,6 +564,7 @@ cd backend && pytest -q    # Atlas 없이 mongomock으로 45건 전량 실행
 - 동일 계약을 임차인/임대인/HUG가 각자 역할 화면에서 열어도 **같은 원본(계약 내용·변경 이력·증빙 상태)** 을 보도록 `contracts`·`contract_versions`·`timeline_events`를 공유 소스로 노출
 - 변경사항은 타임라인 이벤트로 누적되어 누가 언제 무엇을 바꿨는지 3자가 추적 가능
 - 기존 계약 상세 기능을 포함하되 관리 국면(반환 D-day, 증빙 현황, 특약 이행)을 전면 배치
+- **구현(260722)**: 공용 라우트 `frontend/app/(common)/contracts/[contractId]/manage/` + 공유 뷰 `components/contracts/ContractManagementView.tsx`(D-day 히어로·증빙 현황·특약 이행 골격·변경 이력, 역할별 CTA 분기). 국면 분류는 `lib/contract-labels.ts`의 `contractPhase()`(계약 확정 이후 = 관리중). 진입점: 임차인 내 계약 2탭(`app/tenant/contracts/page.tsx`)·임차인 상세 배너·임대인 홈 "내 계약" 카드·HUG 사건 목록 행 클릭. 백엔드는 `contract_service._get_owned()`에 열람 역할(hug_admin·system_admin·advisor) 우회 추가 + return-plan·evidence-requests 라우트에 hug_admin 허용. 잔여: `contract_versions` 컬렉션·타임라인 행위자(actor) 기록은 미구현(특약 이행은 정적 골격).
 
 ### 19.2 임대인 보증금 상환능력 증빙 — 요청·업로드·3자 동시 확인 ⬜ 🔗
 

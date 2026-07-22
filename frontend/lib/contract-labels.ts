@@ -29,6 +29,35 @@ export const HUG_CASE_PRIORITY: ContractStatus[] = [
   ContractStatus.CONTRACT_FINALIZED,
 ];
 
+/**
+ * 계약 상태 축 2분할(19.1 계약 후 관리 화면).
+ * - 진행중: 계약 체결 전 단계(작성~검증) — 진단·증빙·전자계약이 주 활동.
+ * - 관리중: 계약 확정 이후(계약 후 국면) — 반환 D-day·증빙 현황·특약 이행이 주 활동.
+ */
+export type ContractPhase = "in_progress" | "managed";
+
+/** 계약 확정 이후 = 관리중. 여기 없는 상태는 전부 진행중으로 본다. */
+export const MANAGED_STATUSES: ContractStatus[] = [
+  ContractStatus.CONTRACT_FINALIZED,
+  ContractStatus.MONITORING,
+  ContractStatus.D90_REQUESTED,
+  ContractStatus.RETURN_PLAN_SUBMITTED,
+  ContractStatus.AT_RISK,
+  ContractStatus.INCIDENT_REPORTED,
+  ContractStatus.TRANSFERRED_TO_HUG,
+  ContractStatus.RECOVERY_IN_PROGRESS,
+  ContractStatus.CLOSED,
+];
+
+export function contractPhase(status: ContractStatus): ContractPhase {
+  return MANAGED_STATUSES.includes(status) ? "managed" : "in_progress";
+}
+
+export const CONTRACT_PHASE_LABEL: Record<ContractPhase, string> = {
+  in_progress: "진행중",
+  managed: "관리중 (계약 후)",
+};
+
 /** 임차인 홈에서 "주의 필요"로 강조하는 상태(위험~회수 단계). */
 export const ATTENTION_STATUSES: ContractStatus[] = [
   ContractStatus.AT_RISK,

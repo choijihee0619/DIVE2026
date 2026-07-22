@@ -87,16 +87,21 @@ class ContractService:
         )
         return _to_response(doc)
 
-    async def _get_owned(self, contract_id: str, user_id: str) -> dict:
+    # 계약 후 관리 화면(19.1)의 3자 공동 열람: 관리·상담 역할은 소유 여부와 무관하게 열람만 허용한다.
+    _VIEWER_ROLES = ("hug_admin", "system_admin", "advisor")
+
+    async def _get_owned(self, contract_id: str, user_id: str, role: str | None = None) -> dict:
         doc = await self._contracts.get_by_id(contract_id)
         if not doc:
             raise ResourceNotFoundError("계약 정보를 찾을 수 없습니다.")
+        if role in self._VIEWER_ROLES:
+            return doc
         if user_id not in (doc.get("tenant_user_id"), doc.get("landlord_user_id")):
             raise ResourceNotFoundError("계약 정보를 찾을 수 없습니다.")
         return doc
 
-    async def get(self, contract_id: str, user_id: str) -> ContractResponse:
-        return _to_response(await self._get_owned(contract_id, user_id))
+    async def get(self, contract_id: str, user_id: str, role: str | None = None) -> ContractResponse:
+        return _to_response(await self._get_owned(contract_id, user_id, role))
 
     async def list_for_user(self, user_id: str, page: int, size: int, contract_status: str | None):
         items, total = await self._contracts.list_for_user(user_id, (page - 1) * size, size, contract_status)
@@ -129,8 +134,8 @@ class ContractService:
             }
         )
 
-    async def get_timeline(self, contract_id: str, user_id: str) -> ContractTimelineResponse:
-        contract = await self._get_owned(contract_id, user_id)
+    async def get_timeline(self, contract_id: str, user_id: str, role: str | None = None) -> ContractTimelineResponse:
+        contract = await self._get_owned(contract_id, user_id, role)
         events = await self._timeline.list_for_contract(contract_id)
         return ContractTimelineResponse(
             contract_id=contract_id,
@@ -147,8 +152,8 @@ class ContractService:
             ],
         )
 
-    async def get_return_plan(self, contract_id: str, user_id: str) -> ReturnPlanResponse:
-        await self._get_owned(contract_id, user_id)
+    async def get_return_plan(self, contract_id: str, user_id: str, role: str | None = None) -> ReturnPlanResponse:
+        await self._get_owned(contract_id, user_id, role)
         doc = await self._return_plans.find_by_contract(contract_id)
         if not doc:
             raise ResourceNotFoundError("반환계획 정보를 찾을 수 없습니다.")

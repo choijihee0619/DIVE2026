@@ -14,6 +14,7 @@ import {
   ShieldCheck,
   Sparkles,
   UserRound,
+  Users,
 } from "lucide-react";
 import { toast } from "sonner";
 import { esignService } from "@/services/esignService";
@@ -39,7 +40,7 @@ import type { Contract, ContractTimeline, ReturnPlan } from "@/types/contract";
 import type { Property } from "@/types/property";
 import type { RiskAssessment } from "@/types/risk";
 import type { EvidenceRequest } from "@/types/evidence";
-import { formatDeposit } from "@/lib/contract-labels";
+import { contractPhase, formatDeposit } from "@/lib/contract-labels";
 import { GlossaryText } from "@/components/common/Term";
 import {
   BLOCKCHAIN_STATUS_LABEL,
@@ -297,6 +298,27 @@ export default function ContractDetailPage() {
       </motion.div>
 
       {errorMessage ? <p className="text-sm text-destructive">{errorMessage}</p> : null}
+
+      {/* 관리 국면(계약 후)이면 3자 공동 열람 화면으로 유도 — README §19.1 */}
+      {contractPhase(contract.contract_status) === "managed" ? (
+        <motion.div variants={fadeUp}>
+          <Link
+            href={`/contracts/${contract.contract_id}/manage`}
+            className="flex items-center gap-3 rounded-2xl border-2 border-hug-blue/30 bg-hug-sky px-4 py-3.5 transition-colors hover:border-hug-blue/60"
+          >
+            <span className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-hug-blue text-white">
+              <Users size={16} />
+            </span>
+            <span className="min-w-0 flex-1">
+              <b className="block text-sm text-hug-navy">이 계약은 관리중(계약 후) 단계입니다</b>
+              <span className="block truncate text-xs text-hug-navy/70">
+                반환 D-day·증빙 현황·특약 이행을 임차인·임대인·HUG가 같은 화면으로 확인합니다.
+              </span>
+            </span>
+            <span className="shrink-0 text-sm font-bold text-hug-blue">계약 후 관리 →</span>
+          </Link>
+        </motion.div>
+      ) : null}
 
       <div className="grid grid-cols-1 gap-5 xl:grid-cols-2">
         {/* 계약 현황 요약 — 좌: 항목, 우: 생애주기 도넛 */}

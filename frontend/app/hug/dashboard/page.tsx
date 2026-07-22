@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
 import { Banknote, CalendarClock, FileStack, Percent, PiggyBank } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
@@ -90,6 +91,7 @@ function parseTopFactors(raw: string): ShapFactor[] {
 
 /** HUG-01 채권회수 대시보드: /hug/dashboard 5종(HOUSTA 실집계 + ML 시뮬레이션) + 플랫폼 계약 큐 실데이터. */
 export default function HugDashboardPage() {
+  const router = useRouter();
   const { contracts, errorMessage, reload } = useContractList();
   const [filter, setFilter] = useState<string>("all");
 
@@ -632,6 +634,8 @@ export default function HugDashboardPage() {
               errorMessage={errorMessage}
               onRetry={reload}
               emptyMessage={filter === "all" ? "표시할 사건이 없습니다." : "해당 상태의 사건이 없습니다."}
+              // 행 클릭 → 3자 공동 열람 계약 후 관리 화면(README §19.1)
+              onRowClick={(contract) => router.push(`/contracts/${contract.contract_id}/manage`)}
             />
           </CardContent>
         </Card>

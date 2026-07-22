@@ -29,6 +29,7 @@ import { evidenceService } from "@/services/evidenceService";
 import { contractService } from "@/services/contractService";
 import { esignService } from "@/services/esignService";
 import { RegistryAccessCard } from "@/components/common/RegistryAccessCard";
+import { ContractTable } from "@/components/contracts/ContractTable";
 import { ApiError } from "@/services/apiClient";
 import type { EvidenceRequest } from "@/types/evidence";
 import type { Contract } from "@/types/contract";
@@ -166,6 +167,25 @@ export default function LandlordHomePage() {
               임차인이 전달한 초대 코드로 공동세션에 참여해 특약 합의·서명을 진행합니다.
             </span>
           </form>
+        </CardContent>
+      </Card>
+
+      {/* 내 계약 — 행 클릭 시 3자 공동 열람 계약 후 관리 화면(README §19.1) */}
+      <Card>
+        <CardHeader>
+          <CardTitle>내 계약</CardTitle>
+          <p className="text-xs font-normal text-muted-foreground">
+            계약을 선택하면 반환 D-day·증빙 현황·특약 이행을 임차인·HUG와 같은 화면으로 확인합니다.
+          </p>
+        </CardHeader>
+        <CardContent>
+          <ContractTable
+            contracts={contracts}
+            errorMessage={null}
+            onRetry={load}
+            emptyMessage="연결된 계약이 없습니다."
+            onRowClick={(contract) => router.push(`/contracts/${contract.contract_id}/manage`)}
+          />
         </CardContent>
       </Card>
 
