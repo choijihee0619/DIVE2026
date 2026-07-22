@@ -35,33 +35,7 @@ MOCK_SCENARIOS = {
     "normal": "mock_registry_normal.json",
     "mortgage": "mock_registry_mortgage.json",
     "complex_rights": "mock_registry_complex_rights.json",
-    "seizure": "mock_registry_seizure.json",
 }
-
-# 주소 해시 → 데모 시나리오 결정적 배정용 구간(합 100). 정상이 가장 흔하고 압류가 가장 드물게.
-_DEMO_SCENARIO_BANDS = [
-    (40, "normal"),
-    (70, "mortgage"),
-    (88, "complex_rights"),
-    (100, "seizure"),
-]
-
-
-def _demo_scenario_for(address: dict) -> str:
-    """샌드박스가 주소를 무시하고 고정 표본만 반환하므로, 매물 주소를 해시해
-    데모 시나리오(정상/근저당/복합권리/압류)를 '결정적으로' 배정한다.
-    같은 매물은 항상 같은 시나리오 → 데모 일관성 확보. 가짜 실데이터가 아니라
-    명시적 데모 시나리오로 라벨링한다(source_system=demo_scenario)."""
-    import hashlib
-
-    key = "|".join(
-        str(address.get(k, "")) for k in ("road_address", "jibun_address", "dong", "ho")
-    )
-    bucket = int(hashlib.sha256(key.encode("utf-8")).hexdigest(), 16) % 100
-    for threshold, scenario in _DEMO_SCENARIO_BANDS:
-        if bucket < threshold:
-            return scenario
-    return "normal"
 
 _KOR_NUM = {"영": 0, "일": 1, "이": 2, "삼": 3, "사": 4, "오": 5, "육": 6, "칠": 7, "팔": 8, "구": 9}
 _KOR_UNIT = {"십": 10, "백": 100, "천": 1000}
@@ -252,15 +226,6 @@ class RegistryService:
                 raise ValidationAppError(f"scenario는 {sorted(MOCK_SCENARIOS)} 중 하나여야 합니다.")
             return await self._mock_snapshot(property_id, scenario, deposit)
 
-        # 샌드박스 환경에서는 CODEF가 주소와 무관하게 고정 표본만 반환한다(주소별 권리관계 불가).
-        # → 실데이터가 아니므로 고정값으로 채점하지 않고, 매물 주소로 결정적 데모 시나리오를 배정한다.
-        #   (운영/데모 환경은 실제 주소별 조회이므로 아래 실호출 경로를 그대로 탄다.)
-        if (get_settings().codef_env or "sandbox").lower() == "sandbox":
-            scenario = _demo_scenario_for(address)
-            return await self._mock_snapshot(
-                property_id, scenario, deposit, demo=True
-            )
-
         query_address = build_register_query_address(address)
         try:
             body = await codef_client.fetch_register(query_address)
@@ -299,12 +264,7 @@ class RegistryService:
         return _to_summary(doc)
 
     async def _mock_snapshot(
-        self,
-        property_id: str,
-        scenario: str,
-        deposit: int | None,
-        fallback_reason: str | None = None,
-        demo: bool = False,
+        self, property_id: str, scenario: str, deposit: int | None, fallback_reason: str | None = None
     ) -> dict:
         mock_path = (
             Path(get_settings().data_dir) / "mock" / MOCK_SCENARIOS[scenario]
@@ -316,16 +276,8 @@ class RegistryService:
         doc = {
             "_id": new_uuid(),
             "property_id": property_id,
-            # demo=True: 샌드박스 고정표본 대체용 '데모 시나리오'. 실데이터 아님을 명시하되
-            # 위험엔진이 시나리오 권리관계로 채점할 수 있도록 별도 티어로 라벨링한다.
-            "source_system": "demo_scenario" if demo else "mock",
-            "provider": f"codef_sandbox_demo_{scenario}" if demo else f"mock_registry_{scenario}",
-            "demo_scenario": scenario if demo else None,
-            "demo_notice": (
-                "CODEF 샌드박스는 주소와 무관하게 고정 표본을 반환하므로, 매물 주소로 배정한 "
-                "데모 시나리오입니다(실제 권리관계 아님). 운영 환경 전환 시 주소별 실조회로 대체됩니다."
-                if demo else None
-            ),
+            "source_system": "mock",
+            "provider": f"mock_registry_{scenario}",
             "fallback_reason": fallback_reason,
             "features": features,
             "created_at": now_kst_iso(),
@@ -340,8 +292,6 @@ def _to_summary(doc: dict) -> dict:
         "property_id": doc["property_id"],
         "source_system": doc["source_system"],
         "provider": doc.get("provider"),
-        "demo_scenario": doc.get("demo_scenario"),
-        "demo_notice": doc.get("demo_notice"),
         "fallback_reason": doc.get("fallback_reason"),
         "query_address": doc.get("query_address"),
         "features": doc.get("features", {}),

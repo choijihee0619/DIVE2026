@@ -35,6 +35,7 @@ import type { Property, RegistrySnapshot } from "@/types/property";
 import { UserRole } from "@/types/enums";
 import { formatDeposit } from "@/lib/contract-labels";
 import { staggerContainer, fadeUp } from "@/lib/motion";
+import { Term } from "@/components/common/Term";
 import { cn } from "@/lib/utils";
 
 const ALL_ROLES = Object.values(UserRole);
@@ -267,12 +268,12 @@ export default function RegistryViewerPage() {
                       {features.has_seizure === true ? (
                         <span className="flex items-center gap-1.5 rounded-full bg-danger-100 px-3 py-1 text-xs font-bold text-danger-600">
                           <ShieldAlert size={13} />
-                          압류·가압류 {features.seizure_rows_active ?? 0}건 (유효)
+                          <Term k="seizure">압류·가압류</Term> {features.seizure_rows_active ?? 0}건 (유효)
                         </span>
                       ) : features.has_seizure === false ? (
                         <span className="flex items-center gap-1.5 rounded-full bg-hug-mint px-3 py-1 text-xs font-bold text-hug-green-deep">
                           <ShieldCheck size={13} />
-                          압류·가압류 없음
+                          <Term k="seizure">압류·가압류</Term> 없음
                         </span>
                       ) : null}
                       {typeof features.mortgage_count === "number" ? (
@@ -284,7 +285,7 @@ export default function RegistryViewerPage() {
                               : "bg-hug-mint text-hug-green-deep",
                           )}
                         >
-                          근저당 {features.mortgage_count}건
+                          <Term k="mortgage">근저당</Term> {features.mortgage_count}건
                           {typeof features.mortgage_max_total_won === "number" && features.mortgage_max_total_won > 0
                             ? ` · 채권최고액 합계 ${formatDeposit(features.mortgage_max_total_won)}`
                             : ""}

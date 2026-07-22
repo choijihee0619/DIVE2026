@@ -31,7 +31,7 @@ DEMO_USERS = [
     {"email": "hugadmin01@example.com", "display_name": "HUG 담당자 데모", "role": "hug_admin"},
     {"email": "sysadmin01@example.com", "display_name": "시스템 관리자 데모", "role": "system_admin"},
 ]
-DEMO_PASSWORD = "0000"  # 데모 편의용. 로그인 스키마 min_length=1이라 통과함.
+DEMO_PASSWORD = "P@ssw0rd!"
 
 
 async def main() -> None:

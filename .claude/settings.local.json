@@ -29,7 +29,8 @@
       "Bash(sort -rk3)",
       "Bash(ls -la /Users/choijihee/Projects/DIVE2026 2>&1 || echo \"TARGET_NOT_EXISTS\")",
       "Bash(claude plugin *)",
-      "WebFetch(domain:github.com)"
+      "WebFetch(domain:github.com)",
+      "Bash(awk -F: '{s+=$2} END {print s\" total route decorators\"}')"
     ]
   }
 }

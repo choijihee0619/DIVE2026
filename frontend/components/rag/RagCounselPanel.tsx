@@ -20,6 +20,7 @@ import { counselService } from "@/services/counselService";
 import { ApiError } from "@/services/apiClient";
 import { useSessionStore } from "@/stores/useSessionStore";
 import type { RagAnswerData, RagSource } from "@/types/rag";
+import { Term, TermHelp } from "@/components/common/Term";
 import type { CounselQueueItem } from "@/types/counsel";
 import { cn } from "@/lib/utils";
 
@@ -282,12 +283,12 @@ export function RagCounselPanel() {
           <CardContent className="text-sm">
             {escalation?.classification.classified ? (
               <>
-                분쟁유형: <b>{escalation.classification.dispute_type}</b>{" "}
+                <Term k="disputeType">분쟁유형</Term>: <b>{escalation.classification.dispute_type}</b>{" "}
                 <span className="text-xs text-muted-foreground tnum">
                   ({((escalation.classification.dispute_confidence ?? 0) * 100).toFixed(0)}%)
                 </span>
                 <br />
-                진행단계: <b>{escalation.classification.consultation_stage}</b>{" "}
+                <Term k="counselStage">진행단계</Term>: <b>{escalation.classification.consultation_stage}</b>{" "}
                 <span className="text-xs text-muted-foreground tnum">
                   ({((escalation.classification.stage_confidence ?? 0) * 100).toFixed(0)}%)
                 </span>
@@ -297,9 +298,9 @@ export function RagCounselPanel() {
               </>
             ) : (
               <>
-                분쟁유형: <b>{topic}</b>
+                <Term k="disputeType">분쟁유형</Term>: <b>{topic}</b>
                 <br />
-                진행단계: <b>{messages.length > 0 ? "상담·검토" : "대기"}</b>
+                <Term k="counselStage">진행단계</Term>: <b>{messages.length > 0 ? "상담·검토" : "대기"}</b>
               </>
             )}
           </CardContent>
@@ -341,6 +342,7 @@ export function RagCounselPanel() {
             <CardTitle className="flex items-center gap-1.5 text-sm font-extrabold">
               <FileText size={14} className="text-hug-blue" />
               함께 본 자료
+              <TermHelp k="ragEvidence" />
             </CardTitle>
           </CardHeader>
           <CardContent className="text-xs leading-relaxed text-muted-foreground">

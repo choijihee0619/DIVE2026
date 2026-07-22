@@ -40,6 +40,7 @@ import type { Property } from "@/types/property";
 import type { RiskAssessment } from "@/types/risk";
 import type { EvidenceRequest } from "@/types/evidence";
 import { formatDeposit } from "@/lib/contract-labels";
+import { GlossaryText } from "@/components/common/Term";
 import {
   BLOCKCHAIN_STATUS_LABEL,
   EVIDENCE_TYPE_LABEL,
@@ -263,8 +264,8 @@ export default function ContractDetailPage() {
 
   const riskSignals: RiskSignal[] = (risk?.risk_factors ?? []).map((factor) => ({
     level: SEVERITY_TO_LEVEL[factor.severity] ?? "info",
-    title: factor.title,
-    detail: factor.description,
+    title: <GlossaryText text={factor.title} />,
+    detail: <GlossaryText text={factor.description} />,
   }));
 
   const timelineItems: TimelineItem[] = (timeline?.events ?? []).map((event) => ({
@@ -409,7 +410,9 @@ export default function ContractDetailPage() {
                       <h3 className="mb-1.5 text-sm font-bold text-hug-navy">권장 조치</h3>
                       <ol className="list-decimal pl-5 text-sm text-hug-navy/80">
                         {risk.recommended_actions.map((action) => (
-                          <li key={action}>{action}</li>
+                          <li key={action}>
+                            <GlossaryText text={action} />
+                          </li>
                         ))}
                       </ol>
                     </div>
@@ -555,8 +558,12 @@ export default function ContractDetailPage() {
                 >
                   <Icon size={18} className={`shrink-0 ${clause.tone}`} />
                   <div className="min-w-0 flex-1">
-                    <p className="text-sm font-bold">{clause.title}</p>
-                    <p className="truncate text-xs text-muted-foreground">{clause.description}</p>
+                    <p className="text-sm font-bold">
+                      <GlossaryText text={clause.title} />
+                    </p>
+                    <p className="truncate text-xs text-muted-foreground">
+                      <GlossaryText text={clause.description} />
+                    </p>
                   </div>
                   <Button
                     size="sm"

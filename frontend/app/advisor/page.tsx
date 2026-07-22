@@ -20,6 +20,7 @@ import {
 import type { RagAnswerData } from "@/types/rag";
 import { staggerContainer, fadeUp } from "@/lib/motion";
 import { cn } from "@/lib/utils";
+import { Term, TermHelp } from "@/components/common/Term";
 
 const STATUS_TONE: Record<CounselStatus, string> = {
   Waiting: "bg-warning-100 text-warning-700",
@@ -154,8 +155,12 @@ export default function AdvisorQueuePage() {
                     <tr className="border-b border-line text-left text-xs font-bold text-muted-foreground">
                       <th className="py-2 pr-2">접수</th>
                       <th className="px-2">요약</th>
-                      <th className="px-2">분쟁유형(자동)</th>
-                      <th className="px-2">단계(자동)</th>
+                      <th className="px-2">
+                        <Term k="disputeType">분쟁유형</Term>(자동)
+                      </th>
+                      <th className="px-2">
+                        <Term k="counselStage">단계</Term>(자동)
+                      </th>
                       <th className="px-2">우선순위</th>
                       <th className="px-2">상태</th>
                     </tr>
@@ -244,6 +249,7 @@ export default function AdvisorQueuePage() {
                 <CardTitle className="flex items-center gap-2 text-sm font-extrabold">
                   <Bot size={15} className="text-hug-blue" />
                   유사사례 · AI 답변 초안
+                  <TermHelp k="ragEvidence" />
                 </CardTitle>
               </CardHeader>
               <CardContent className="flex flex-col gap-3">

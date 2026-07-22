@@ -22,6 +22,7 @@ import { ContractTable } from "@/components/contracts/ContractTable";
 import { useContractList } from "@/hooks/useContractList";
 import { ContractStatus } from "@/types/enums";
 import { hugCasePriority } from "@/lib/contract-labels";
+import { CLAIM_TYPE_TERM_KEY } from "@/lib/glossary";
 import { hugService } from "@/services/hugService";
 import type {
   HugSummary,
@@ -34,6 +35,8 @@ import type {
 } from "@/types/hug";
 import { AnimatedNumber } from "@/components/viz/AnimatedNumber";
 import { ShapBars, type ShapFactor } from "@/components/viz/ShapBars";
+import { FactorSentences } from "@/components/viz/FactorSentences";
+import { Term, TermHelp } from "@/components/common/Term";
 import { RecoveryPredictCard } from "@/components/hug/RecoveryPredictCard";
 import { staggerContainer, fadeUp } from "@/lib/motion";
 import { cn } from "@/lib/utils";
@@ -64,6 +67,12 @@ function formatWonShort(won: number): string {
   if (won >= 1e8) return `${(won / 1e8).toFixed(1)}억`;
   if (won >= 1e4) return `${Math.round(won / 1e4).toLocaleString("ko-KR")}만`;
   return won.toLocaleString("ko-KR");
+}
+
+/** 채권구분 값 — 용어 사전에 있으면 툴팁을 달아 렌더링. */
+function ClaimType({ value }: { value: string }) {
+  const termKey = CLAIM_TYPE_TERM_KEY[value];
+  return termKey ? <Term k={termKey}>{value}</Term> : <>{value}</>;
 }
 
 /** "발생금액=4.8억(+0.129); 채권구분=구상채권(-0.052)" → ShapFactor[]. */
@@ -162,12 +171,22 @@ export default function HugDashboardPage() {
     [issuance],
   );
 
+  /** 선택 채권 top_factors → 발산 바·문장화 공용 구조 ("발생금액=4.8억" 분해). */
+  const selectedFactors = useMemo(() => {
+    if (!selectedBond) return [];
+    return parseTopFactors(selectedBond.top_factors).map((factor) => {
+      const [name, value] = factor.label.split("=");
+      return { name, value, shap: factor.value };
+    });
+  }, [selectedBond]);
+
   const maxSidoRate = Math.max(...sidoRows.map((r) => r.accident_rate_pct), 0.001);
   const maxVictim = Math.max(...victimTop.rows.map((r) => r.victim_house_cnt), 1);
 
-  const kpis: { label: string; icon: LucideIcon; tone: string; render: () => React.ReactNode }[] = [
+  const kpis: { key: string; label: React.ReactNode; icon: LucideIcon; tone: string; render: () => React.ReactNode }[] = [
     {
-      label: "관리 채권",
+      key: "portfolio",
+      label: <>관리 <Term k="bond">채권</Term></>,
       icon: FileStack,
       tone: "bg-hug-navy text-white",
       render: () =>
@@ -181,7 +200,8 @@ export default function HugDashboardPage() {
         ),
     },
     {
-      label: "대위변제 잔고",
+      key: "claimed",
+      label: <><Term k="subrogation">대위변제</Term> 잔고</>,
       icon: Banknote,
       tone: "bg-hug-sky text-hug-blue",
       render: () =>
@@ -195,6 +215,7 @@ export default function HugDashboardPage() {
         ),
     },
     {
+      key: "expected",
       label: "예상 회수액",
       icon: PiggyBank,
       tone: "bg-hug-mint text-hug-green-deep",
@@ -209,7 +230,8 @@ export default function HugDashboardPage() {
         ),
     },
     {
-      label: "예상 회수율 (중앙값)",
+      key: "ratio",
+      label: <><Term k="recoveryRate">예상 회수율</Term> (중앙값)</>,
       icon: Percent,
       tone: "bg-hug-mint text-hug-green-deep",
       render: () =>
@@ -223,7 +245,8 @@ export default function HugDashboardPage() {
         ),
     },
     {
-      label: "예상 배당 소요일 (중앙값)",
+      key: "days",
+      label: <>예상 <Term k="dividend">배당</Term> 소요일 (중앙값)</>,
       icon: CalendarClock,
       tone: "bg-warning-100 text-warning-700",
       render: () =>
@@ -257,8 +280,8 @@ export default function HugDashboardPage() {
 
       {/* KPI 5종 — /hug/dashboard/summary */}
       <div className="grid grid-cols-2 gap-4 lg:grid-cols-5">
-        {kpis.map(({ label, icon: Icon, tone, render }) => (
-          <motion.div key={label} variants={fadeUp}>
+        {kpis.map(({ key, label, icon: Icon, tone, render }) => (
+          <motion.div key={key} variants={fadeUp}>
             <Card className="h-full rounded-2xl border-line shadow-card">
               <CardContent className="flex items-center gap-3 pt-6">
                 <span className={cn("flex size-10 shrink-0 items-center justify-center rounded-xl", tone)}>
@@ -280,9 +303,9 @@ export default function HugDashboardPage() {
           <Card className="h-full rounded-2xl border-line shadow-card">
             <CardHeader>
               <CardTitle className="text-base font-extrabold">
-                회수 우선순위 상위 채권
+                회수 우선순위 상위 채권 <TermHelp k="priorityScore" />
                 <span className="ml-2 text-xs font-semibold text-muted-foreground">
-                  스코어 = 회수율 {summary ? Math.round(summary.priority_weights.recovery * 100) : 60}% ·
+                  점수 = 회수율 {summary ? Math.round(summary.priority_weights.recovery * 100) : 60}% ·
                   속도 {summary ? Math.round(summary.priority_weights.speed * 100) : 40}%
                 </span>
               </CardTitle>
@@ -298,8 +321,10 @@ export default function HugDashboardPage() {
                       <th className="px-2">청구금액</th>
                       <th className="px-2">예상회수율</th>
                       <th className="px-2">예상소요</th>
-                      <th className="px-2">등급</th>
-                      <th className="px-2 text-right">스코어</th>
+                      <th className="px-2">
+                        <Term k="recoveryGrade">등급</Term>
+                      </th>
+                      <th className="px-2 text-right">점수</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -318,7 +343,7 @@ export default function HugDashboardPage() {
                           )}
                         >
                           <td className="max-w-40 truncate py-2.5 pr-2 font-semibold" title={bond.product_name}>
-                            {bond.claim_type}
+                            <ClaimType value={bond.claim_type} />
                           </td>
                           <td className="px-2">{formatWonShort(bond.claimed_amount)}</td>
                           <td className="px-2">{(bond.pred_recovery_ratio * 100).toFixed(0)}%</td>
@@ -347,19 +372,29 @@ export default function HugDashboardPage() {
         <motion.div variants={fadeUp}>
           <Card className="h-full rounded-2xl border-line shadow-card">
             <CardHeader>
-              <CardTitle className="text-base font-extrabold">선택 채권 · 요인 분석 (SHAP)</CardTitle>
+              <CardTitle className="text-base font-extrabold">
+                이 채권, 왜 이 점수인가 <TermHelp k="shap" />
+                <span className="ml-2 text-xs font-semibold text-muted-foreground">판단 근거 Top 3</span>
+              </CardTitle>
             </CardHeader>
             <CardContent className="flex h-[calc(100%-64px)] flex-col gap-3">
               {selectedBond ? (
                 <>
                   <div className="rounded-xl bg-neutral-100 p-3 text-xs">
-                    <b>{selectedBond.claim_type}</b> · 청구 {formatWonShort(selectedBond.claimed_amount)} 원 ·
-                    예상 회수 {formatWonShort(selectedBond.expected_recovery_won)} 원
+                    <b>
+                      <ClaimType value={selectedBond.claim_type} />
+                    </b>{" "}
+                    · 청구 {formatWonShort(selectedBond.claimed_amount)} 원 · 예상 회수{" "}
+                    {formatWonShort(selectedBond.expected_recovery_won)} 원
                   </div>
-                  <ShapBars key={selectedBond.source_row_id} factors={parseTopFactors(selectedBond.top_factors)} />
+                  <ShapBars
+                    key={selectedBond.source_row_id}
+                    factors={selectedFactors.map((factor) => ({ label: factor.name, value: factor.shap }))}
+                  />
+                  <FactorSentences factors={selectedFactors} />
                   <p className="mt-auto pt-2 text-xs text-muted-foreground">
-                    예측이 &ldquo;왜&rdquo; 나왔는지 설명 — 실무 수용성 확보. 행을 클릭하면 해당 채권의 요인이
-                    표시됩니다.
+                    ▲ 파랑은 회수율을 올린 요인, ▼ 빨강은 내린 요인입니다. 행을 클릭하면 해당 채권의 근거로
+                    바뀝니다.
                   </p>
                 </>
               ) : (
@@ -380,7 +415,9 @@ export default function HugDashboardPage() {
         <motion.div variants={fadeUp}>
           <Card className="h-full rounded-2xl border-line shadow-card">
             <CardHeader>
-              <CardTitle className="text-base font-extrabold">회수등급 분포</CardTitle>
+              <CardTitle className="text-base font-extrabold">
+                <Term k="recoveryGrade">회수등급</Term> 분포
+              </CardTitle>
             </CardHeader>
             <CardContent className="flex items-center gap-4">
               <div className="h-40 w-40 shrink-0">
