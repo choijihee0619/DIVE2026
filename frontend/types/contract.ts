@@ -73,3 +73,11 @@ export interface ReturnPlanCreate {
   return_method: string;
   note?: string;
 }
+
+/** POST /contracts/dday-sweep 결과 (README §19.2 D-90/60/30 사전 확보 점검). */
+export interface DdaySweepResult {
+  checked: number;
+  requests_created: number;
+  notifications_sent: number;
+  flagged: { contract_id: string; stage: string; d_day: number }[];
+}

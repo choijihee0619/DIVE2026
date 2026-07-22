@@ -4,6 +4,7 @@ import type {
   ContractCreate,
   ContractListData,
   ContractTimeline,
+  DdaySweepResult,
   ReturnPlan,
   ReturnPlanCreate,
 } from "@/types/contract";
@@ -26,4 +27,6 @@ export const contractService = {
   returnPlan: (contractId: string) => apiClient.get<ReturnPlan>(`/contracts/${contractId}/return-plan`),
   create: (payload: ContractCreate) => apiClient.post<Contract>("/contracts", payload),
   submitReturnPlan: (payload: ReturnPlanCreate) => apiClient.post<ReturnPlan>("/return-plans", payload),
+  /** POST /contracts/dday-sweep — D-90/60/30 상환능력 사전 확보 점검(hug_admin/system_admin). */
+  ddaySweep: () => apiClient.post<DdaySweepResult>("/contracts/dday-sweep"),
 };

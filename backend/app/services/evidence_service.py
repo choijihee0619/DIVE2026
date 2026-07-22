@@ -6,7 +6,12 @@ from fastapi import UploadFile
 from motor.motor_asyncio import AsyncIOMotorDatabase
 
 from app.core.exceptions import ResourceNotFoundError, StateConflictError, ValidationAppError
-from app.models.enums import VerificationStatus
+from app.models.enums import (
+    MANAGED_CONTRACT_STATUSES,
+    REPAYMENT_CAPABILITY_EVIDENCE_TYPES,
+    ContractStatus,
+    VerificationStatus,
+)
 from app.repositories.contract_repository import ContractRepository, TimelineRepository
 from app.repositories.evidence_repository import EvidenceRepository, EvidenceRequestRepository, VerificationRepository
 from app.schemas.common import build_pagination
@@ -52,7 +57,8 @@ class EvidenceService:
         self._blockchain = BlockchainService(db)
 
     async def create_request(self, payload: EvidenceRequestCreateRequest) -> EvidenceRequestResponse:
-        if not await self._contracts.exists(payload.contract_id):
+        contract = await self._contracts.get_by_id(payload.contract_id)
+        if not contract:
             raise ResourceNotFoundError("계약 정보를 찾을 수 없습니다.")
         now = now_kst_iso()
         doc = {
@@ -67,8 +73,36 @@ class EvidenceService:
             "updated_at": now,
         }
         await self._requests.insert(doc)
-        await self._contracts.update_fields(
-            payload.contract_id, {"contract_status": "EvidenceRequested", "updated_at": now}
+
+        # 상태 전이(19.2): 관리 국면(계약 후) 계약은 진행중 상태로 강등하지 않는다.
+        # 상환능력 트랙 요청이면 확정/모니터링 상태를 D90Requested로 올려 사전 확보 국면을 표시한다.
+        current_status = contract["contract_status"]
+        timeline_event = "EvidenceRequested"
+        if current_status in MANAGED_CONTRACT_STATUSES:
+            if payload.evidence_type.value in REPAYMENT_CAPABILITY_EVIDENCE_TYPES and current_status in (
+                ContractStatus.CONTRACT_FINALIZED.value,
+                ContractStatus.MONITORING.value,
+            ):
+                await self._contracts.update_fields(
+                    payload.contract_id,
+                    {"contract_status": ContractStatus.D90_REQUESTED.value, "updated_at": now},
+                )
+                timeline_event = "D90Requested"
+            else:
+                await self._contracts.update_fields(payload.contract_id, {"updated_at": now})
+        else:
+            await self._contracts.update_fields(
+                payload.contract_id, {"contract_status": "EvidenceRequested", "updated_at": now}
+            )
+        await self._timeline.append(
+            {
+                "_id": new_uuid(),
+                "contract_id": payload.contract_id,
+                "event_type": timeline_event,
+                "occurred_at": now,
+                "blockchain_status": "NotRequested",
+                "blockchain_tx_id": None,
+            }
         )
         return _request_to_response(doc)
 
@@ -128,8 +162,23 @@ class EvidenceService:
         await self._requests.update_fields(
             evidence_request_id, {"verification_status": VerificationStatus.SUBMITTED.value, "updated_at": now}
         )
-        await self._contracts.update_fields(
-            request_doc["contract_id"], {"contract_status": "EvidenceSubmitted", "updated_at": now}
+        # 관리 국면(계약 후) 계약은 제출로 진행중 상태(EvidenceSubmitted)로 강등하지 않는다(19.2).
+        contract = await self._contracts.get_by_id(request_doc["contract_id"])
+        if contract and contract["contract_status"] in MANAGED_CONTRACT_STATUSES:
+            await self._contracts.update_fields(request_doc["contract_id"], {"updated_at": now})
+        else:
+            await self._contracts.update_fields(
+                request_doc["contract_id"], {"contract_status": "EvidenceSubmitted", "updated_at": now}
+            )
+        await self._timeline.append(
+            {
+                "_id": new_uuid(),
+                "contract_id": request_doc["contract_id"],
+                "event_type": "EvidenceSubmitted",
+                "occurred_at": now,
+                "blockchain_status": "NotRequested",
+                "blockchain_tx_id": None,
+            }
         )
 
         return EvidenceResponse(
@@ -208,7 +257,24 @@ class EvidenceService:
 
         request_doc = await self._requests.get_by_id(evidence["evidence_request_id"])
         if request_doc:
-            await self._contracts.update_fields(request_doc["contract_id"], {"contract_status": request_status, "updated_at": now})
+            # 관리 국면(계약 후) 계약은 검증 결정으로 진행중 상태로 강등하지 않는다(19.2).
+            # 상환능력 증빙 승인 시 D90Requested → Monitoring으로 복귀(사전 확보 완료).
+            contract = await self._contracts.get_by_id(request_doc["contract_id"])
+            if contract and contract["contract_status"] in MANAGED_CONTRACT_STATUSES:
+                if (
+                    payload.decision == "approve"
+                    and contract["contract_status"] == ContractStatus.D90_REQUESTED.value
+                ):
+                    await self._contracts.update_fields(
+                        request_doc["contract_id"],
+                        {"contract_status": ContractStatus.MONITORING.value, "updated_at": now},
+                    )
+                else:
+                    await self._contracts.update_fields(request_doc["contract_id"], {"updated_at": now})
+            else:
+                await self._contracts.update_fields(
+                    request_doc["contract_id"], {"contract_status": request_status, "updated_at": now}
+                )
             await self._timeline.append(
                 {
                     "_id": new_uuid(),

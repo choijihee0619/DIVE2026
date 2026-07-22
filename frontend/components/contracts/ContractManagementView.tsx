@@ -5,6 +5,7 @@ import Link from "next/link";
 import { motion } from "framer-motion";
 import {
   BadgeCheck,
+  BellRing,
   CalendarClock,
   CircleAlert,
   Eye,
@@ -15,10 +16,22 @@ import {
   ShieldCheck,
   UserRound,
   Users,
+  Wallet,
 } from "lucide-react";
+import { toast } from "sonner";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
+import {
+  Dialog,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { contractService } from "@/services/contractService";
 import { evidenceService } from "@/services/evidenceService";
 import { propertyService } from "@/services/propertyService";
@@ -27,7 +40,7 @@ import { useSessionStore } from "@/stores/useSessionStore";
 import type { Contract, ContractTimeline, ReturnPlan } from "@/types/contract";
 import type { Property } from "@/types/property";
 import type { EvidenceRequest } from "@/types/evidence";
-import { ContractStatus, UserRole } from "@/types/enums";
+import { ContractStatus, EvidenceType, REPAYMENT_EVIDENCE_TYPES, UserRole } from "@/types/enums";
 import { contractPhase, formatDeposit } from "@/lib/contract-labels";
 import {
   BLOCKCHAIN_STATUS_LABEL,
@@ -67,6 +80,16 @@ const ROLE_CTA: Partial<Record<UserRole, { href: (contractId: string) => string;
   },
 };
 
+const REPAYMENT_TYPE_SET = new Set<string>(REPAYMENT_EVIDENCE_TYPES);
+
+/** D-90/60/30 단계 (README §19.2) — 만기 90일 이내에서 가장 임박한 단계를 고른다. */
+function ddayStage(days: number): { stage: string; tone: "info" | "warn" | "danger" } | null {
+  if (days < 0 || days > 90) return null;
+  if (days <= 30) return { stage: "D-30", tone: "danger" };
+  if (days <= 60) return { stage: "D-60", tone: "warn" };
+  return { stage: "D-90", tone: "info" };
+}
+
 function daysUntil(dateStr: string): number {
   const target = new Date(`${dateStr}T00:00:00`);
   const today = new Date();
@@ -77,6 +100,33 @@ function daysUntil(dateStr: string): number {
 function ddayLabel(days: number): string {
   if (days === 0) return "D-Day";
   return days > 0 ? `D-${days}` : `D+${-days}`;
+}
+
+/** 증빙 요청 목록 아이템 — 상환능력 카드·기타 증빙 카드 공용. */
+function EvidenceRequestItems({ requests }: { requests: EvidenceRequest[] }) {
+  return (
+    <ul className="flex flex-col gap-2">
+      {requests.map((request) => (
+        <li
+          key={request.evidence_request_id}
+          className="flex flex-wrap items-center gap-x-3 gap-y-1 rounded-xl border border-line p-3 text-sm"
+        >
+          <Badge variant={verificationStatusBadgeVariant(request.verification_status)}>
+            {VERIFICATION_STATUS_LABEL[request.verification_status] ?? request.verification_status}
+          </Badge>
+          <span className="font-semibold">
+            {EVIDENCE_TYPE_LABEL[request.evidence_type] ?? request.evidence_type}
+          </span>
+          <span className="min-w-0 flex-1 truncate text-muted-foreground">{request.reason}</span>
+          {request.due_date ? (
+            <span className="shrink-0 text-xs font-semibold text-muted-foreground tnum">
+              기한 {request.due_date}
+            </span>
+          ) : null}
+        </li>
+      ))}
+    </ul>
+  );
 }
 
 interface ContractManagementViewProps {
@@ -100,6 +150,13 @@ export function ContractManagementView({ contractId }: ContractManagementViewPro
   const [evidenceRequests, setEvidenceRequests] = useState<EvidenceRequest[] | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
+  // 상환능력 증빙 요청 다이얼로그 (README §19.2 — 임차인·HUG → 임대인 추가 제출 요청)
+  const [repayDialogOpen, setRepayDialogOpen] = useState(false);
+  const [repayType, setRepayType] = useState<string>(EvidenceType.INCOME_EMPLOYMENT_PROOF);
+  const [repayReason, setRepayReason] = useState("");
+  const [repayDue, setRepayDue] = useState("");
+  const [isSubmittingRepay, setIsSubmittingRepay] = useState(false);
+
   const load = useCallback(() => {
     contractService
       .get(contractId)
@@ -121,6 +178,28 @@ export function ContractManagementView({ contractId }: ContractManagementViewPro
   useEffect(() => {
     load();
   }, [load]);
+
+  const submitRepayRequest = () => {
+    if (!repayReason.trim() || isSubmittingRepay) return;
+    setIsSubmittingRepay(true);
+    evidenceService
+      .createRequest({
+        contract_id: contractId,
+        reason: repayReason.trim(),
+        evidence_type: repayType,
+        due_date: repayDue || null,
+      })
+      .then(() => {
+        toast.success("상환능력 증빙 요청을 임대인에게 보냈습니다.");
+        setRepayDialogOpen(false);
+        setRepayReason("");
+        load();
+      })
+      .catch((error: unknown) =>
+        toast.error(error instanceof ApiError ? error.message : "증빙 요청에 실패했습니다."),
+      )
+      .finally(() => setIsSubmittingRepay(false));
+  };
 
   const timelineItems: TimelineItem[] = useMemo(
     () =>
@@ -177,6 +256,17 @@ export function ContractManagementView({ contractId }: ContractManagementViewPro
   const verifiedCount = (evidenceRequests ?? []).filter((r) => r.verification_status === "Verified").length;
   const cta = role ? ROLE_CTA[role] : undefined;
 
+  // 상환능력 트랙(19.2) — 4종 유형만 분리 집계
+  const repaymentRequests = (evidenceRequests ?? []).filter((r) => REPAYMENT_TYPE_SET.has(r.evidence_type));
+  const otherRequests = (evidenceRequests ?? []).filter((r) => !REPAYMENT_TYPE_SET.has(r.evidence_type));
+  const repaymentSubmitted = repaymentRequests.some((r) =>
+    ["Submitted", "Reviewing", "Verified"].includes(r.verification_status),
+  );
+  const repaymentVerified = repaymentRequests.some((r) => r.verification_status === "Verified");
+  const stage = phase === "managed" ? ddayStage(maturityDays) : null;
+  const showDdayAlert = stage !== null && !repaymentSubmitted;
+  const canRequestRepayment = role === UserRole.TENANT || role === UserRole.HUG_ADMIN;
+
   return (
     <motion.div variants={staggerContainer} initial="hidden" animate="show" className="flex flex-col gap-6">
       {/* 헤더 — 3자 공동 열람 안내 */}
@@ -207,6 +297,57 @@ export function ContractManagementView({ contractId }: ContractManagementViewPro
           이 계약은 아직 <b>진행중</b> 단계입니다. 계약이 확정되면 반환 D-day·증빙 현황이 이 화면에서
           본격적으로 관리됩니다.
         </motion.p>
+      ) : null}
+
+      {/* D-90/60/30 사전 확보 경고 (19.2) — 상환능력 증빙 미제출 시 단계별 표시 */}
+      {showDdayAlert && stage ? (
+        <motion.div
+          variants={fadeUp}
+          className={cn(
+            "flex flex-wrap items-center gap-3 rounded-2xl border-2 px-4 py-3.5",
+            stage.tone === "danger"
+              ? "border-danger-500/40 bg-danger-100/40"
+              : stage.tone === "warn"
+                ? "border-warning-600/30 bg-warning-100/50"
+                : "border-hug-blue/30 bg-hug-sky",
+          )}
+        >
+          <BellRing
+            size={18}
+            className={
+              stage.tone === "danger"
+                ? "shrink-0 text-danger-600"
+                : stage.tone === "warn"
+                  ? "shrink-0 text-warning-700"
+                  : "shrink-0 text-hug-blue"
+            }
+          />
+          <div className="min-w-0 flex-1 text-sm">
+            <b
+              className={
+                stage.tone === "danger"
+                  ? "text-danger-600"
+                  : stage.tone === "warn"
+                    ? "text-warning-700"
+                    : "text-hug-navy"
+              }
+            >
+              만기 {stage.stage} — 임대인 상환능력 증빙 미제출
+            </b>
+            <span className="ml-2 text-muted-foreground">
+              D-90/60/30 단계별 알림이 임차인·임대인·HUG에 발송됩니다.
+            </span>
+          </div>
+          {role === UserRole.LANDLORD ? (
+            <Link href="/landlord" className="shrink-0 text-sm font-bold text-hug-blue">
+              지금 제출하기 →
+            </Link>
+          ) : canRequestRepayment ? (
+            <Button size="sm" className="shrink-0 rounded-full" onClick={() => setRepayDialogOpen(true)}>
+              증빙 요청 보내기
+            </Button>
+          ) : null}
+        </motion.div>
       ) : null}
 
       {/* 관리 국면 KPI — 반환 D-day 전면 배치 */}
@@ -395,34 +536,83 @@ export function ContractManagementView({ contractId }: ContractManagementViewPro
           </Card>
         </motion.div>
 
-        {/* 증빙 제출 이력 */}
+        {/* 상환능력 증빙 (19.2) — 임차인·HUG 요청 → 임대인 업로드 → 3자 동시 확인 */}
+        <motion.div variants={fadeUp}>
+          <Card
+            className={cn(
+              "h-full rounded-2xl border-line shadow-card",
+              showDdayAlert ? "border-2 border-warning-600/30" : "",
+            )}
+          >
+            <CardHeader className="flex flex-row items-center justify-between">
+              <CardTitle className="flex items-center gap-1.5 text-base font-extrabold">
+                <Wallet size={16} className="text-hug-blue" />
+                상환능력 증빙
+                <TermHelp k="repaymentCapability" />
+                {repaymentVerified ? (
+                  <span className="rounded-full bg-hug-mint px-2.5 py-0.5 text-xs font-bold text-hug-green-deep">
+                    확보 완료
+                  </span>
+                ) : repaymentSubmitted ? (
+                  <span className="rounded-full bg-hug-sky px-2.5 py-0.5 text-xs font-bold text-hug-blue">
+                    검증 중
+                  </span>
+                ) : (
+                  <span className="rounded-full bg-warning-100 px-2.5 py-0.5 text-xs font-bold text-warning-700">
+                    미확보
+                  </span>
+                )}
+              </CardTitle>
+              {canRequestRepayment ? (
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="rounded-full"
+                  onClick={() => setRepayDialogOpen(true)}
+                >
+                  추가 제출 요청
+                </Button>
+              ) : null}
+            </CardHeader>
+            <CardContent className="flex flex-col gap-3">
+              {evidenceRequests === null ? (
+                <Skeleton className="h-16 w-full" />
+              ) : repaymentRequests.length === 0 ? (
+                <p className="text-sm text-muted-foreground">
+                  아직 상환능력 증빙 요청이 없습니다. 만기 90일 전(D-90)부터 기본 서류 제출이 요구됩니다.
+                </p>
+              ) : (
+                <EvidenceRequestItems requests={repaymentRequests} />
+              )}
+              {role === UserRole.LANDLORD && repaymentRequests.length > 0 && !repaymentSubmitted ? (
+                <Link
+                  href="/landlord"
+                  className="text-sm font-bold text-hug-blue underline underline-offset-2"
+                >
+                  임대인 대시보드에서 파일 제출하기 →
+                </Link>
+              ) : null}
+              <p className="text-xs text-muted-foreground">
+                소득·재직, 보증금 반환 이력, 대환·여신 한도, 자산 증빙으로 임대인의 반환 여력을
+                확인합니다. 제출 파일은 SHA-256 해시로 무결성이 보장됩니다.
+              </p>
+            </CardContent>
+          </Card>
+        </motion.div>
+
+        {/* 기타 증빙 이력 (근저당 말소 등 계약 리스크 트랙) */}
         <motion.div variants={fadeUp}>
           <Card className="h-full rounded-2xl border-line shadow-card">
             <CardHeader>
-              <CardTitle className="text-base font-extrabold">증빙 제출 이력</CardTitle>
+              <CardTitle className="text-base font-extrabold">기타 증빙 이력</CardTitle>
             </CardHeader>
             <CardContent>
               {evidenceRequests === null ? (
                 <Skeleton className="h-16 w-full" />
-              ) : evidenceRequests.length === 0 ? (
-                <p className="text-sm text-muted-foreground">아직 요청·제출된 증빙이 없습니다.</p>
+              ) : otherRequests.length === 0 ? (
+                <p className="text-sm text-muted-foreground">상환능력 외 요청·제출된 증빙이 없습니다.</p>
               ) : (
-                <ul className="flex flex-col gap-2">
-                  {evidenceRequests.map((request) => (
-                    <li
-                      key={request.evidence_request_id}
-                      className="flex items-center gap-3 rounded-xl border border-line p-3 text-sm"
-                    >
-                      <Badge variant={verificationStatusBadgeVariant(request.verification_status)}>
-                        {VERIFICATION_STATUS_LABEL[request.verification_status] ?? request.verification_status}
-                      </Badge>
-                      <span className="font-semibold">
-                        {EVIDENCE_TYPE_LABEL[request.evidence_type] ?? request.evidence_type}
-                      </span>
-                      <span className="truncate text-muted-foreground">{request.reason}</span>
-                    </li>
-                  ))}
-                </ul>
+                <EvidenceRequestItems requests={otherRequests} />
               )}
             </CardContent>
           </Card>
@@ -467,6 +657,62 @@ export function ContractManagementView({ contractId }: ContractManagementViewPro
           </Link>
         </motion.div>
       ) : null}
+
+      {/* 상환능력 증빙 추가 제출 요청 (19.2) — 임차인·HUG → 임대인 */}
+      <Dialog open={repayDialogOpen} onOpenChange={setRepayDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>임대인에게 상환능력 증빙 요청</DialogTitle>
+          </DialogHeader>
+          <p className="text-sm text-muted-foreground">
+            요청이 생성되면 임대인이 파일을 업로드하고, 검증 상태를 임차인·임대인·HUG가 동시에
+            확인합니다.
+          </p>
+          <div className="flex flex-col gap-4">
+            <div className="flex flex-col gap-1.5">
+              <Label htmlFor="repay-type">증빙 유형</Label>
+              <select
+                id="repay-type"
+                value={repayType}
+                onChange={(event) => setRepayType(event.target.value)}
+                className="h-8 w-full rounded-lg border border-input bg-transparent px-2.5 py-1 text-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
+              >
+                {REPAYMENT_EVIDENCE_TYPES.map((value) => (
+                  <option key={value} value={value}>
+                    {EVIDENCE_TYPE_LABEL[value] ?? value}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div className="flex flex-col gap-1.5">
+              <Label htmlFor="repay-reason">요청 사유</Label>
+              <Input
+                id="repay-reason"
+                value={repayReason}
+                onChange={(event) => setRepayReason(event.target.value)}
+                placeholder="예: 만기 D-90 도래 — 기본 상환능력 서류 확인 필요"
+              />
+            </div>
+            <div className="flex flex-col gap-1.5">
+              <Label htmlFor="repay-due">제출 기한 (선택)</Label>
+              <Input
+                id="repay-due"
+                type="date"
+                value={repayDue}
+                onChange={(event) => setRepayDue(event.target.value)}
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setRepayDialogOpen(false)}>
+              취소
+            </Button>
+            <Button onClick={submitRepayRequest} disabled={!repayReason.trim() || isSubmittingRepay}>
+              {isSubmittingRepay ? "요청 중..." : "요청 보내기"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </motion.div>
   );
 }

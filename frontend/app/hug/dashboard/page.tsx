@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
-import { Banknote, CalendarClock, FileStack, Percent, PiggyBank } from "lucide-react";
+import { Banknote, BellRing, CalendarClock, FileStack, Percent, PiggyBank } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import {
   Area,
@@ -16,7 +16,9 @@ import {
   XAxis,
   YAxis,
 } from "recharts";
+import { toast } from "sonner";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ContractTable } from "@/components/contracts/ContractTable";
@@ -25,6 +27,8 @@ import { ContractStatus } from "@/types/enums";
 import { hugCasePriority } from "@/lib/contract-labels";
 import { CLAIM_TYPE_TERM_KEY } from "@/lib/glossary";
 import { hugService } from "@/services/hugService";
+import { contractService } from "@/services/contractService";
+import { ApiError } from "@/services/apiClient";
 import type {
   HugSummary,
   IssuanceData,
@@ -94,6 +98,25 @@ export default function HugDashboardPage() {
   const router = useRouter();
   const { contracts, errorMessage, reload } = useContractList();
   const [filter, setFilter] = useState<string>("all");
+  const [isSweeping, setIsSweeping] = useState(false);
+
+  /** D-90/60/30 상환능력 사전 확보 점검(19.2) — 요청 자동 생성 + 단계별 노티 발송. */
+  const runDdaySweep = () => {
+    if (isSweeping) return;
+    setIsSweeping(true);
+    contractService
+      .ddaySweep()
+      .then((result) => {
+        toast.success(
+          `D-일정 점검 완료 — 계약 ${result.checked}건 점검, 상환능력 요청 ${result.requests_created}건 생성, 알림 ${result.notifications_sent}건 발송`,
+        );
+        reload();
+      })
+      .catch((error: unknown) =>
+        toast.error(error instanceof ApiError ? error.message : "D-일정 점검에 실패했습니다."),
+      )
+      .finally(() => setIsSweeping(false));
+  };
 
   const [summary, setSummary] = useState<HugSummary | null>(null);
   const [priority, setPriority] = useState<PriorityListData | null>(null);
@@ -614,10 +637,23 @@ export default function HugDashboardPage() {
       <motion.div variants={fadeUp}>
         <Card className="rounded-2xl border-line shadow-card">
           <CardHeader className="flex flex-col gap-3">
-            <CardTitle className="text-base font-extrabold">
-              사건 우선순위 목록
-              <span className="ml-2 text-xs font-semibold text-muted-foreground">플랫폼 등록 계약 기준</span>
-            </CardTitle>
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <CardTitle className="text-base font-extrabold">
+                사건 우선순위 목록
+                <span className="ml-2 text-xs font-semibold text-muted-foreground">플랫폼 등록 계약 기준</span>
+              </CardTitle>
+              {/* D-90/60/30 상환능력 사전 확보 점검(README §19.2) — 실서비스는 스케줄러가 매일 실행 */}
+              <Button
+                size="sm"
+                variant="outline"
+                className="rounded-full"
+                disabled={isSweeping}
+                onClick={runDdaySweep}
+              >
+                <BellRing size={14} />
+                {isSweeping ? "점검 중..." : "D-일정 점검 (D-90/60/30)"}
+              </Button>
+            </div>
             <Tabs value={filter} onValueChange={(value) => setFilter(String(value))}>
               <TabsList>
                 {FILTER_TABS.map((tab) => (

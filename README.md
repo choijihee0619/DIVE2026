@@ -566,7 +566,7 @@ cd backend && pytest -q    # Atlas 없이 mongomock으로 45건 전량 실행
 - 기존 계약 상세 기능을 포함하되 관리 국면(반환 D-day, 증빙 현황, 특약 이행)을 전면 배치
 - **구현(260722)**: 공용 라우트 `frontend/app/(common)/contracts/[contractId]/manage/` + 공유 뷰 `components/contracts/ContractManagementView.tsx`(D-day 히어로·증빙 현황·특약 이행 골격·변경 이력, 역할별 CTA 분기). 국면 분류는 `lib/contract-labels.ts`의 `contractPhase()`(계약 확정 이후 = 관리중). 진입점: 임차인 내 계약 2탭(`app/tenant/contracts/page.tsx`)·임차인 상세 배너·임대인 홈 "내 계약" 카드·HUG 사건 목록 행 클릭. 백엔드는 `contract_service._get_owned()`에 열람 역할(hug_admin·system_admin·advisor) 우회 추가 + return-plan·evidence-requests 라우트에 hug_admin 허용. 잔여: `contract_versions` 컬렉션·타임라인 행위자(actor) 기록은 미구현(특약 이행은 정적 골격).
 
-### 19.2 임대인 보증금 상환능력 증빙 — 요청·업로드·3자 동시 확인 ⬜ 🔗
+### 19.2 임대인 보증금 상환능력 증빙 — 요청·업로드·3자 동시 확인 ✅ (260722) 🔗
 
 임차인·HUG가 임대인의 **보증금 상환 능력**을 증빙으로 확인. 기존 증빙 요청·제출·검증 플로우(3장)를 상환능력 트랙으로 확장.
 
@@ -574,6 +574,7 @@ cd backend && pytest -q    # Atlas 없이 mongomock으로 45건 전량 실행
 - 상환능력 증빙 유형 신설: 소득·재직 증빙, 다른 보증금 반환 이력, 대환/여신 한도, 자산 증빙 등
 - **D-90 사전 확보 강화**: 계약 만기 90일 전 기본 상환능력 서류 업로드를 요구하고, 미제출 시 임차인·임대인·HUG에 **단계별 노티**(D-90/D-60/D-30) 발송 — 기존 `notifications` 컬렉션 재사용
 - 제출 파일은 현행대로 SHA-256 해시·블록체인 앵커로 무결성 보장
+- **구현(260722)**: `EvidenceType` 4종 신설(`INCOME_EMPLOYMENT_PROOF`·`DEPOSIT_RETURN_HISTORY`·`LOAN_LIMIT_PROOF`·`ASSET_PROOF`, backend `enums.py`의 `REPAYMENT_CAPABILITY_EVIDENCE_TYPES` = frontend `REPAYMENT_EVIDENCE_TYPES`). `evidence_service`에 **관리 국면 상태 보호** — 계약 후 계약은 요청/제출/검증으로 진행중 상태로 강등되지 않고, 상환능력 요청 시 `Monitoring→D90Requested`, 승인 시 `D90Requested→Monitoring` 복귀. 요청·제출이 `timeline_events`에 기록됨. **D-스윕**: `services/repayment_watch_service.py` + `POST /contracts/dday-sweep`(hug_admin) — 만기 90일 이내 관리 계약에 기본 요청 자동 생성, 미제출 시 3자에 단계별 노티(`dedupe_key`로 멱등, severity info/warning/danger). UI: `ContractManagementView`에 상환능력 카드(확보/검증중/미확보 배지, 임차인·HUG 요청 다이얼로그)·D-단계 경고 배너, HUG 대시보드 "D-일정 점검" 버튼(실서비스는 스케줄러 대체). 검증용 데모 계약 `demo-ct-p2-dday`(D-55) 추가됨. 잔여: 스케줄러 자동 실행(현재 수동 버튼), 알림의 이메일/푸시 채널.
 
 ### 19.3 임대인 신뢰도 점수 (인센티브) ⬜
 

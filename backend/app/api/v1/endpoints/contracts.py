@@ -7,8 +7,20 @@ from app.api.deps import CurrentUser, get_db, get_request_id, require_roles
 from app.core.responses import success_response
 from app.schemas.contract import ContractCreateRequest, ReturnPlanCreateRequest
 from app.services.contract_service import ContractService
+from app.services.repayment_watch_service import RepaymentWatchService
 
 router = APIRouter(tags=["Contract"])
+
+
+@router.post("/contracts/dday-sweep")
+async def run_dday_sweep(
+    # D-90/60/30 상환능력 사전 확보 점검(19.2) — 실서비스는 스케줄러, 데모는 HUG 버튼 트리거.
+    current_user: CurrentUser = Depends(require_roles("hug_admin", "system_admin")),
+    db: AsyncIOMotorDatabase = Depends(get_db),
+    request_id: str = Depends(get_request_id),
+):
+    result = await RepaymentWatchService(db).run_sweep()
+    return success_response(result, request_id)
 
 
 @router.post("/contracts", status_code=201)

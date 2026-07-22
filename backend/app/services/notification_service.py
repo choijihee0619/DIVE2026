@@ -53,7 +53,13 @@ class NotificationService:
         body: str,
         severity: str = "info",
         link: str | None = None,
-    ) -> dict:
+        dedupe_key: str | None = None,
+    ) -> dict | None:
+        # dedupe_key가 있으면 동일 키 알림을 다시 만들지 않는다(D-90/60/30 스윕 재실행 대비, 19.2).
+        if dedupe_key:
+            existing = await self._repo.collection.find_one({"user_id": user_id, "dedupe_key": dedupe_key})
+            if existing:
+                return None
         doc = {
             "_id": new_uuid(),
             "user_id": user_id,
@@ -65,6 +71,8 @@ class NotificationService:
             "is_read": False,
             "created_at": now_kst_iso(),
         }
+        if dedupe_key:
+            doc["dedupe_key"] = dedupe_key
         await self._repo.insert(doc)
         return doc
 

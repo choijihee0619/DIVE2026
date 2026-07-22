@@ -7,6 +7,10 @@ export const EVIDENCE_TYPE_LABEL: Record<string, string> = {
   INSURANCE_PROOF: "보증보험 증빙",
   RETURN_PLAN_DOCUMENT: "반환계획 문서",
   CONTRACT_DOCUMENT: "계약 문서",
+  INCOME_EMPLOYMENT_PROOF: "소득·재직 증빙",
+  DEPOSIT_RETURN_HISTORY: "보증금 반환 이력",
+  LOAN_LIMIT_PROOF: "대환·여신 한도 증빙",
+  ASSET_PROOF: "자산 증빙",
   OTHER: "기타",
 };
 
@@ -86,7 +90,8 @@ export const TIMELINE_EVENT_LABEL: Record<string, string> = {
   ReturnPlanSubmitted: "반환계획 제출",
   MonitoringStarted: "모니터링 시작",
   ContractFinalized: "계약 확정",
-  D90Requested: "D-90 반환계획 요청",
+  D90Requested: "D-90 사전확보 요청",
+  VerificationCompleted: "증빙 검증 완료",
   RiskEscalated: "위험 격상",
   IncidentReported: "사고 접수",
   TransferredToHUG: "HUG 이관",

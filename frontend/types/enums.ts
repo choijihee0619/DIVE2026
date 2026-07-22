@@ -90,9 +90,22 @@ export const EvidenceType = {
   INSURANCE_PROOF: "INSURANCE_PROOF",
   RETURN_PLAN_DOCUMENT: "RETURN_PLAN_DOCUMENT",
   CONTRACT_DOCUMENT: "CONTRACT_DOCUMENT",
+  // 임대인 보증금 상환능력 트랙 (README §19.2)
+  INCOME_EMPLOYMENT_PROOF: "INCOME_EMPLOYMENT_PROOF",
+  DEPOSIT_RETURN_HISTORY: "DEPOSIT_RETURN_HISTORY",
+  LOAN_LIMIT_PROOF: "LOAN_LIMIT_PROOF",
+  ASSET_PROOF: "ASSET_PROOF",
   OTHER: "OTHER",
 } as const;
 export type EvidenceType = (typeof EvidenceType)[keyof typeof EvidenceType];
+
+/** 임대인 보증금 상환능력 증빙 유형(19.2) — backend enums.py REPAYMENT_CAPABILITY_EVIDENCE_TYPES와 1:1. */
+export const REPAYMENT_EVIDENCE_TYPES: EvidenceType[] = [
+  EvidenceType.INCOME_EMPLOYMENT_PROOF,
+  EvidenceType.DEPOSIT_RETURN_HISTORY,
+  EvidenceType.LOAN_LIMIT_PROOF,
+  EvidenceType.ASSET_PROOF,
+];
 
 /** 역할별 홈 라우트(AUTH-01 로그인 후 분기, Frontend_UIUX_명세서 5.23절). */
 export const ROLE_HOME_ROUTE: Record<UserRole, string> = {

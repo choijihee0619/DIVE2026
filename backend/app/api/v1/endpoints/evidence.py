@@ -14,7 +14,8 @@ router = APIRouter(tags=["Evidence-Verification"])
 @router.post("/evidence-requests", status_code=201)
 async def create_evidence_request(
     payload: EvidenceRequestCreateRequest,
-    current_user: CurrentUser = Depends(require_roles("advisor", "system_admin", "tenant")),
+    # hug_admin은 상환능력 증빙(19.2)을 임대인에게 직접 요청할 수 있다.
+    current_user: CurrentUser = Depends(require_roles("advisor", "system_admin", "tenant", "hug_admin")),
     db: AsyncIOMotorDatabase = Depends(get_db),
     request_id: str = Depends(get_request_id),
 ):

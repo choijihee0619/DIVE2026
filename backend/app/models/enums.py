@@ -31,6 +31,23 @@ class ContractStatus(StrEnum):
     CLOSED = "Closed"
 
 
+# 계약 확정 이후(계약 후 관리 국면) 상태 — 19.1 진행중/관리중 2분할과 동일 기준.
+# 관리 국면 계약은 증빙 요청·제출·검증이 일어나도 진행중 상태로 강등하지 않는다(19.2).
+MANAGED_CONTRACT_STATUSES: frozenset[str] = frozenset(
+    {
+        ContractStatus.CONTRACT_FINALIZED.value,
+        ContractStatus.MONITORING.value,
+        ContractStatus.D90_REQUESTED.value,
+        ContractStatus.RETURN_PLAN_SUBMITTED.value,
+        ContractStatus.AT_RISK.value,
+        ContractStatus.INCIDENT_REPORTED.value,
+        ContractStatus.TRANSFERRED_TO_HUG.value,
+        ContractStatus.RECOVERY_IN_PROGRESS.value,
+        ContractStatus.CLOSED.value,
+    }
+)
+
+
 class VerificationStatus(StrEnum):
     PENDING = "Pending"
     SUBMITTED = "Submitted"
@@ -89,4 +106,20 @@ class EvidenceType(StrEnum):
     INSURANCE_PROOF = "INSURANCE_PROOF"
     RETURN_PLAN_DOCUMENT = "RETURN_PLAN_DOCUMENT"
     CONTRACT_DOCUMENT = "CONTRACT_DOCUMENT"
+    # 임대인 보증금 상환능력 트랙 (19.2)
+    INCOME_EMPLOYMENT_PROOF = "INCOME_EMPLOYMENT_PROOF"
+    DEPOSIT_RETURN_HISTORY = "DEPOSIT_RETURN_HISTORY"
+    LOAN_LIMIT_PROOF = "LOAN_LIMIT_PROOF"
+    ASSET_PROOF = "ASSET_PROOF"
     OTHER = "OTHER"
+
+
+# 임대인 보증금 상환능력 증빙 유형(19.2) — D-90 사전 확보·관리 국면 D90Requested 전환 판정에 사용.
+REPAYMENT_CAPABILITY_EVIDENCE_TYPES: frozenset[str] = frozenset(
+    {
+        EvidenceType.INCOME_EMPLOYMENT_PROOF.value,
+        EvidenceType.DEPOSIT_RETURN_HISTORY.value,
+        EvidenceType.LOAN_LIMIT_PROOF.value,
+        EvidenceType.ASSET_PROOF.value,
+    }
+)
