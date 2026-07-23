@@ -46,12 +46,18 @@ async def test_demo_seed_and_manifest_endpoints(client, mock_db):
     token = await signup_and_login(client, "hug_demo_seed@example.com", role="hug_admin")
     response = await client.post(
         "/api/v1/hug/demo/seed",
-        json={"use_model": False},
+        json={"use_model": False, "include_scale": False},
         headers=auth_headers(token),
     )
     assert response.status_code == 200, response.text
     manifest = response.json()["data"]
-    assert manifest["template_version"] == "hug-workflow-v1.1.0"
+    assert manifest["template_version"] == "hug-workflow-v1.2.0"
+    accounts = {account["key"]: account for account in manifest["accounts"]}
+    assert accounts["tenant01"]["contract_ids"] == ["demo-ct-s2"]
+    assert accounts["tenant02"]["contract_ids"] == ["demo-ct-s4"]
+    assert accounts["landlord01"]["contract_ids"] == [
+        "demo-ct-s2", "demo-ct-s3", "demo-ct-s4"
+    ]
     assert manifest["collection_counts"]["recovery_claims"] == 3
     assert manifest["collection_counts"]["evidence_requests"] == 9
     assert manifest["collection_counts"]["claim_documents"] == 15
@@ -59,7 +65,7 @@ async def test_demo_seed_and_manifest_endpoints(client, mock_db):
 
     workflow_login = await client.post(
         "/api/v1/auth/login",
-        json={"email": "workflow.hug@example.com", "password": "P@ssw0rd!"},
+        json={"email": "hugadmin01@example.com", "password": "P@ssw0rd!"},
     )
     assert workflow_login.status_code == 200, workflow_login.text
     workflow_headers = auth_headers(workflow_login.json()["data"]["access_token"])
@@ -86,6 +92,95 @@ async def test_demo_seed_and_manifest_endpoints(client, mock_db):
     response = await client.get("/api/v1/hug/demo/manifest", headers=auth_headers(token))
     assert response.status_code == 200, response.text
     assert response.json()["data"]["document_digest_sha256"] == manifest["document_digest_sha256"]
+
+
+@pytest.mark.asyncio
+async def test_purge_removes_action_created_docs_but_keeps_live_docs_and_accounts(
+    client, mock_db
+):
+    await _seed(mock_db)
+    # 시연 중 액션이 만드는 무작위 ID 문서를 흉내낸다: is_demo 상속 또는 demo-* 참조.
+    await mock_db.notifications.insert_one(
+        {"_id": "rand-noti-1", "user_id": "demo-user-tenant01",
+         "contract_id": "demo-ct-s2", "is_demo": True}
+    )
+    await mock_db.evidences.insert_one(
+        {"_id": "rand-ev-1", "evidence_request_id": "demo-er-s2-return-plan"}
+    )
+    # 라이브 문서는 purge에서 보존돼야 한다.
+    await mock_db.contracts.insert_one(
+        {"_id": "live-ct-1", "contract_status": "Monitoring", "is_demo": False}
+    )
+
+    manifest = await DemoScenarioService(mock_db).seed(use_model=False, purge=True)
+
+    assert manifest["purge_counts"]["contracts"] == 7
+    assert await mock_db.notifications.count_documents({"_id": "rand-noti-1"}) == 0
+    assert await mock_db.evidences.count_documents({"_id": "rand-ev-1"}) == 0
+    assert await mock_db.contracts.count_documents({"_id": "live-ct-1"}) == 1
+    # 고정 Seed 문서와 로스터 계정은 재생성·유지된다.
+    assert await mock_db.contracts.count_documents({"_id": "demo-ct-s2"}) == 1
+    assert await mock_db.users.count_documents({"email": "tenant01@example.com"}) == 1
+    # 두 번 실행해도 결과 동일(멱등).
+    again = await DemoScenarioService(mock_db).seed(use_model=False, purge=True)
+    assert again["document_digest_sha256"] == manifest["document_digest_sha256"]
+
+
+@pytest.mark.asyncio
+async def test_scale_seeding_builds_preincident_scale_and_background_incidents(
+    client, mock_db
+):
+    manifest = await DemoScenarioService(mock_db).seed(
+        use_model=False, include_scale=True
+    )
+    scale = manifest["scale"]
+    if scale["status"] == "skipped":
+        pytest.skip("RTMS 표본 CSV가 없는 환경")
+    assert scale["collection_counts"]["contracts"] == 150
+    assert scale["collection_counts"]["incidents"] == 16
+    assert scale["collection_counts"]["performance_claims"] == 13
+    assert scale["prediction"]["requested"] == scale["collection_counts"]["contracts"] - 16
+    # PU 실추론이 대부분 성공해야 규모감 화면이 채워진다(NOT_SCORABLE 소수 허용).
+    assert scale["prediction"]["succeeded"] >= scale["prediction"]["requested"] * 0.8
+
+    from app.services.hug_contract_service import HugContractService
+
+    listing = await HugContractService(mock_db).list_contracts(
+        page=1, size=200, data_mode="DEMO"
+    )
+    assert listing["pagination"]["total_elements"] >= 130
+    # 시연 계약(S2, 저장 priority 94)이 규모감 표본 위에 있어야 한다.
+    assert listing["items"][0]["contract_id"] == "demo-ct-s2"
+    # 표본 계약도 PU 예측이 붙는다.
+    scored = [
+        item
+        for item in listing["items"]
+        if item["contract_id"].startswith("demo-ct-r") and item.get("prediction")
+    ]
+    assert len(scored) >= 100
+    # 배경 이행 사건은 사전 목록에 나타나지 않는다.
+    assert all(
+        item["contract_status"] in {
+            "ContractFinalized", "Monitoring", "D90Requested",
+            "ReturnPlanSubmitted", "AtRisk",
+        }
+        for item in listing["items"]
+    )
+    # purge는 스케일 문서까지 제거한다.
+    purged = await DemoScenarioService(mock_db).seed(use_model=False, purge=True)
+    assert purged["purge_counts"]["contracts"] >= 150
+
+
+@pytest.mark.asyncio
+async def test_seed_endpoint_accepts_purge_flag(client, mock_db):
+    token = await signup_and_login(client, "hug_demo_purge@example.com", role="hug_admin")
+    response = await client.post(
+        "/api/v1/hug/demo/seed",
+        json={"use_model": False, "purge": True, "include_scale": False},
+        headers=auth_headers(token),
+    )
+    assert response.status_code == 200, response.text
+    assert response.json()["data"]["purge_counts"] == {}
 
 
 @pytest.mark.asyncio

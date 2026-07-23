@@ -43,6 +43,17 @@ interface ChatMessage {
   isMock?: boolean;
 }
 
+/** 상담 원문(청크)은 줄바꿈 없이 저장된 경우가 많아 문장·화자 경계에서 줄을 나눠 가독성을 높인다. */
+function formatTranscript(text: string | null | undefined): string {
+  if (!text) return "";
+  if (text.includes("\n")) return text;
+  return text
+    .replace(/(고객|상담사|임차인|임대인)\s*[:：]/g, "\n$1: ")
+    .replace(/([다요죠음함]\.)\s+/g, "$1\n")
+    .replace(/\n{2,}/g, "\n")
+    .trim();
+}
+
 function nowLabel() {
   return new Date().toLocaleTimeString("ko-KR", { hour: "numeric", minute: "2-digit" });
 }
@@ -397,7 +408,9 @@ export function RagCounselPanel() {
             <DialogDescription>개인정보가 마스킹된 과거 상담 기록 원문입니다.</DialogDescription>
           </DialogHeader>
           <div className="max-h-[60vh] overflow-y-auto rounded-lg bg-muted/50 p-4">
-            <p className="text-sm leading-relaxed whitespace-pre-wrap">{openedSource?.transcript}</p>
+            <p className="text-sm leading-relaxed whitespace-pre-wrap">
+              {formatTranscript(openedSource?.transcript)}
+            </p>
           </div>
         </DialogContent>
       </Dialog>

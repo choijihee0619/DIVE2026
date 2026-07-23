@@ -25,6 +25,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Dialog,
   DialogContent,
@@ -34,9 +35,13 @@ import {
 } from "@/components/ui/dialog";
 import { contractService } from "@/services/contractService";
 import { evidenceService } from "@/services/evidenceService";
+import { incidentService } from "@/services/incidentService";
 import { propertyService } from "@/services/propertyService";
 import { ApiError } from "@/services/apiClient";
 import { useSessionStore } from "@/stores/useSessionStore";
+import { PreventionPanel } from "@/components/contracts/PreventionPanel";
+import { ClaimProgressPanel } from "@/components/contracts/ClaimProgressPanel";
+import type { Incident } from "@/types/incident";
 import type { Contract, ContractTimeline, ReturnPlan } from "@/types/contract";
 import type { Property } from "@/types/property";
 import type { EvidenceRequest } from "@/types/evidence";
@@ -140,9 +145,21 @@ interface ContractManagementViewProps {
  * `contracts`·`timeline_events`·`evidence_requests`·`return_plans`를 그대로 노출한다.
  * 관리 국면(반환 D-day·증빙 현황·특약 이행)을 전면 배치하고, 역할별 다음 행동만 CTA로 분기한다.
  */
+/** 관리 화면 업무 탭(§20.5 P3) — 개요·예방·이행. */
+const MANAGE_TABS = [
+  { value: "overview", label: "개요" },
+  { value: "prevention", label: "예방" },
+  { value: "claim", label: "이행" },
+] as const;
+type ManageTab = (typeof MANAGE_TABS)[number]["value"];
+
 export function ContractManagementView({ contractId }: ContractManagementViewProps) {
   const role = useSessionStore((state) => state.user?.role);
+  const userId = useSessionStore((state) => state.user?.user_id);
 
+  const [activeTab, setActiveTab] = useState<ManageTab>("overview");
+  /** undefined = 조회 중, null = 이 계약의 사고 없음. */
+  const [contractIncident, setContractIncident] = useState<Incident | null | undefined>(undefined);
   const [contract, setContract] = useState<Contract | null>(null);
   const [property, setProperty] = useState<Property | null>(null);
   const [timeline, setTimeline] = useState<ContractTimeline | null>(null);
@@ -173,6 +190,11 @@ export function ContractManagementView({ contractId }: ContractManagementViewPro
       .listRequests({ contractId })
       .then((d) => setEvidenceRequests(d.items))
       .catch(() => setEvidenceRequests([]));
+    // 이행 탭 소스 — 임차인은 본인 접수, HUG는 전체에서 이 계약의 사고를 찾는다.
+    incidentService
+      .list()
+      .then((d) => setContractIncident(d.items.find((i) => i.contract_id === contractId) ?? null))
+      .catch(() => setContractIncident(null));
   }, [contractId]);
 
   useEffect(() => {
@@ -274,7 +296,12 @@ export function ContractManagementView({ contractId }: ContractManagementViewPro
         <div>
           <p className="text-sm font-semibold text-muted-foreground">계약 후 관리</p>
           <h1 className="mt-1 flex flex-wrap items-center gap-2.5 text-2xl font-extrabold tracking-tight">
-            계약 <span className="font-mono text-xl">{contract.contract_id}</span>
+            {contract.address_summary ??
+              property?.address?.road_address ?? (
+                <>
+                  계약 <span className="font-mono text-xl">{contract.contract_id}</span>
+                </>
+              )}
             <StatusChip status={contract.contract_status} />
           </h1>
           <p className="mt-1.5 text-muted-foreground">
@@ -299,6 +326,68 @@ export function ContractManagementView({ contractId }: ContractManagementViewPro
         </motion.p>
       ) : null}
 
+      {/* 업무 탭(§20.5 P3) — 개요·예방·이행 */}
+      <motion.div variants={fadeUp}>
+        <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as ManageTab)}>
+          <TabsList>
+            {MANAGE_TABS.map((item) => (
+              <TabsTrigger key={item.value} value={item.value}>
+                {item.label}
+              </TabsTrigger>
+            ))}
+          </TabsList>
+        </Tabs>
+      </motion.div>
+
+      {activeTab === "prevention" ? (
+        <PreventionPanel contractId={contractId} />
+      ) : activeTab === "claim" ? (
+        <div className="flex flex-col gap-5">
+          {/* 만기 경과 + 미신고 → 임차인 사고신고 안내 배너 */}
+          {role === UserRole.TENANT && maturityDays < 0 && contractIncident === null ? (
+            <div className="flex flex-wrap items-center gap-3 rounded-2xl border-2 border-danger-500/40 bg-danger-100/40 px-4 py-3.5 text-sm">
+              <CircleAlert size={18} className="shrink-0 text-danger-600" />
+              <span className="min-w-0 flex-1">
+                <b className="text-danger-600">계약 만기가 지났습니다.</b>
+                <span className="ml-2 text-muted-foreground">
+                  보증금을 돌려받지 못했다면 사고 접수로 보증이행 절차를 시작하세요.
+                </span>
+              </span>
+              <Link
+                href="/tenant/incidents"
+                className="shrink-0 rounded-full bg-danger-600 px-3.5 py-1.5 text-xs font-bold text-white"
+              >
+                사고 접수하기 →
+              </Link>
+            </div>
+          ) : null}
+          {contractIncident === undefined ? (
+            <Skeleton className="h-40 w-full rounded-2xl" />
+          ) : contractIncident?.performance_claim_id ? (
+            <Card className="rounded-2xl border-line shadow-card">
+              <CardHeader>
+                <CardTitle className="text-base font-extrabold">보증이행 진행 현황</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <ClaimProgressPanel
+                  claimId={contractIncident.performance_claim_id}
+                  canSubmit={role === UserRole.TENANT && contractIncident.reporter_user_id === userId}
+                />
+              </CardContent>
+            </Card>
+          ) : contractIncident ? (
+            <p className="rounded-xl border border-line bg-neutral-100 px-4 py-3 text-sm text-muted-foreground">
+              사고통지가 접수되어 HUG 확인 중입니다. 이행청구가 등록되면 진행 단계가 여기에
+              표시됩니다.
+            </p>
+          ) : (
+            <p className="rounded-xl border border-line bg-neutral-100 px-4 py-3 text-sm text-muted-foreground">
+              접수된 사고가 없습니다. 만기까지 예방 탭의 증빙·알림으로 위험을 관리합니다.
+            </p>
+          )}
+        </div>
+      ) : (
+        <>
       {/* D-90/60/30 사전 확보 경고 (19.2) — 상환능력 증빙 미제출 시 단계별 표시 */}
       {showDdayAlert && stage ? (
         <motion.div
@@ -657,6 +746,8 @@ export function ContractManagementView({ contractId }: ContractManagementViewPro
           </Link>
         </motion.div>
       ) : null}
+        </>
+      )}
 
       {/* 상환능력 증빙 추가 제출 요청 (19.2) — 임차인·HUG → 임대인 */}
       <Dialog open={repayDialogOpen} onOpenChange={setRepayDialogOpen}>

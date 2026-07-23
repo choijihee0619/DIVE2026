@@ -52,6 +52,9 @@ export interface Incident {
   deposit_amount: number | null;
   occurred_date: string | null;
   status: IncidentStatus;
+  /** 이행청구가 생성된 경우 연결 ID·현재 단계(§20.5 P3 임차인 Stepper 소스). */
+  performance_claim_id: string | null;
+  current_stage: string;
   timeline: IncidentTimelineEntry[];
   next_steps: string[];
   created_at: string;

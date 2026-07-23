@@ -292,7 +292,11 @@ export default function ContractDetailPage() {
       <motion.div variants={fadeUp}>
         <p className="text-sm font-semibold text-muted-foreground">내 계약</p>
         <h1 className="mt-1 text-2xl font-extrabold tracking-tight">
-          계약 <span className="font-mono text-xl">{contract.contract_id}</span>
+          {contract.address_summary ?? (
+            <>
+              계약 <span className="font-mono text-xl">{contract.contract_id}</span>
+            </>
+          )}
         </h1>
         <p className="mt-1.5 text-muted-foreground">보증 계약 현황을 확인하고 안전한 전세 생활을 시작하세요.</p>
       </motion.div>
@@ -369,15 +373,23 @@ export default function ContractDetailPage() {
                 <span className="mt-1 text-xs font-bold text-muted-foreground">보증금</span>
                 <b className="text-lg leading-tight tnum">{formatDeposit(contract.deposit)}</b>
               </DonutGauge>
-              <Button
-                onClick={startEsign}
-                disabled={isStartingEsign}
-                className="w-full rounded-xl font-bold"
-                variant="outline"
-              >
-                <FileSignature size={15} />
-                {isStartingEsign ? "세션 준비 중..." : "전자계약 공동세션 진행 →"}
-              </Button>
+              {/* 계약 확정 이후(관리 국면)에는 공동세션이 종료 상태 — 재서명 유도를 막는다. */}
+              {contractPhase(contract.contract_status) === "managed" ? (
+                <Button disabled className="w-full rounded-xl font-bold" variant="outline">
+                  <FileSignature size={15} />
+                  전자계약 체결 완료
+                </Button>
+              ) : (
+                <Button
+                  onClick={startEsign}
+                  disabled={isStartingEsign}
+                  className="w-full rounded-xl font-bold"
+                  variant="outline"
+                >
+                  <FileSignature size={15} />
+                  {isStartingEsign ? "세션 준비 중..." : "전자계약 공동세션 진행 →"}
+                </Button>
+              )}
             </CardContent>
           </Card>
         </motion.div>

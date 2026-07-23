@@ -540,6 +540,14 @@ class PerformanceClaimService:
             query["incident_type"] = incident_type
         cursor = self._db.incidents.find(query).sort("created_at", -1)
         incidents = [doc async for doc in cursor]
+        # 화면 표시명은 주소로 통일한다(§20.1) — 목록용 property 일괄 조회.
+        property_ids = list(
+            {doc.get("property_id") for doc in incidents if doc.get("property_id")}
+        )
+        properties = {
+            doc["_id"]: doc
+            async for doc in self._db.properties.find({"_id": {"$in": property_ids}})
+        }
         enriched: list[dict[str, Any]] = []
         for incident in incidents:
             claim = await self._claims.find_by_incident(incident["_id"])
@@ -562,6 +570,8 @@ class PerformanceClaimService:
             elif sla_status:
                 continue
             row = self._incident_response(incident)
+            address = (properties.get(incident.get("property_id")) or {}).get("address", {})
+            row["address_summary"] = address.get("road_address") or address.get("jibun_address")
             row["performance_claim"] = claim_summary
             enriched.append(row)
         total = len(enriched)

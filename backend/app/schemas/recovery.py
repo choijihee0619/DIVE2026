@@ -323,3 +323,11 @@ def _validate_auction_progress(
 
 class DemoSeedRequest(BaseModel):
     use_model: bool = Field(default=True, description="실제 저장 모델 추론 사용. 실패 시 고정 캐시값 사용")
+    purge: bool = Field(
+        default=False,
+        description="Seed 전에 demo 네임스페이스 전체 삭제(시연 중 생성 문서 포함, §20.3 완전 원복)",
+    )
+    include_scale: bool = Field(
+        default=True,
+        description="§20.2 규모감 시딩(RTMS 표본 가상 계약 + 배경 이행 사건 + PU 실추론) 포함",
+    )

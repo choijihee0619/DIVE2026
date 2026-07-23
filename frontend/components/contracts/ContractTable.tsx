@@ -85,7 +85,13 @@ export function ContractTable({
             }
             onClick={onRowClick ? () => onRowClick(contract) : undefined}
           >
-            <TableCell className="font-mono text-xs">{contract.contract_id}</TableCell>
+            <TableCell className="max-w-56">
+              {contract.address_summary ? (
+                <span className="block truncate text-sm font-semibold">{contract.address_summary}</span>
+              ) : (
+                <span className="font-mono text-xs">{contract.contract_id}</span>
+              )}
+            </TableCell>
             <TableCell>
               <StatusChip status={contract.contract_status} />
             </TableCell>

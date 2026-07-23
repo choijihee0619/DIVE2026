@@ -82,3 +82,56 @@ export interface VictimRow {
 export interface VictimsData {
   items: VictimRow[];
 }
+
+/* ── 통합 대시보드 overview (260723 백엔드) ───────────────────── */
+
+/** GET /hug/dashboard/overview — 업무대장 KPI + 파이프라인 단계별 건수. */
+export interface OperationalRegister {
+  guarantee_contract_count: number;
+  pre_incident_active_contract_count: number;
+  high_risk_action_needed_contract_count: number;
+  performance_claim_in_progress_count: number;
+  /** RecoveryService.summary 병합 필드 */
+  managed_claim_count: number;
+  closed_claim_count: number;
+  principal_balance_won: number;
+  subrogation_principal_balance_won: number;
+  total_balance_won: number;
+  expected_recovery_total_won: number;
+  weighted_expected_recovery_ratio: number | null;
+  predicted_balance_coverage_won: number;
+  stage_counts: Record<string, number>;
+  grade_counts: Record<string, number>;
+  pipeline_counts: {
+    prevention_action_needed: number;
+    accident_notified: number;
+    performance_review: number;
+    handover_waiting: number;
+    subrogation_paid: number;
+    recovery_active: number;
+  };
+  selected_data_mode: "LIVE" | "DEMO";
+  selected_document_count: number;
+  data_mode_breakdown: { DEMO: number; LIVE: number };
+}
+
+export interface HugOverview {
+  operational_register: OperationalRegister;
+  reference_portfolio: Partial<HugSummary> & { status: "AVAILABLE" | "UNAVAILABLE" };
+  public_aggregate: Record<string, unknown>;
+}
+
+/** GET /hug/dashboard/issuance-incident-trend — 연도 단위 발급·사고 결합 시계열. */
+export interface IssuanceIncidentPoint {
+  year: number;
+  issue_cnt: number;
+  issue_amt_won: number;
+  accident_cnt: number | null;
+  accident_amt_won: number | null;
+  accident_rate_pct: number | null;
+}
+
+export interface IssuanceIncidentTrend {
+  status: string;
+  series: IssuanceIncidentPoint[];
+}

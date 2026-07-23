@@ -11,6 +11,8 @@ export interface Pagination {
 /** backend/app/schemas/contract.py::ContractResponse 그대로. */
 export interface Contract {
   contract_id: string;
+  /** 계약 표시명(주소 통일, §20.1) — 서버가 property를 조인해 내려준다. */
+  address_summary?: string | null;
   property_id: string;
   tenant_user_id: string;
   landlord_user_id: string | null;

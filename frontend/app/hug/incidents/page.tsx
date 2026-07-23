@@ -1,58 +1,113 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
-import { ArrowRight, Siren } from "lucide-react";
-import { toast } from "sonner";
-import { Button } from "@/components/ui/button";
+import { Siren } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
-import { incidentService } from "@/services/incidentService";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { performanceClaimService } from "@/services/performanceClaimService";
 import { ApiError } from "@/services/apiClient";
+import type { HugIncidentRow } from "@/types/performanceClaim";
 import {
-  INCIDENT_STATUS_FLOW,
-  INCIDENT_STATUS_LABEL,
-  type Incident,
-  type IncidentStatus,
-} from "@/types/incident";
-import { formatDeposit } from "@/lib/contract-labels";
-import { TimelineList } from "@/components/viz/TimelineList";
-import type { SignalLevel } from "@/components/viz/RiskSignals";
+  CLAIM_STAGE_LABEL,
+  CLAIM_STAGE_TONE,
+  SLA_STATUS_LABEL,
+  SLA_STATUS_TONE,
+  formatDate,
+  formatRemaining,
+  formatWonShort,
+  type PerformanceClaimStage,
+  type SlaStatus,
+} from "@/lib/hug-labels";
 import { staggerContainer, fadeUp } from "@/lib/motion";
 import { cn } from "@/lib/utils";
 
-const STATUS_TONE: Record<IncidentStatus, string> = {
-  Received: "bg-hug-sky text-hug-blue",
-  Reviewing: "bg-warning-100 text-warning-700",
-  TransferredToRecovery: "bg-hug-mint text-hug-green-deep",
-  Closed: "bg-neutral-200 text-neutral-600",
-};
+const FILTER_TABS = [
+  { value: "all", label: "전체" },
+  { value: "notified", label: "신규 사고통지" },
+  { value: "supplement", label: "보완대기" },
+  { value: "review", label: "심사중" },
+  { value: "handover", label: "명도" },
+  { value: "paid", label: "대위변제" },
+  { value: "registered", label: "채권등록·인계" },
+  { value: "closed", label: "거절·종결" },
+] as const;
 
-const STATUS_LEVEL: Record<IncidentStatus, SignalLevel> = {
-  Received: "info",
-  Reviewing: "warn",
-  TransferredToRecovery: "ok",
-  Closed: "ok",
-};
+type FilterValue = (typeof FILTER_TABS)[number]["value"];
 
-function nextStatusOf(status: IncidentStatus): IncidentStatus | null {
-  const index = INCIDENT_STATUS_FLOW.indexOf(status);
-  return index >= 0 && index < INCIDENT_STATUS_FLOW.length - 1 ? INCIDENT_STATUS_FLOW[index + 1] : null;
+function stageOf(row: HugIncidentRow): PerformanceClaimStage | null {
+  return (row.performance_claim?.stage as PerformanceClaimStage) ?? null;
 }
 
-/** HUG-02 사고 접수 큐: GET /incidents 전체 조회 + PATCH 상태 전이(접수→검토→회수 이관→종결). */
+function matchesFilter(row: HugIncidentRow, filter: FilterValue): boolean {
+  const stage = stageOf(row);
+  switch (filter) {
+    case "notified":
+      return !stage && row.status === "Received";
+    case "supplement":
+      return stage === "SupplementRequested";
+    case "review":
+      return stage === "ClaimReceived" || stage === "UnderReview" || stage === "OnHold";
+    case "handover":
+      return stage === "Approved" || stage === "HandoverScheduled" || stage === "HandoverCompleted";
+    case "paid":
+      return stage === "SubrogationPaid";
+    case "registered":
+      return stage === "RecoveryClaimRegistered" || stage === "TransferredToRecovery";
+    case "closed":
+      return stage === "Rejected" || (!stage && row.status === "Closed");
+    default:
+      return true;
+  }
+}
+
+/** 현재 행에서 담당자가 해야 할 다음 액션 한 가지. */
+function nextActionOf(row: HugIncidentRow): string {
+  const stage = stageOf(row);
+  if (!stage) return row.status === "Received" ? "이행청구 접수" : "—";
+  switch (stage) {
+    case "ClaimReceived":
+      return "필수서류 확인·심사 시작";
+    case "SupplementRequested":
+      return "보완서류 확인";
+    case "UnderReview":
+      return "심사 결정";
+    case "OnHold":
+      return "유보 사유 해소 확인";
+    case "Approved":
+      return "명도 일정 등록";
+    case "HandoverScheduled":
+      return "명도 완료 확인";
+    case "HandoverCompleted":
+      return "대위변제 지급";
+    case "SubrogationPaid":
+      return "구상채권 등록";
+    case "RecoveryClaimRegistered":
+      return "채권관리 인계";
+    case "TransferredToRecovery":
+      return "인계 완료";
+    case "Rejected":
+      return "종결";
+    default:
+      return "—";
+  }
+}
+
+/** 사고접수·보증이행 큐 — 사고통지부터 채권등록·인계까지 단계·기한 중심 업무 목록. */
 export default function HugIncidentsPage() {
-  const [incidents, setIncidents] = useState<Incident[] | null>(null);
-  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const router = useRouter();
+  const [rows, setRows] = useState<HugIncidentRow[] | null>(null);
+  const [filter, setFilter] = useState<FilterValue>("all");
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
-  const [isUpdating, setIsUpdating] = useState(false);
 
   const load = useCallback(() => {
-    incidentService
-      .list()
+    performanceClaimService
+      .listIncidents({ size: 100 })
       .then((data) => {
-        setIncidents(data.items);
-        setSelectedId((prev) => prev ?? data.items[0]?.incident_id ?? null);
+        setRows(data.items);
+        setErrorMessage(null);
       })
       .catch((error: unknown) =>
         setErrorMessage(error instanceof ApiError ? error.message : "사고 큐를 불러오지 못했습니다."),
@@ -63,36 +118,18 @@ export default function HugIncidentsPage() {
     load();
   }, [load]);
 
-  const selected = useMemo(
-    () => (incidents ?? []).find((incident) => incident.incident_id === selectedId) ?? null,
-    [incidents, selectedId],
+  const visible = useMemo(
+    () => (rows ?? []).filter((row) => matchesFilter(row, filter)),
+    [rows, filter],
   );
 
-  const advance = (incident: Incident) => {
-    const next = nextStatusOf(incident.status);
-    if (!next || isUpdating) return;
-    setIsUpdating(true);
-    incidentService
-      .updateStatus(incident.incident_id, next, `HUG 처리 — ${INCIDENT_STATUS_LABEL[next]} 전환`)
-      .then((updated) => {
-        setIncidents((prev) =>
-          (prev ?? []).map((item) => (item.incident_id === updated.incident_id ? updated : item)),
-        );
-        toast.success(`${INCIDENT_STATUS_LABEL[next]} 상태로 전환했습니다.`);
-      })
-      .catch((error: unknown) =>
-        toast.error(error instanceof ApiError ? error.message : "상태 전환에 실패했습니다."),
-      )
-      .finally(() => setIsUpdating(false));
-  };
-
-  const countByStatus = useMemo(() => {
-    const counts = new Map<IncidentStatus, number>();
-    for (const incident of incidents ?? []) {
-      counts.set(incident.status, (counts.get(incident.status) ?? 0) + 1);
+  const counts = useMemo(() => {
+    const map = new Map<FilterValue, number>();
+    for (const tab of FILTER_TABS) {
+      map.set(tab.value, (rows ?? []).filter((row) => matchesFilter(row, tab.value)).length);
     }
-    return counts;
-  }, [incidents]);
+    return map;
+  }, [rows]);
 
   return (
     <motion.div variants={staggerContainer} initial="hidden" animate="show" className="flex flex-col gap-6">
@@ -100,144 +137,161 @@ export default function HugIncidentsPage() {
         <div>
           <h1 className="flex items-center gap-2 text-2xl font-extrabold tracking-tight">
             <Siren size={22} className="text-danger-500" />
-            사고 접수 큐
+            사고접수·보증이행
           </h1>
           <p className="mt-1.5 text-muted-foreground">
-            임차인 사고 접수를 검토하고 회수 절차로 이관합니다 — 접수 → 검토 → 회수 이관 → 종결.
+            임차인 사고통지부터 이행청구, 서류·심사, 명도, 대위변제, 구상채권 등록·인계까지 단계별로
+            처리합니다.
           </p>
         </div>
-        <div className="ml-auto flex gap-1.5">
-          {INCIDENT_STATUS_FLOW.map((status) => (
-            <span key={status} className={cn("rounded-full px-2.5 py-1 text-xs font-bold tnum", STATUS_TONE[status])}>
-              {INCIDENT_STATUS_LABEL[status]} {countByStatus.get(status) ?? 0}
-            </span>
-          ))}
+        <div className="ml-auto flex flex-wrap gap-1.5">
+          <span className="rounded-full bg-danger-100 px-2.5 py-1 text-xs font-bold text-danger-600 tnum">
+            신규 통지 {counts.get("notified") ?? 0}
+          </span>
+          <span className="rounded-full bg-warning-100 px-2.5 py-1 text-xs font-bold text-warning-700 tnum">
+            심사 대기 {counts.get("review") ?? 0}
+          </span>
+          <span className="rounded-full bg-hug-sky px-2.5 py-1 text-xs font-bold text-hug-blue tnum">
+            명도 {counts.get("handover") ?? 0}
+          </span>
+          <span className="rounded-full bg-hug-mint px-2.5 py-1 text-xs font-bold text-hug-green-deep tnum">
+            대위변제 {counts.get("paid") ?? 0}
+          </span>
         </div>
       </motion.div>
 
       {errorMessage ? <p className="text-sm text-destructive">{errorMessage}</p> : null}
 
-      <div className="grid grid-cols-1 items-start gap-5 xl:grid-cols-5">
-        {/* 큐 목록 */}
-        <motion.div variants={fadeUp} className="xl:col-span-3">
-          <Card className="rounded-2xl border-line shadow-card">
-            <CardHeader>
-              <CardTitle className="text-base font-extrabold">
-                접수 목록 {incidents ? `· ${incidents.length}건` : ""}
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="overflow-x-auto">
-              {incidents === null ? (
-                <Skeleton className="h-48 w-full" />
-              ) : incidents.length === 0 ? (
-                <p className="py-8 text-center text-sm text-muted-foreground">접수된 사고가 없습니다.</p>
-              ) : (
-                <table className="w-full text-sm">
-                  <thead>
-                    <tr className="border-b border-line text-left text-xs font-bold text-muted-foreground">
-                      <th className="py-2 pr-2">유형</th>
-                      <th className="px-2">보증금</th>
-                      <th className="px-2">접수일</th>
-                      <th className="px-2">상태</th>
-                      <th className="px-2" />
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {incidents.map((incident, index) => {
-                      const next = nextStatusOf(incident.status);
-                      return (
-                        <motion.tr
-                          key={incident.incident_id}
-                          initial={{ opacity: 0, y: 8 }}
-                          animate={{ opacity: 1, y: 0 }}
-                          transition={{ delay: index * 0.05, duration: 0.3 }}
-                          onClick={() => setSelectedId(incident.incident_id)}
-                          className={cn(
-                            "cursor-pointer border-b border-line/70 transition-colors last:border-b-0",
-                            selectedId === incident.incident_id ? "bg-hug-sky/60" : "hover:bg-neutral-100",
-                          )}
-                        >
-                          <td className="max-w-44 truncate py-2.5 pr-2 font-semibold" title={incident.description}>
-                            {incident.incident_type_label}
-                          </td>
-                          <td className="px-2 tnum">
-                            {incident.deposit_amount ? formatDeposit(incident.deposit_amount) : "—"}
-                          </td>
-                          <td className="px-2 text-muted-foreground tnum">{incident.created_at.slice(0, 10)}</td>
-                          <td className="px-2">
-                            <span className={cn("rounded-full px-2 py-0.5 text-xs font-bold", STATUS_TONE[incident.status])}>
-                              {INCIDENT_STATUS_LABEL[incident.status]}
+      <motion.div variants={fadeUp}>
+        <Card className="rounded-2xl border-line shadow-card">
+          <CardHeader className="flex flex-col gap-3">
+            <CardTitle className="text-base font-extrabold">
+              이행 사건 목록 {rows ? `· ${visible.length}건` : ""}
+            </CardTitle>
+            <Tabs value={filter} onValueChange={(value) => setFilter(value as FilterValue)}>
+              <TabsList>
+                {FILTER_TABS.map((tab) => (
+                  <TabsTrigger key={tab.value} value={tab.value}>
+                    {tab.label}
+                  </TabsTrigger>
+                ))}
+              </TabsList>
+            </Tabs>
+          </CardHeader>
+          <CardContent className="overflow-x-auto">
+            {rows === null ? (
+              <Skeleton className="h-64 w-full" />
+            ) : visible.length === 0 ? (
+              <p className="py-10 text-center text-sm text-muted-foreground">
+                {filter === "all" ? "접수된 사고가 없습니다." : "해당 단계의 사건이 없습니다."}
+              </p>
+            ) : (
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b border-line text-left text-xs font-bold text-muted-foreground">
+                    <th className="py-2 pr-2">사고유형</th>
+                    <th className="px-2">청구·보증금</th>
+                    <th className="px-2">현재 단계</th>
+                    <th className="px-2">처리 기한</th>
+                    <th className="px-2">접수일</th>
+                    <th className="px-2">다음 액션</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {visible.map((row, index) => {
+                    const claim = row.performance_claim;
+                    const stage = stageOf(row);
+                    return (
+                      <motion.tr
+                        key={row.incident_id}
+                        initial={{ opacity: 0, y: 8 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ delay: Math.min(index, 12) * 0.04, duration: 0.3 }}
+                        onClick={() => router.push(`/hug/incidents/${row.incident_id}`)}
+                        className="cursor-pointer border-b border-line/70 transition-colors last:border-b-0 hover:bg-neutral-100"
+                      >
+                        <td className="max-w-44 py-3 pr-2">
+                          <span className="block truncate font-semibold" title={row.description}>
+                            {row.incident_type_label}
+                          </span>
+                          {row.address_summary ? (
+                            <span className="block truncate text-[11px] text-muted-foreground">
+                              {row.address_summary}
                             </span>
-                          </td>
-                          <td className="px-2 text-right">
-                            {next ? (
-                              <Button
-                                size="sm"
-                                variant="outline"
-                                className="h-7 rounded-full px-2.5 text-xs"
-                                disabled={isUpdating}
-                                onClick={(event) => {
-                                  event.stopPropagation();
-                                  advance(incident);
-                                }}
+                          ) : row.contract_id ? (
+                            <span className="font-mono text-[11px] text-muted-foreground">
+                              {row.contract_id.slice(0, 14)}
+                            </span>
+                          ) : null}
+                        </td>
+                        <td className="px-2 tnum">
+                          {claim
+                            ? `청구 ${formatWonShort(claim.claim_amount)}`
+                            : row.deposit_amount
+                              ? `신고 ${formatWonShort(row.deposit_amount)}`
+                              : "—"}
+                        </td>
+                        <td className="px-2">
+                          {stage ? (
+                            <span
+                              className={cn(
+                                "whitespace-nowrap rounded-full px-2 py-0.5 text-xs font-bold",
+                                CLAIM_STAGE_TONE[stage],
+                              )}
+                            >
+                              {CLAIM_STAGE_LABEL[stage]}
+                            </span>
+                          ) : (
+                            <span
+                              className={cn(
+                                "whitespace-nowrap rounded-full px-2 py-0.5 text-xs font-bold",
+                                row.status === "Received"
+                                  ? "bg-danger-100 text-danger-600"
+                                  : "bg-neutral-200 text-neutral-600",
+                              )}
+                            >
+                              {row.status === "Received" ? "사고통지 접수" : "통지 종결"}
+                            </span>
+                          )}
+                        </td>
+                        <td className="px-2">
+                          {claim ? (
+                            <span className="flex flex-col">
+                              <span
+                                className={cn(
+                                  "w-fit whitespace-nowrap rounded-full px-2 py-0.5 text-[11px] font-bold",
+                                  SLA_STATUS_TONE[claim.sla.status as SlaStatus],
+                                )}
                               >
-                                {INCIDENT_STATUS_LABEL[next]}
-                                <ArrowRight size={12} />
-                              </Button>
-                            ) : null}
-                          </td>
-                        </motion.tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
-              )}
-            </CardContent>
-          </Card>
-        </motion.div>
-
-        {/* 선택 건 상세 */}
-        <motion.div variants={fadeUp} className="xl:col-span-2">
-          <Card className="rounded-2xl border-line shadow-card">
-            <CardHeader>
-              <CardTitle className="text-base font-extrabold">선택 건 · 처리 타임라인</CardTitle>
-            </CardHeader>
-            <CardContent className="flex flex-col gap-3">
-              {selected ? (
-                <>
-                  <div className="rounded-xl bg-neutral-100 p-3.5 text-sm">
-                    <p className="font-bold">{selected.incident_type_label}</p>
-                    <p className="mt-1 text-xs text-muted-foreground">{selected.description}</p>
-                    {selected.contract_id ? (
-                      <p className="mt-1.5 font-mono text-xs text-muted-foreground">계약 {selected.contract_id}</p>
-                    ) : null}
-                  </div>
-                  <TimelineList
-                    items={selected.timeline.map((entry) => ({
-                      time: entry.at.slice(0, 16).replace("T", " "),
-                      title: INCIDENT_STATUS_LABEL[entry.status],
-                      trailing: entry.note ? <span className="text-muted-foreground">{entry.note}</span> : undefined,
-                      level: STATUS_LEVEL[entry.status],
-                    }))}
-                  />
-                  {selected.next_steps.length > 0 ? (
-                    <div className="rounded-xl bg-hug-sky p-3.5">
-                      <p className="mb-1 text-xs font-bold text-hug-navy">피해자 안내 (안심전세포털 절차)</p>
-                      <ol className="list-decimal pl-4 text-xs text-hug-navy/80">
-                        {selected.next_steps.map((step) => (
-                          <li key={step}>{step}</li>
-                        ))}
-                      </ol>
-                    </div>
-                  ) : null}
-                </>
-              ) : (
-                <p className="py-8 text-center text-sm text-muted-foreground">좌측에서 사고 건을 선택하세요.</p>
-              )}
-            </CardContent>
-          </Card>
-        </motion.div>
-      </div>
+                                {SLA_STATUS_LABEL[claim.sla.status as SlaStatus]}
+                              </span>
+                              {claim.sla.status !== "COMPLETED" ? (
+                                <span className="mt-0.5 text-[11px] text-muted-foreground tnum">
+                                  {claim.sla.remaining_seconds >= 0
+                                    ? `${formatRemaining(claim.sla.remaining_seconds)} 남음`
+                                    : `${formatRemaining(claim.sla.remaining_seconds)} 초과`}
+                                </span>
+                              ) : null}
+                            </span>
+                          ) : (
+                            <span className="text-xs text-muted-foreground">—</span>
+                          )}
+                        </td>
+                        <td className="px-2 text-xs text-muted-foreground tnum">{formatDate(row.created_at)}</td>
+                        <td className="max-w-36 px-2">
+                          <span className="block truncate text-xs font-semibold text-hug-blue">
+                            {nextActionOf(row)}
+                          </span>
+                        </td>
+                      </motion.tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            )}
+          </CardContent>
+        </Card>
+      </motion.div>
     </motion.div>
   );
 }

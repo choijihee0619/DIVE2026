@@ -256,7 +256,8 @@ export default function LandlordHomePage() {
               >
                 {(contracts ?? []).map((contract) => (
                   <option key={contract.contract_id} value={contract.contract_id}>
-                    {contract.contract_id} ({contract.contract_start_date} ~ {contract.contract_end_date})
+                    {contract.address_summary ?? contract.contract_id} ({contract.contract_start_date} ~{" "}
+                    {contract.contract_end_date})
                   </option>
                 ))}
               </select>

@@ -3,13 +3,13 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
+  Banknote,
   Bell,
   FileText,
   Headset,
   LayoutDashboard,
   Link2,
   ListTodo,
-  MapPinned,
   MessagesSquare,
   Settings,
   ShieldCheck,
@@ -46,9 +46,10 @@ const SIDEBAR_ITEMS: Record<string, SidebarItem[]> = {
     { href: "/notifications", label: "알림", icon: Bell },
   ],
   [UserRole.HUG_ADMIN]: [
-    { href: "/hug/dashboard", label: "채권회수 대시보드", icon: LayoutDashboard },
-    { href: "/hug/map", label: "사고율 지도", icon: MapPinned },
-    { href: "/hug/incidents", label: "사고 접수 큐", icon: Siren },
+    { href: "/hug/dashboard", label: "통합 대시보드", icon: LayoutDashboard },
+    { href: "/hug/contracts", label: "사고 전 계약관리", icon: FileText },
+    { href: "/hug/incidents", label: "사고접수·보증이행", icon: Siren },
+    { href: "/hug/recovery", label: "사고 후 채권관리", icon: Banknote },
     { href: "/notifications", label: "알림", icon: Bell },
   ],
   [UserRole.SYSTEM_ADMIN]: [

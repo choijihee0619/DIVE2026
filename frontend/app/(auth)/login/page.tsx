@@ -31,7 +31,15 @@ const ROLE_DEMO_EMAIL: Record<string, string> = {
   admin: "sysadmin01@example.com",
 };
 
-const DEMO_ACCOUNTS = Object.values(ROLE_DEMO_EMAIL);
+/** 화면에 노출할 계정 목록 — 임차인 B(tenant02, 사고 처리 스토리)를 포함한다. */
+const DEMO_ACCOUNTS = [
+  "tenant01@example.com",
+  "tenant02@example.com",
+  "landlord01@example.com",
+  "advisor01@example.com",
+  "hugadmin01@example.com",
+  "sysadmin01@example.com",
+];
 
 export default function LoginPage() {
   return (

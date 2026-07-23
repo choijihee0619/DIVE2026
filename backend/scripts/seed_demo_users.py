@@ -21,15 +21,17 @@ from motor.motor_asyncio import AsyncIOMotorClient  # noqa: E402
 
 from app.core.config import get_settings  # noqa: E402
 from app.core.security import hash_password  # noqa: E402
+from app.services.demo_scenario_service import _ACCOUNT_SPECS  # noqa: E402
 
 KST = timezone(timedelta(hours=9))
 
+# §20.1 시연 계정 체계는 demo_scenario_service._ACCOUNT_SPECS가 단일 원장이다.
+# sysadmin01만 시나리오 밖 운영 편의 계정으로 여기서 추가 관리한다.
 DEMO_USERS = [
-    {"email": "tenant01@example.com", "display_name": "임차인 데모", "role": "tenant"},
-    {"email": "landlord01@example.com", "display_name": "임대인 데모", "role": "landlord"},
-    {"email": "advisor01@example.com", "display_name": "아이엔 상담사 데모", "role": "advisor"},
-    {"email": "hugadmin01@example.com", "display_name": "HUG 담당자 데모", "role": "hug_admin"},
-    {"email": "sysadmin01@example.com", "display_name": "시스템 관리자 데모", "role": "system_admin"},
+    {"email": email, "display_name": display_name, "role": role}
+    for _key, email, role, display_name, _story, _background in _ACCOUNT_SPECS
+] + [
+    {"email": "sysadmin01@example.com", "display_name": "시스템 관리자", "role": "system_admin"},
 ]
 DEMO_PASSWORD = "P@ssw0rd!"
 

@@ -12,6 +12,7 @@ from pymongo.errors import DuplicateKeyError
 
 from app.core.exceptions import (
     ModelInferenceFailedError,
+    PermissionDeniedError,
     ResourceNotFoundError,
     StateConflictError,
     ValidationAppError,
@@ -93,6 +94,9 @@ _ACTION_TRANSITIONS: dict[str, set[str]] = {
 def dday_stage(d_day: int) -> str | None:
     if d_day > 90:
         return None
+    # §20.5 P4 — 만기 경과는 D30과 구분되는 별도 스테이지. 미반환 여부 확인·사고신고 안내 대상.
+    if d_day < 0:
+        return "OVERDUE"
     if d_day <= 30:
         return "D30"
     if d_day <= 60:
@@ -508,8 +512,13 @@ class PreventionService:
         incomplete_due = sorted(
             bundle["due_at"] for bundle in bundles if bundle["status"] != "Completed"
         )
+        maturity_passed = any(
+            trigger["code"] == "CONTRACT_MATURITY_PASSED" for trigger in triggers
+        )
         next_action = (
-            "기한초과 증빙 확인 및 임차인 권리보전 상담"
+            "미반환 여부 확인·사고신고 안내"
+            if maturity_passed
+            else "기한초과 증빙 확인 및 임차인 권리보전 상담"
             if overdue
             else "필수 증빙 요청·검토 및 신용보강 확인"
         )
@@ -870,6 +879,19 @@ class PreventionService:
             raise ResourceNotFoundError("연결 계약을 찾을 수 없습니다.")
         if contract.get("contract_status") not in PRE_INCIDENT_STATUSES:
             raise StateConflictError("사고접수 전 계약의 예방조치만 변경할 수 있습니다.")
+        # §20.5 P3 — 임대인은 자기 계약에 요청된 조치의 착수·완료 제출만 등록할 수 있다.
+        if actor_role == "landlord":
+            if (
+                action.get("target_role") != "landlord"
+                or contract.get("landlord_user_id") != actor_user_id
+            ):
+                raise PermissionDeniedError("본인 계약에 요청된 조치만 등록할 수 있습니다.")
+            if payload.status not in {"InProgress", "Submitted"}:
+                raise PermissionDeniedError(
+                    "임대인은 이행 착수·완료 제출까지만 등록할 수 있으며 검증·종결은 HUG가 처리합니다."
+                )
+        elif actor_role not in {"hug_admin", "system_admin"}:
+            raise PermissionDeniedError("예방조치 변경 권한이 없습니다.")
         current = action["status"]
         if payload.status not in _ACTION_TRANSITIONS.get(current, set()):
             raise ValidationAppError(

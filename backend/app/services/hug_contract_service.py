@@ -129,13 +129,89 @@ class HugContractService:
         self._bundles = EvidenceBundleRepository(db)
         self._accident = AccidentPredictionService(db)
 
-    async def _rule_risk(self, contract: dict[str, Any]) -> dict[str, Any] | None:
+    async def _prefetch_related(
+        self, contracts: list[dict[str, Any]]
+    ) -> dict[str, Any]:
+        """목록 조회용 연관 문서 일괄 조회.
+
+        계약당 6회 개별 조회(§20.2 규모감 시딩 시 요청당 수백 roundtrip)를 컬렉션당
+        1회 $in 조회로 줄인다. 정렬 후 첫 문서를 취해 per-contract 최신 선택 규칙
+        (repository latest_for_contract)과 동일한 결과를 만든다.
+        """
+        contract_ids = [contract["_id"] for contract in contracts]
+        property_ids = list(
+            {contract.get("property_id") for contract in contracts if contract.get("property_id")}
+        )
+        risk_ids = list(
+            {
+                contract.get("risk_assessment_id")
+                for contract in contracts
+                if contract.get("risk_assessment_id")
+            }
+        )
+        properties = {
+            document["_id"]: document
+            async for document in self._properties.collection.find(
+                {"_id": {"$in": property_ids}}
+            )
+        }
+        predictions: dict[str, dict[str, Any]] = {}
+        async for document in self._predictions.collection.find(
+            {"contract_id": {"$in": contract_ids}}
+        ).sort([("predicted_at", -1), ("_id", -1)]):
+            predictions.setdefault(document["contract_id"], document)
+        cases: dict[str, dict[str, Any]] = {}
+        async for document in self._cases.collection.find(
+            {"contract_id": {"$in": contract_ids}}
+        ).sort([("updated_at", -1), ("_id", -1)]):
+            cases.setdefault(document["contract_id"], document)
+        bundles: dict[str, list[dict[str, Any]]] = {}
+        async for document in self._bundles.collection.find(
+            {"contract_id": {"$in": contract_ids}}
+        ).sort([("sequence", 1), ("created_at", 1)]):
+            bundles.setdefault(document["contract_id"], []).append(document)
+        actions: dict[str, list[dict[str, Any]]] = {}
+        async for document in self._actions.collection.find(
+            {"contract_id": {"$in": contract_ids}}
+        ).sort([("due_at", 1), ("requested_at", 1)]):
+            actions.setdefault(document["contract_id"], []).append(document)
+        notifications: dict[str, list[dict[str, Any]]] = {}
+        async for document in self._db.notifications.find(
+            {"contract_id": {"$in": contract_ids}, "category": "prevention_alert"}
+        ).sort("created_at", -1):
+            notifications.setdefault(document["contract_id"], []).append(document)
+        risks: dict[str, dict[str, Any]] = {}
+        if risk_ids:
+            async for document in self._db.risk_assessments.find(
+                {"$or": [{"_id": {"$in": risk_ids}}, {"case_id": {"$in": risk_ids}}]}
+            ):
+                for key in (document.get("_id"), document.get("case_id")):
+                    if key in risk_ids:
+                        risks.setdefault(key, document)
+        return {
+            "properties": properties,
+            "predictions": predictions,
+            "cases": cases,
+            "bundles": bundles,
+            "actions": actions,
+            "notifications": notifications,
+            "risks": risks,
+        }
+
+    async def _rule_risk(
+        self,
+        contract: dict[str, Any],
+        related: dict[str, Any] | None = None,
+    ) -> dict[str, Any] | None:
         risk_id = contract.get("risk_assessment_id")
         if not risk_id:
             return None
-        document = await self._db.risk_assessments.find_one(
-            {"$or": [{"_id": risk_id}, {"case_id": risk_id}]}
-        )
+        if related is not None:
+            document = related["risks"].get(risk_id)
+        else:
+            document = await self._db.risk_assessments.find_one(
+                {"$or": [{"_id": risk_id}, {"case_id": risk_id}]}
+            )
         if not document:
             return None
         return {
@@ -148,13 +224,20 @@ class HugContractService:
             "created_at": document.get("created_at"),
         }
 
-    async def _notification_summary(self, contract_id: str) -> dict[str, Any]:
-        notifications = [
-            document
-            async for document in self._db.notifications.find(
-                {"contract_id": contract_id, "category": "prevention_alert"}
-            ).sort("created_at", -1)
-        ]
+    async def _notification_summary(
+        self,
+        contract_id: str,
+        related: dict[str, Any] | None = None,
+    ) -> dict[str, Any]:
+        if related is not None:
+            notifications = related["notifications"].get(contract_id, [])
+        else:
+            notifications = [
+                document
+                async for document in self._db.notifications.find(
+                    {"contract_id": contract_id, "category": "prevention_alert"}
+                ).sort("created_at", -1)
+            ]
         summary: dict[str, Any] = {}
         for role in ("tenant", "landlord", "hug_admin"):
             role_items = [item for item in notifications if item.get("target_role") == role]
@@ -173,12 +256,20 @@ class HugContractService:
         as_of: date,
         deposit_percentile: float,
         include_detail: bool = False,
+        related: dict[str, Any] | None = None,
     ) -> dict[str, Any]:
-        property_doc = await self._properties.get_by_id(contract.get("property_id", ""))
-        prediction = await self._predictions.latest_for_contract(contract["_id"])
-        prevention_case = await self._cases.latest_for_contract(contract["_id"])
-        bundles = await self._bundles.list_for_contract(contract["_id"])
-        actions = await self._actions.list_for_contract(contract["_id"])
+        if related is not None:
+            property_doc = related["properties"].get(contract.get("property_id"))
+            prediction = related["predictions"].get(contract["_id"])
+            prevention_case = related["cases"].get(contract["_id"])
+            bundles = related["bundles"].get(contract["_id"], [])
+            actions = related["actions"].get(contract["_id"], [])
+        else:
+            property_doc = await self._properties.get_by_id(contract.get("property_id", ""))
+            prediction = await self._predictions.latest_for_contract(contract["_id"])
+            prevention_case = await self._cases.latest_for_contract(contract["_id"])
+            bundles = await self._bundles.list_for_contract(contract["_id"])
+            actions = await self._actions.list_for_contract(contract["_id"])
         try:
             d_day = (date.fromisoformat(contract["contract_end_date"]) - as_of).days
         except (KeyError, TypeError, ValueError):
@@ -212,7 +303,7 @@ class HugContractService:
             "d_day": d_day,
             "d_day_stage": dday_stage(d_day),
             "prediction": _prediction_view(prediction),
-            "rule_risk": await self._rule_risk(contract),
+            "rule_risk": await self._rule_risk(contract, related),
             "prevention_case": (
                 {
                     "prevention_case_id": prevention_case["_id"],
@@ -231,8 +322,13 @@ class HugContractService:
             "prevention_priority": priority_score,
             "priority_components": priority_components,
             "evidence_bundle": _bundle_summary(bundles),
-            "notification_status": await self._notification_summary(contract["_id"]),
-            "next_action": prevention_case.get("next_action") if prevention_case else "정상 모니터링",
+            "notification_status": await self._notification_summary(contract["_id"], related),
+            "next_action": (
+                prevention_case.get("next_action")
+                if prevention_case
+                # §20.5 P4 — 예방 케이스가 없어도 만기 경과 계약은 사고요건 확인을 안내한다.
+                else ("미반환 여부 확인·사고신고 안내" if d_day < 0 else "정상 모니터링")
+            ),
             "owner_center": contract.get("assigned_center") or contract.get("owner_center"),
             "assignee_user_id": contract.get("assignee_user_id"),
             "source": source_metadata(
@@ -289,6 +385,7 @@ class HugContractService:
         deposits = np.sort(
             np.asarray([max(float(contract.get("deposit") or 0), 0) for contract in contracts])
         )
+        related = await self._prefetch_related(contracts) if contracts else None
         items = []
         for contract in contracts:
             deposit = max(float(contract.get("deposit") or 0), 0)
@@ -296,7 +393,7 @@ class HugContractService:
                 np.searchsorted(deposits, deposit, side="right") / max(len(deposits), 1)
             )
             item = await self._item(
-                contract, as_of=as_of, deposit_percentile=percentile
+                contract, as_of=as_of, deposit_percentile=percentile, related=related
             )
             prediction = item.get("prediction")
             case = item.get("prevention_case")

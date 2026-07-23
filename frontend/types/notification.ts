@@ -9,6 +9,10 @@ export interface AppNotification {
   link: string | null;
   severity: "info" | "warning" | "danger" | string;
   is_read: boolean;
+  /** 예방 알림 연결 정보(§20.5 P3) — 계약별 필터·업무 확인에 사용. */
+  contract_id?: string | null;
+  target_role?: string | null;
+  acknowledged_at?: string | null;
   created_at: string;
 }
 

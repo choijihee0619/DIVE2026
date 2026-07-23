@@ -20,10 +20,11 @@ from app.schemas.contract import (
 from app.utils.datetime_utils import now_kst_iso, new_uuid
 
 
-def _to_response(doc: dict) -> ContractResponse:
+def _to_response(doc: dict, address_summary: str | None = None) -> ContractResponse:
     return ContractResponse(
         contract_id=doc["_id"],
         property_id=doc["property_id"],
+        address_summary=address_summary,
         tenant_user_id=doc["tenant_user_id"],
         landlord_user_id=doc.get("landlord_user_id"),
         landlord_id=doc.get("landlord_id"),
@@ -122,16 +123,37 @@ class ContractService:
             raise ResourceNotFoundError("계약 정보를 찾을 수 없습니다.")
         return doc
 
+    async def _address_map(self, items: list[dict]) -> dict[str, str]:
+        """property 일괄 조인 — 계약 표시명을 주소로 통일한다(§20.1)."""
+        property_ids = list({i.get("property_id") for i in items if i.get("property_id")})
+        if not property_ids:
+            return {}
+        result: dict[str, str] = {}
+        async for doc in self._properties.collection.find({"_id": {"$in": property_ids}}):
+            address = doc.get("address") or {}
+            summary = address.get("road_address") or address.get("jibun_address")
+            if summary:
+                result[doc["_id"]] = summary
+        return result
+
     async def get(self, contract_id: str, user_id: str, role: str | None = None) -> ContractResponse:
-        return _to_response(await self._get_owned(contract_id, user_id, role))
+        doc = await self._get_owned(contract_id, user_id, role)
+        addresses = await self._address_map([doc])
+        return _to_response(doc, addresses.get(doc.get("property_id")))
 
     async def list_for_user(self, user_id: str, page: int, size: int, contract_status: str | None):
         items, total = await self._contracts.list_for_user(user_id, (page - 1) * size, size, contract_status)
-        return [_to_response(i) for i in items], build_pagination(page, size, total)
+        addresses = await self._address_map(items)
+        return [
+            _to_response(i, addresses.get(i.get("property_id"))) for i in items
+        ], build_pagination(page, size, total)
 
     async def list_all(self, page: int, size: int, contract_status: str | None):
         items, total = await self._contracts.list_all((page - 1) * size, size, contract_status)
-        return [_to_response(i) for i in items], build_pagination(page, size, total)
+        addresses = await self._address_map(items)
+        return [
+            _to_response(i, addresses.get(i.get("property_id"))) for i in items
+        ], build_pagination(page, size, total)
 
     async def mark_diagnosed(self, contract_id: str, risk_assessment_id: str) -> None:
         contract = await self._contracts.get_by_id(contract_id)

@@ -177,9 +177,10 @@ async def test_dashboard_selects_live_population_and_excludes_demo_documents(cli
 @pytest.mark.asyncio
 async def test_incident_created_from_demo_contract_inherits_demo_provenance(client, mock_db):
     await DemoScenarioService(mock_db).seed(use_model=False)
+    # demo-ct-s1의 임차인(배경 계정 tenant91)으로 로그인해 시연 계약에서 사고를 신고한다.
     login = await client.post(
         "/api/v1/auth/login",
-        json={"email": "workflow.tenant@example.com", "password": "P@ssw0rd!"},
+        json={"email": "tenant91@example.com", "password": "P@ssw0rd!"},
     )
     assert login.status_code == 200, login.text
     token = login.json()["data"]["access_token"]
@@ -200,7 +201,7 @@ async def test_incident_created_from_demo_contract_inherits_demo_provenance(clie
     assert stored["is_demo"] is True
     assert stored["scenario_id"] == "S1"
     notification = await mock_db.notifications.find_one(
-        {"user_id": "demo-user-tenant", "category": "incident_update"},
+        {"user_id": "demo-user-tenant91", "category": "incident_update"},
         sort=[("created_at", -1)],
     )
     assert notification["source"]["data_mode"] == "DEMO"

@@ -12,10 +12,12 @@
 
 ### 해결하려는 문제
 
-| 소주제 | 문제 | 안심이음의 대응 |
-|---|---|---|
-| ① 사고 후 회수 | HUG 대위변제 채권의 회수 우선순위 판단이 어려움 | ML 기반 회수율·소요기간 예측 + 회수 우선순위 스코어 → **HUG 채권회수 대시보드** |
-| ② 계약 전 예방 | 임차인이 계약 전 위험 신호를 알기 어려움 | 등기부 실시간 조회 + 공공데이터 결합 **rule-based 위험진단** + 악성임대인 명단 대조 |
+
+| 소주제       | 문제                           | 안심이음의 대응                                                |
+| --------- | ---------------------------- | ------------------------------------------------------- |
+| ① 사고 후 회수 | HUG 대위변제 채권의 회수 우선순위 판단이 어려움 | ML 기반 회수율·소요기간 예측 + 회수 우선순위 스코어 → **HUG 채권회수 대시보드**     |
+| ② 계약 전 예방 | 임차인이 계약 전 위험 신호를 알기 어려움      | 등기부 실시간 조회 + 공공데이터 결합 **rule-based 위험진단** + 악성임대인 명단 대조 |
+
 
 ### 핵심 차별점
 
@@ -28,38 +30,42 @@
 
 ## 2. 주요 사용자
 
-| 역할 | 데모 계정 | 주요 기능 |
-|---|---|---|
-| **임차인** (tenant) | `tenant01@example.com` | 계약 등록, 위험진단 리포트, AI 전세상담, 증빙 요청, 사고 접수, 전자계약 |
-| **임대인** (landlord) | `landlord01@example.com` | 증빙 제출, 반환계획 등록, 전자계약 상대방 플로우 |
-| **상담사** (advisor) | `advisor01@example.com` | 증빙 검증 큐, 상담 현황(ML 자동분류 태그), 유사사례 검색 |
-| **HUG 담당자** (hug_admin) | `hugadmin01@example.com` | 채권회수 대시보드(우선순위 채권·사고율 지도·발급 시계열·피해 분포), 사고 큐 |
-| **시스템 관리자** (system_admin) | `sysadmin01@example.com` | 사용자 관리, 블록체인 트랜잭션 로그 조회 |
 
-공통 비밀번호: `P@ssw0rd!` (`backend/scripts/seed_demo_users.py`로 idempotent 시드)
+| 역할                         | 데모 계정                    | 주요 기능                                        |
+| -------------------------- | ------------------------ | -------------------------------------------- |
+| **임차인 A** (tenant)         | `tenant01@example.com` 김하나 | 계약 등록, 위험진단 리포트, AI 전세상담, 증빙 요청 — 예방 성공(S2→S3) 스토리 |
+| **임차인 B** (tenant)         | `tenant02@example.com` 이도윤 | 사고 접수, 이행청구 서류 제출 — 사고 처리(S4→S5) 스토리          |
+| **임대인** (landlord)         | `landlord01@example.com` 박성호 | 증빙 제출, 반환계획 등록, 전자계약 상대방 플로우 — S2·S3·S4 계약의 임대인 |
+| **상담사** (advisor)          | `advisor01@example.com` 최서연 | 증빙 검증 큐, 상담 현황(ML 자동분류 태그), 유사사례 검색          |
+| **HUG 담당자** (hug_admin)    | `hugadmin01@example.com` 한지원 | 채권회수 대시보드(우선순위 채권·사고율 지도·발급 시계열·피해 분포), 사고 큐 |
+| **시스템 관리자** (system_admin) | `sysadmin01@example.com` | 사용자 관리, 블록체인 트랜잭션 로그 조회                      |
+
+공통 비밀번호: `P@ssw0rd!` — 계정 원장은 `backend/app/services/demo_scenario_service.py`의 `_ACCOUNT_SPECS`(S1·S5~S7 배경 인물 계정 포함)이며, `backend/scripts/seed_demo_users.py`는 이를 재사용해 idempotent 시드한다.
 
 ---
 
 ## 3. 핵심 기능
 
-| 기능 | 설명 | 상태 |
-|---|---|---|
-| **매물·계약 등록** | 매물 등록 → 임대인 연결 → 계약 생성, 계약 상태 전이 관리 | ✅ 구현 |
-| **등기부 실시간 조회** | CODEF(샌드박스) 실호출로 등기부 스냅샷 수집·갱신, 근저당·압류 등 권리 신호 자동 파싱. 실패 시 시나리오 폴백 | ✅ 구현 |
-| **전세 위험진단** | 등기부·공시가격·지역 사고율·임대인 신호를 결합한 rule-based 진단 (LOW/MEDIUM/HIGH) | ✅ 구현 |
-| **위험요인·필요서류 안내** | 진단 결과에 위험근거, 누락 데이터, 필요서류, 권장행동 포함 | ✅ 구현 |
-| **증빙 요청·제출·검증** | 임차인 요청 → 임대인 제출(SHA-256 파일 해시) → 상담사 승인/반려 | ✅ 구현 |
-| **계약 타임라인·반환계획** | 계약별 이벤트 타임라인, 보증금 반환계획 등록·추적 | ✅ 구현 |
-| **RAG 기반 상담지원** | Atlas Vector Search 근거 검색 + LLM 답변 + 출처 카드(공식자료/상담사례 구분) | ✅ 구현 |
-| **블록체인 이력관리** | 위험진단·증빙·검증·전자계약 해시 앵커링, 트랜잭션 조회·검증 | ✅ 구현 (Mock Chain) |
-| **전자계약 (esign)** | 임차인·임대인 공동세션 → 특약 합의 → 양측 서명 → 계약서 해시 자동 앵커 → 위변조 검증 | ✅ 구현 |
-| **ML 회수 예측** | 예상 회수율·등급, 배당 소요기간, SHAP 요인 설명, 상담 자동분류 | ✅ 구현 |
-| **사고위험 PU PoC** | 합성 사고 P + RTMS 미라벨 U 기반 위험점수·백분위, 계약별 성공/범위밖/실패 이력 | ✅ 백엔드 서빙·배치 구현 |
-| **HUG 사고 전 예방** | 진행 계약 목록, 예방 우선순위, D-90/60/30 항목별 증빙 bundle, 3자 알림·조치 | ✅ 백엔드 구현 |
-| **HUG 보증이행** | 사고통지 → 서류 → 심사 → 명도 → 대위변제 → 채권등록·인계 상태머신 | ✅ 백엔드 구현 |
-| **HUG 등록채권 관리** | 병렬 상태축, append-only 원장, 저장형 회수전망 예측, 종결·감사이력 | ✅ 백엔드 구현 |
-| **HUG 대시보드** | 업무대장·합성 참조·공공 집계를 분리한 KPI와 발급·사고 추이 | ✅ 백엔드 보완 |
-| **사고 접수·상담 현황·알림** | 사고 접수→상태 추적, 챗봇→상담사 이관 큐, 구조화 예방 알림 | ✅ 구현 |
+
+| 기능                 | 설명                                                                 | 상태                |
+| ------------------ | ------------------------------------------------------------------ | ----------------- |
+| **매물·계약 등록**       | 매물 등록 → 임대인 연결 → 계약 생성, 계약 상태 전이 관리                                | ✅ 구현              |
+| **등기부 실시간 조회**     | CODEF(샌드박스) 실호출로 등기부 스냅샷 수집·갱신, 근저당·압류 등 권리 신호 자동 파싱. 실패 시 시나리오 폴백 | ✅ 구현              |
+| **전세 위험진단**        | 등기부·공시가격·지역 사고율·임대인 신호를 결합한 rule-based 진단 (LOW/MEDIUM/HIGH)        | ✅ 구현              |
+| **위험요인·필요서류 안내**   | 진단 결과에 위험근거, 누락 데이터, 필요서류, 권장행동 포함                                 | ✅ 구현              |
+| **증빙 요청·제출·검증**    | 임차인 요청 → 임대인 제출(SHA-256 파일 해시) → 상담사 승인/반려                         | ✅ 구현              |
+| **계약 타임라인·반환계획**   | 계약별 이벤트 타임라인, 보증금 반환계획 등록·추적                                       | ✅ 구현              |
+| **RAG 기반 상담지원**    | Atlas Vector Search 근거 검색 + LLM 답변 + 출처 카드(공식자료/상담사례 구분)           | ✅ 구현              |
+| **블록체인 이력관리**      | 위험진단·증빙·검증·전자계약 해시 앵커링, 트랜잭션 조회·검증                                 | ✅ 구현 (Mock Chain) |
+| **전자계약 (esign)**   | 임차인·임대인 공동세션 → 특약 합의 → 양측 서명 → 계약서 해시 자동 앵커 → 위변조 검증               | ✅ 구현              |
+| **ML 회수 예측**       | 예상 회수율·등급, 배당 소요기간, SHAP 요인 설명, 상담 자동분류                            | ✅ 구현              |
+| **사고위험 PU PoC**    | 합성 사고 P + RTMS 미라벨 U 기반 위험점수·백분위, 계약별 성공/범위밖/실패 이력                 | ✅ 백엔드 서빙·배치 구현    |
+| **HUG 사고 전 예방**    | 진행 계약 목록, 예방 우선순위, D-90/60/30 항목별 증빙 bundle, 3자 알림·조치              | ✅ 백엔드 구현          |
+| **HUG 보증이행**       | 사고통지 → 서류 → 심사 → 명도 → 대위변제 → 채권등록·인계 상태머신                          | ✅ 백엔드 구현          |
+| **HUG 등록채권 관리**    | 병렬 상태축, append-only 원장, 저장형 회수전망 예측, 종결·감사이력                       | ✅ 백엔드 구현          |
+| **HUG 대시보드**       | 업무대장·합성 참조·공공 집계를 분리한 KPI와 발급·사고 추이                                | ✅ 백엔드 보완          |
+| **사고 접수·상담 현황·알림** | 사고 접수→상태 추적, 챗봇→상담사 이관 큐, 구조화 예방 알림                                | ✅ 구현              |
+
 
 ---
 
@@ -121,35 +127,41 @@
 
 ### 5.1 실시간 연동 API (Live)
 
-| 데이터 | 출처 | 시스템 활용 | 상태 |
-|---|---|---|---|
-| 도로명주소 상세검색 | 주소기반산업지원서비스 (juso.go.kr) | 주소 정규화, 법정동코드(`adm_cd`) 확보 → 지역 사고율 조인 키 | ✅ Live |
-| 등기부등본 | **CODEF API (샌드박스)** | 근저당 채권최고액·압류·권리부담 실시간 파싱 → 위험진단 핵심 입력. `registry_snapshots`에 `source_system="api_live"` 저장 | ✅ Live (실패 시 시나리오 폴백) |
-| 건축물대장 | 공공데이터포털 건축HUB | 주택 용도·사용승인일 → 주택유형 신호 | ✅ Live |
-| 아파트 매매 실거래가 | 공공데이터포털 RTMS | 지역 시세 참조 | ✅ Live |
-| 사업자등록 상태조회 | 국세청 (공공데이터포털) | 임대사업자 휴·폐업 여부 → 임대인 신호 | ✅ Live |
-| OpenDART 기업공시 | 금융감독원 | 법인 임대인 공시 이력 확인 | ✅ Live |
+
+| 데이터           | 출처                       | 시스템 활용                                                                                     | 상태                    |
+| ------------- | ------------------------ | ------------------------------------------------------------------------------------------ | --------------------- |
+| 도로명주소 상세검색    | 주소기반산업지원서비스 (juso.go.kr) | 주소 정규화, 법정동코드(`adm_cd`) 확보 → 지역 사고율 조인 키                                                   | ✅ Live                |
+| 등기부등본         | **CODEF API (샌드박스)**     | 근저당 채권최고액·압류·권리부담 실시간 파싱 → 위험진단 핵심 입력. `registry_snapshots`에 `source_system="api_live"` 저장 | ✅ Live (실패 시 시나리오 폴백) |
+| 건축물대장         | 공공데이터포털 건축HUB            | 주택 용도·사용승인일 → 주택유형 신호                                                                      | ✅ Live                |
+| 아파트 매매 실거래가   | 공공데이터포털 RTMS             | 지역 시세 참조                                                                                   | ✅ Live                |
+| 사업자등록 상태조회    | 국세청 (공공데이터포털)            | 임대사업자 휴·폐업 여부 → 임대인 신호                                                                     | ✅ Live                |
+| OpenDART 기업공시 | 금융감독원                    | 법인 임대인 공시 이력 확인                                                                            | ✅ Live                |
+
 
 ### 5.2 공공 공개데이터 실집계 (파일 수집 → 정규화)
 
-| 데이터 | 출처 | 주요 컬럼 | 도출 인사이트 | 시스템 활용 |
-|---|---|---|---|---|
-| 시군구별 보증사고 현황 (272행) | HUG 빅데이터 개방 포털 HOUSTA | 사고건수·사고금액·**사고율(%)**·법정동코드 | 지역별 실제 사고율 ('25.8월 기준 3개월 평균) | 위험진단 "지역 사고율 신호", HUG 사고율 지도 |
-| 전세보증금반환보증 발급현황 (6,906행) | HOUSTA | 시도×연월×주택유형 발급건수·보증금액 (2016.01~) | 합성데이터에 없던 **정상 모수(분모)** 확보 | HUG 대시보드 발급 시계열 |
-| 전세사기 피해주택 소재지 (416행) | HOUSTA (경공매지원서비스 신청자) | 시군구별 피해주택 수 (2023.7~2025.3) | 실제 피해 주택 위치 분포 | HUG 피해 분포 지도 |
-| 서울 연도별 사고·대위변제 (8행) | HOUSTA | 2020~2023 건수·금액 | 시계열 추세 근거 | 발표·대시보드 근거 수치 |
-| 전세금안심대출보증 사고율 (10행) | HOUSTA | 연도별 신청·사고건수 → 사고율 파생 | 상품별 사고율 추세 | 상품 비교 시각화 |
-| **악성임대인 공개명단 (2,280건)** | HUG 안심전세포털 (법정 공개정보) | 성명·연령·주소(시도)·구상채무액·기준일·근거법령 | 수도권 67% 집중, 구상채무 중앙값 5.45억 | 위험진단 "임대인 신호" — 성명+지역 매칭 결과만 반환 (명단 나열·검색 제공 금지, RAG 코퍼스 제외) |
+
+| 데이터                     | 출처                    | 주요 컬럼                           | 도출 인사이트                       | 시스템 활용                                                       |
+| ----------------------- | --------------------- | ------------------------------- | ----------------------------- | ------------------------------------------------------------ |
+| 시군구별 보증사고 현황 (272행)     | HUG 빅데이터 개방 포털 HOUSTA | 사고건수·사고금액·**사고율(%)**·법정동코드      | 지역별 실제 사고율 ('25.8월 기준 3개월 평균) | 위험진단 "지역 사고율 신호", HUG 사고율 지도                                 |
+| 전세보증금반환보증 발급현황 (6,906행) | HOUSTA                | 시도×연월×주택유형 발급건수·보증금액 (2016.01~) | 합성데이터에 없던 **정상 모수(분모)** 확보    | HUG 대시보드 발급 시계열                                              |
+| 전세사기 피해주택 소재지 (416행)    | HOUSTA (경공매지원서비스 신청자) | 시군구별 피해주택 수 (2023.7~2025.3)     | 실제 피해 주택 위치 분포                | HUG 피해 분포 지도                                                 |
+| 서울 연도별 사고·대위변제 (8행)     | HOUSTA                | 2020~2023 건수·금액                 | 시계열 추세 근거                     | 발표·대시보드 근거 수치                                                |
+| 전세금안심대출보증 사고율 (10행)     | HOUSTA                | 연도별 신청·사고건수 → 사고율 파생            | 상품별 사고율 추세                    | 상품 비교 시각화                                                    |
+| **악성임대인 공개명단 (2,280건)** | HUG 안심전세포털 (법정 공개정보)  | 성명·연령·주소(시도)·구상채무액·기준일·근거법령     | 수도권 67% 집중, 구상채무 중앙값 5.45억    | 위험진단 "임대인 신호" — 성명+지역 매칭 결과만 반환 (명단 나열·검색 제공 금지, RAG 코퍼스 제외) |
+
 
 ### 5.3 발제사 제공 데이터
 
-| 데이터 | 구분 | 행 수 | 시스템 활용 |
-|---|---|---:|---|
-| 비식별 임대차 상담데이터 | **실데이터** (비식별) | 938 | RAG 상담 코퍼스, 분쟁유형·진행단계 분류기 학습 |
-| 전세/임대보증 대위변제 | 합성 | 23,107 + 66,579 | 대위변제 규모·패턴 분석 |
-| 임대보증 사고현황 | 합성 | 25,687 | 사고사유·시점 패턴 |
-| 전세사고 비율 데이터 2종 | 합성 | 69,435 ×2 | 전세가율 고위험 패턴 참조선 (사고사례 84%가 비율 80%↑) |
-| 경매현황 / 배당내역 | 합성 | 32,542 / 28,961 | **회수율·소요기간 예측 모델 학습** |
+
+| 데이터            | 구분             | 행 수             | 시스템 활용                              |
+| -------------- | -------------- | --------------- | ----------------------------------- |
+| 비식별 임대차 상담데이터  | **실데이터** (비식별) | 938             | RAG 상담 코퍼스, 분쟁유형·진행단계 분류기 학습        |
+| 전세/임대보증 대위변제   | 합성             | 23,107 + 66,579 | 대위변제 규모·패턴 분석                       |
+| 임대보증 사고현황      | 합성             | 25,687          | 사고사유·시점 패턴                          |
+| 전세사고 비율 데이터 2종 | 합성             | 69,435 ×2       | 전세가율 고위험 패턴 참조선 (사고사례 84%가 비율 80%↑) |
+| 경매현황 / 배당내역    | 합성             | 32,542 / 28,961 | **회수율·소요기간 예측 모델 학습**               |
+
 
 > 합성데이터 7종에는 공통 사건 ID가 없어 파일 간 개별 사건 조인은 하지 않습니다. 특히 사고표본과 RTMS 계약을 대조할 공통키가 없으므로 RTMS를 확정 정상으로 단정할 수 없습니다. 260721 case-control 모델은 비교 baseline으로만 유지하고, 발제사 조언에 따라 **260723 RTMS를 미라벨(U)로 처리하는 bagging PU Learning PoC로 보완**했습니다(9장 참조).
 
@@ -157,22 +169,26 @@
 
 발제 데이터에는 확인된 사고 사례만 있고 정상 종료 라벨이 없습니다. 국토부 실거래가(RTMS) **전월세 신고 건별 데이터**를 추가 확보했지만 개별 사고 여부를 알 수 없으므로, 이를 정상군이 아닌 **미라벨군(Unlabeled)** 으로 사용합니다.
 
-| 항목 | 내용 |
-|---|---|
-| 수집 스크립트 | `scripts/collect_rtms_rent.py` — 전월세 4종 API(아파트·연립다세대·단독다가구·오피스텔) × 대표 시군구 17개(세종 포함). 260723 지역코드 라벨 2건 정정, 기준월 CLI, 전 페이지 수집, 원문 XML·셀별 manifest·완전성 gate를 코드에 반영 |
-| **현재 모델 적용 산출** | `processed/control/rtms_jeonse_controls_260721.csv` — 전세 18,765건(2025.02~06, 기존 첫 페이지 중심 표본). 파일명·기존 `is_accident=0`과 무관하게 새 모델에서는 전부 **사고 여부 미확인 U**로 해석 |
-| 다음 재수집 산출 | `processed/control/rtms_jeonse_unlabeled_<시작월>_<종료월>_<실행시각>.csv` + `.manifest.json` — `label_status=unlabeled`; 모든 요청 셀이 완전하지 않으면 학습용 CSV를 만들지 않으며 부분 CSV는 학습기가 거부 |
-| 공통 피처 | 지역(시도), 주택유형, `log1p(보증금)` — P·U에서 함께 존재하는 축만 사용 |
-| 키 상태 | `DATA_GO_KR_API_KEY`로 전월세 4종 활용신청 완료(260721, 자동승인) |
+
+| 항목              | 내용                                                                                                                                                                  |
+| --------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 수집 스크립트         | `scripts/collect_rtms_rent.py` — 전월세 4종 API(아파트·연립다세대·단독다가구·오피스텔) × 대표 시군구 17개(세종 포함). 260723 지역코드 라벨 2건 정정, 기준월 CLI, 전 페이지 수집, 원문 XML·셀별 manifest·완전성 gate를 코드에 반영 |
+| **현재 모델 적용 산출** | `processed/control/rtms_jeonse_controls_260721.csv` — 전세 18,765건(2025.02~06, 기존 첫 페이지 중심 표본). 파일명·기존 `is_accident=0`과 무관하게 새 모델에서는 전부 **사고 여부 미확인 U**로 해석           |
+| 다음 재수집 산출       | `processed/control/rtms_jeonse_unlabeled_<시작월>_<종료월>_<실행시각>.csv` + `.manifest.json` — `label_status=unlabeled`; 모든 요청 셀이 완전하지 않으면 학습용 CSV를 만들지 않으며 부분 CSV는 학습기가 거부  |
+| 공통 피처           | 지역(시도), 주택유형, `log1p(보증금)` — P·U에서 함께 존재하는 축만 사용                                                                                                                    |
+| 키 상태            | `DATA_GO_KR_API_KEY`로 전월세 4종 활용신청 완료(260721, 자동승인)                                                                                                                  |
+
 
 방법론 주의: P는 합성 사고군, U는 HUG 가입 여부·사고 여부를 모르는 RTMS 전체 전세실거래라 모집단과 출처가 다릅니다. 실제 정상 라벨이 없으므로 ROC/PR은 `P-vs-U proxy`로만 보고, Brier·정확도·ECE를 실제 확률 성능으로 제시하지 않습니다. 상세 결과는 `processed/ml/ACCIDENT_MODEL_PU_POC_README.md`.
 
 ### 5.4 Mock 유지 (미연동)
 
-| 데이터 | 사유 | 대체 방식 |
-|---|---|---|
+
+| 데이터         | 사유                                                                                                                                                       | 대체 방식                                                                                                                |
+| ----------- | -------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------- |
 | ~~공시가격 3종~~ | **260721 live 전환 완료** — VWorld NED 데이터 API(`getApartHousingPriceAttr`·`getIndvdHousingPriceAttr`·`getIndvdLandPriceAttr`, `domain=등록 서비스 URL` 필수) 실호출 검증 | `POST /properties/{id}/official-price/refresh` → `official_price_snapshots` 저장, 전세가율 신호 실계산. 가격 미제공 필지는 `missing` 유지 |
-| 온비드 공매 | **배제 확정(260721)** — API 미발급, mock 파일도 삭제 | 서비스 도메인에서 완전 제외 |
+| 온비드 공매      | **배제 확정(260721)** — API 미발급, mock 파일도 삭제                                                                                                                 | 서비스 도메인에서 완전 제외                                                                                                      |
+
 
 > **데이터 정직성 원칙**: 등기부·공시가격 파생 지표(`jeonse_ratio`, `mortgage_ratio` 등)는 출처가 `live`일 때만 계산합니다. 데이터가 없으면 "위험 낮음"으로 채점하는 대신 `missing_fields`로 보고하고, 프론트에는 mock 여부 라벨 대신 **데이터 출처 상태(`source_status`)** 를 전달합니다.
 
@@ -222,17 +238,19 @@ FastAPI 서비스 계층에서 소비
 
 ### 컬렉션 구성 (33개)
 
-| 그룹 | 컬렉션 | 역할 |
-|---|---|---|
-| 사용자·매물·계약 | `users` `properties` `landlords` `contracts` `contract_versions` | 역할 기반 사용자, 매물-임대인-계약 관계 |
+
+| 그룹         | 컬렉션                                                                                                                                                  | 역할                                                     |
+| ---------- | ---------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------ |
+| 사용자·매물·계약  | `users` `properties` `landlords` `contracts` `contract_versions`                                                                                     | 역할 기반 사용자, 매물-임대인-계약 관계                                |
 | 외부 데이터 스냅샷 | `registry_snapshots` `building_registry_snapshots` `rtms_transactions` `official_price_snapshots` `api_raw_snapshots` `api_call_logs` `data_sources` | API 응답 원본·파싱 결과, 출처(`source_system`: api_live/mock) 추적 |
-| 위험진단 | `risk_assessments` | case_id별 진단 결과·근거·완결성 |
-| 증빙·검증 | `evidence_requests` `evidences` `verifications` | 요청→제출(파일 해시)→검증 결정 |
-| 생애주기 | `timeline_events` `return_plans` `incidents` `counsels` `counsel_queue` `referrals` `notifications` | 타임라인, 반환계획, 사고, 상담 현황, 알림 |
-| 전자계약 | `esign_sessions` | 공동세션·특약·서명·앵커 상태 |
-| RAG·LLM | `rag_chunks` `rag_search_logs` `llm_conversations` `llm_messages` `llm_answer_logs` | 임베딩 청크, 검색·답변 로그 |
-| ML·블록체인 | `recovery_predictions` `model_versions` `blockchain_transactions` | 예측 이력, 모델 버전, 트랜잭션 |
-| 운영 | `system_logs` `schema_migrations` | 시스템 로그, 마이그레이션 이력 |
+| 위험진단       | `risk_assessments`                                                                                                                                   | case_id별 진단 결과·근거·완결성                                  |
+| 증빙·검증      | `evidence_requests` `evidences` `verifications`                                                                                                      | 요청→제출(파일 해시)→검증 결정                                     |
+| 생애주기       | `timeline_events` `return_plans` `incidents` `counsels` `counsel_queue` `referrals` `notifications`                                                  | 타임라인, 반환계획, 사고, 상담 현황, 알림                              |
+| 전자계약       | `esign_sessions`                                                                                                                                     | 공동세션·특약·서명·앵커 상태                                       |
+| RAG·LLM    | `rag_chunks` `rag_search_logs` `llm_conversations` `llm_messages` `llm_answer_logs`                                                                  | 임베딩 청크, 검색·답변 로그                                       |
+| ML·블록체인    | `recovery_predictions` `model_versions` `blockchain_transactions`                                                                                    | 예측 이력, 모델 버전, 트랜잭션                                     |
+| 운영         | `system_logs` `schema_migrations`                                                                                                                    | 시스템 로그, 마이그레이션 이력                                      |
+
 
 ### 주요 인덱스·무결성 설계
 
@@ -253,13 +271,15 @@ FastAPI 서비스 계층에서 소비
 
 ### 판단 요소 (5대 신호)
 
-| 신호 | 입력 | 판정 기준 |
-|---|---|---|
-| **권리관계** | CODEF 등기부 (live) | 압류 존재 → 즉시 HIGH급 감점 / 근저당 채권최고액 비율 >60% 높음, >30% 주의 / 권리부담 비율 |
-| **전세가율** | 공시가격 (live일 때만) | 보증금/공시가격 >80% 높음, >60% 주의 — 합성데이터 고위험 패턴(사고사례 84%가 80%↑) 참조 |
-| **지역 사고율** | HOUSTA 실집계 (live) | 시군구 사고율 구간별 가점 — 법정동코드로 조인, 근거·기준일 함께 반환 |
-| **임대인** | 악성임대인 명단 + 사업자등록 + DART | 성명+시도 일치(`name_sido`) → 강한 경고 / 성명만 일치(`name_only`) → 동명이인 주의 안내. 폐업 여부·법인 공시 확인 |
-| **주택유형** | 건축물대장 | 다세대·다가구 사고 집중 패턴 반영 |
+
+| 신호         | 입력                      | 판정 기준                                                                            |
+| ---------- | ----------------------- | -------------------------------------------------------------------------------- |
+| **권리관계**   | CODEF 등기부 (live)        | 압류 존재 → 즉시 HIGH급 감점 / 근저당 채권최고액 비율 >60% 높음, >30% 주의 / 권리부담 비율                    |
+| **전세가율**   | 공시가격 (live)             | 보증금/공시가격 >80% 높음, >60% 주의 — 합성데이터 고위험 패턴(사고사례 84%가 80%↑) 참조                      |
+| **지역 사고율** | HOUSTA 실집계 (live)       | 시군구 사고율 구간별 가점 — 법정동코드로 조인, 근거·기준일 함께 반환                                         |
+| **임대인**    | 악성임대인 명단 + 사업자등록 + DART | 성명+시도 일치(`name_sido`) → 강한 경고 / 성명만 일치(`name_only`) → 동명이인 주의 안내. 폐업 여부·법인 공시 확인 |
+| **주택유형**   | 건축물대장                   | 다세대·다가구 사고 집중 패턴 반영                                                              |
+
 
 ### 등급 산정과 데이터 완결성
 
@@ -282,14 +302,16 @@ FastAPI 서비스 계층에서 소비
 
 ### 모델 4종 + 파생 스코어 + 사고위험 PU PoC (2026-07-20~23 학습, seed=42)
 
-| 모델 | 알고리즘 | 학습 데이터 | 성능 (hold-out) | 서빙 엔드포인트 |
-|---|---|---|---|---|
-| **예상 회수율** (`recovery_ratio_lgbm`) | LightGBM 회귀 → LOW/MED/HIGH 등급화 | 배당내역 합성 28,961 (train 23,168 / test 5,793) | MAE 0.113, R² 0.404, 등급 정확도 71.9% | `POST /ml/recovery/predict` |
-| **배당 소요기간** (`days_to_dividend_lgbm`) | LightGBM 회귀 | 동일 (음수 소요일 38건 제외) | MAE 100.9일, 중앙값 AE 78.6일 | 동일 응답에 통합 |
-| **분쟁유형 분류** (`dispute_clf`) | TF-IDF + 분류기 (5클래스: 전세사기·보증금미반환·경공매·묵시적갱신·기타) | 상담 938 (train 748 / test 187) | 정확도 73.8%, macro-F1 0.723 | `POST /ml/counsel/classify` |
-| **진행단계 분류** (`stage_clf`) | 동일 (6클래스: 상담·내용증명·임차권등기·소송·판결집행·HUG이행청구) | 동일 | 정확도 66.8%, macro-F1 0.605 | 동일 응답에 통합 |
-| **회수 우선순위 스코어** | (파생) 예상회수액 = 회수율×채권금액, 소요기간 페널티 가중 | 위 2모델 출력 | — | `GET /hug/dashboard/priority` |
-| **사고위험 PU PoC** (`accident_clf_pu_poc`) | LightGBM bagging PU, 10 bags | 합성 사고군 P 18,054 + RTMS 전세 미라벨 U 18,765 (공유 8개 시도) | P-vs-U **proxy** ROC-AUC 0.9108 · PR-AUC 0.9025, U 상위 10% 기준 P recall 71.67% | `POST /ml/accident/predict` + HUG 계약 배치 |
+
+| 모델                                      | 알고리즘                                          | 학습 데이터                                            | 성능 (hold-out)                                                                | 서빙 엔드포인트                                |
+| --------------------------------------- | --------------------------------------------- | ------------------------------------------------- | ---------------------------------------------------------------------------- | --------------------------------------- |
+| **예상 회수율** (`recovery_ratio_lgbm`)      | LightGBM 회귀 → LOW/MED/HIGH 등급화                | 배당내역 합성 28,961 (train 23,168 / test 5,793)        | MAE 0.113, R² 0.404, 등급 정확도 71.9%                                            | `POST /ml/recovery/predict`             |
+| **배당 소요기간** (`days_to_dividend_lgbm`)   | LightGBM 회귀                                   | 동일 (음수 소요일 38건 제외)                                | MAE 100.9일, 중앙값 AE 78.6일                                                     | 동일 응답에 통합                               |
+| **분쟁유형 분류** (`dispute_clf`)             | TF-IDF + 분류기 (5클래스: 전세사기·보증금미반환·경공매·묵시적갱신·기타) | 상담 938 (train 748 / test 187)                     | 정확도 73.8%, macro-F1 0.723                                                    | `POST /ml/counsel/classify`             |
+| **진행단계 분류** (`stage_clf`)               | 동일 (6클래스: 상담·내용증명·임차권등기·소송·판결집행·HUG이행청구)      | 동일                                                | 정확도 66.8%, macro-F1 0.605                                                    | 동일 응답에 통합                               |
+| **회수 우선순위 스코어**                         | (파생) 예상회수액 = 회수율×채권금액, 소요기간 페널티 가중            | 위 2모델 출력                                          | —                                                                            | `GET /hug/dashboard/priority`           |
+| **사고위험 PU PoC** (`accident_clf_pu_poc`) | LightGBM bagging PU, 10 bags                  | 합성 사고군 P 18,054 + RTMS 전세 미라벨 U 18,765 (공유 8개 시도) | P-vs-U **proxy** ROC-AUC 0.9108 · PR-AUC 0.9025, U 상위 10% 기준 P recall 71.67% | `POST /ml/accident/predict` + HUG 계약 배치 |
+
 
 ### SHAP 설명 구조
 
@@ -314,16 +336,18 @@ FastAPI 서비스 계층에서 소비
 
 #### 보완 계획과 실행 상태
 
-| 단계 | 내용 | 상태 |
-|---|---|---|
-| 1 | RTMS의 확정 Negative 라벨 제거, U 의미로 전환 | ✅ 완료 |
-| 2 | P·U 통합 전역 그룹 split로 교차 출처 누출 방지·빈도 역가중 | ✅ 완료 (`global overlap=0`) |
-| 3 | 10-bag LightGBM PU 학습과 artifact 추론 smoke test | ✅ 완료 |
-| 4 | HOUSTA 1.6% 집계 prior 정렬 및 미검증 상태코드 부여 | ✅ 완료 |
-| 5 | RTMS 지역코드 라벨 정정·기준월·전 페이지·원문/manifest·완전성 gate | ✅ 코드 보완, **현재 artifact에는 미적용**(세종 U 포함 재수집 필요) |
-| 6 | 입력 SHA·기간·전처리·의존성 metadata 및 범위 밖 입력 차단 | ✅ 완료 |
-| 7 | HUG 실제 계약의 사고/정상 종료 라벨로 외부검증·확률보정 | ⬜ 데이터 제공 후 수행 |
-| 8 | 사고 전 계약관리 API·멱등 sweep·예측 배치 연결 | ✅ 백엔드 완료 (UI는 별도 범위) |
+
+| 단계  | 내용                                             | 상태                                             |
+| --- | ---------------------------------------------- | ---------------------------------------------- |
+| 1   | RTMS의 확정 Negative 라벨 제거, U 의미로 전환              | ✅ 완료                                           |
+| 2   | P·U 통합 전역 그룹 split로 교차 출처 누출 방지·빈도 역가중         | ✅ 완료 (`global overlap=0`)                      |
+| 3   | 10-bag LightGBM PU 학습과 artifact 추론 smoke test  | ✅ 완료                                           |
+| 4   | HOUSTA 1.6% 집계 prior 정렬 및 미검증 상태코드 부여          | ✅ 완료                                           |
+| 5   | RTMS 지역코드 라벨 정정·기준월·전 페이지·원문/manifest·완전성 gate | ✅ 코드 보완, **현재 artifact에는 미적용**(세종 U 포함 재수집 필요) |
+| 6   | 입력 SHA·기간·전처리·의존성 metadata 및 범위 밖 입력 차단        | ✅ 완료                                           |
+| 7   | HUG 실제 계약의 사고/정상 종료 라벨로 외부검증·확률보정              | ⬜ 데이터 제공 후 수행                                  |
+| 8   | 사고 전 계약관리 API·멱등 sweep·예측 배치 연결                | ✅ 백엔드 완료 (UI는 별도 범위)                           |
+
 
 ---
 
@@ -331,11 +355,13 @@ FastAPI 서비스 계층에서 소비
 
 ### 코퍼스 (총 **1,230 청크**, `dive2026.rag_chunks` — 260721 적재·임베딩 완료)
 
-| 소스 | 청크 수 | 내용 |
-|---|---:|---|
-| 비식별 상담데이터 | 1,009 | 변호사 심층상담 938건 기반, 500~900자 청크 (overlap 80~150자) |
-| 안심전세포털 공식자료 (`khug_portal`) | 97 | 전세사기 유형별 사례·대처방안, 계약 단계별 유의사항, 보증가입, 피해지원 프로그램, 경공매 지원 특별법, FAQ·피해확인서·든든전세주택 등 33페이지 (`scripts/crawl_khug_portal.py`, 260721 사이트맵 대조로 10페이지 보강) |
-| 법령 조문 (`law`) | 124 | 주택임대차보호법(47)·전세사기피해자 지원 특별법(77) 조문 단위 청크, 국가법령정보센터 DRF API (`scripts/collect_law_chunks.py`, OC=hugin) — 벡터검색 실동작 확인 |
+
+| 소스                          | 청크 수  | 내용                                                                                                                                              |
+| --------------------------- | ----- | ----------------------------------------------------------------------------------------------------------------------------------------------- |
+| 비식별 상담데이터                   | 1,009 | 변호사 심층상담 938건 기반, 500~~900자 청크 (overlap 80~~150자)                                                                                               |
+| 안심전세포털 공식자료 (`khug_portal`) | 97    | 전세사기 유형별 사례·대처방안, 계약 단계별 유의사항, 보증가입, 피해지원 프로그램, 경공매 지원 특별법, FAQ·피해확인서·든든전세주택 등 33페이지 (`scripts/crawl_khug_portal.py`, 260721 사이트맵 대조로 10페이지 보강) |
+| 법령 조문 (`law`)               | 124   | 주택임대차보호법(47)·전세사기피해자 지원 특별법(77) 조문 단위 청크, 국가법령정보센터 DRF API (`scripts/collect_law_chunks.py`, OC=hugin) — 벡터검색 실동작 확인                            |
+
 
 ### 검색·답변 흐름
 
@@ -364,10 +390,12 @@ FastAPI 서비스 계층에서 소비
   → BlockchainAdapter.anchor() → tx_hash 발급 → blockchain_transactions 저장
 ```
 
-| 구분 | 온체인 (앵커) | 오프체인 (MongoDB) |
-|---|---|---|
+
+| 구분    | 온체인 (앵커)                                          | 오프체인 (MongoDB)          |
+| ----- | ------------------------------------------------- | ----------------------- |
 | 저장 항목 | `result_hash` (SHA-256), event_type, reference_id | 원문 데이터 전체, tx 상태, 타임스탬프 |
-| 원칙 | **원문·개인정보는 절대 체인에 올리지 않음** | 해시 재계산으로 위변조 검증 |
+| 원칙    | **원문·개인정보는 절대 체인에 올리지 않음**                        | 해시 재계산으로 위변조 검증         |
+
 
 ### 구현 현황
 
@@ -382,17 +410,20 @@ FastAPI 서비스 계층에서 소비
 
 ### 백엔드 — API Contract 기반 + HUG 업무확장 106 operations
 
-| 상태 | 내용 |
-|---|---|
-| ✅ 구현 완료 | 기존 API Contract 도메인 + 사고위험 PoC·사고 전 계약/예방·보증이행 상태머신·등록채권 원장/예측/종결·S1~S7 Seed·통합 KPI |
-| 🔶 Fallback 동작 | RAG (OpenAI 키 없으면 키워드 검색), 등기부 (CODEF 실패 시 시나리오 폴백), 블록체인 (Mock Chain) |
-| ⬜ 설계만 존재 | Polygon 실연동, `GET /admin/system-logs` |
+
+| 상태             | 내용                                                                                  |
+| -------------- | ----------------------------------------------------------------------------------- |
+| ✅ 구현 완료        | 기존 API Contract 도메인 + 사고위험 PoC·사고 전 계약/예방·보증이행 상태머신·등록채권 원장/예측/종결·S1~S7 Seed·통합 KPI |
+| 🔶 Fallback 동작 | RAG (OpenAI 키 없으면 키워드 검색), 등기부 (CODEF 실패 시 시나리오 폴백), 블록체인 (Mock Chain)              |
+| ⬜ 설계만 존재       | Polygon 실연동, `GET /admin/system-logs`                                               |
+
 
 ### 프론트엔드 — 전 역할 화면 + 실데이터 연동
 
 - 2026-07-21 전면 리디자인: HUG 디자인 토큰(`frontend/styles/globals.css`), 시각화 컴포넌트 8종(`components/viz/` — DonutGauge, ShapBars, ContractStepper, RiskSignals, TimelineList 등), 전 역할 공통 셸
-- 실데이터 연동 완료: 로그인/세션, 임차인 대시보드·계약 등록·계약 상세(진단·타임라인·반환계획·증빙), AI 상담(채팅형), 임대인 홈, 상담사 검증 큐, HUG 채권회수 대시보드, 관리자(사용자·블록체인 로그), 블록체인 검증 상세
-- 서비스 계층 15개 모듈(`frontend/services/`)은 기존 API Contract 범위를 대응한다. 260723에 추가한 사고 전 예방·보증이행·등록채권 백엔드 API의 UI 연동은 이번 범위에서 수정하지 않았다.
+- 실데이터 연동 완료: 로그인/세션, 임차인 대시보드·계약 등록·계약 상세(진단·타임라인·반환계획·증빙), AI 상담(채팅형), 임대인 홈, 상담사 검증 큐, 관리자(사용자·블록체인 로그), 블록체인 검증 상세
+- 2026-07-23 HUG 영역 4개 업무축 개편: 사이드바를 `통합 대시보드 → 사고 전 계약관리 → 사고접수·보증이행 → 사고 후 채권관리 → 알림`으로 재편. 통합 대시보드(분리 KPI·업무 파이프라인·발급/사고 연도 추이·오늘의 조치 Top5), `/hug/contracts`(사전예방 우선순위 목록·계약 상세·D-90/60/30 증빙 bundle·예방조치·3자 알림), `/hug/incidents`(이행 단계 큐·단계 Stepper·서류/심사/명도/대위변제/채권등록/인계 액션), `/hug/recovery`(회수 우선순위+SHAP·병렬 상태축·append-only 원장·법무/경공매·등록채권 회수전망 시뮬레이터·종결) 구현
+- 서비스 계층 19개 모듈(`frontend/services/`) — 기존 API Contract + 260723 HUG 확장(hugContract·performanceClaim·recovery) 전 범위 대응. HUG 목록·KPI 조회는 LIVE 업무대장 우선, 비어 있으면 시연 업무대장으로 자동 폴백(`services/hugDataMode.ts`)
 
 ### 테스트
 
@@ -409,41 +440,45 @@ backend$ pytest -q
 
 Base URL: `/api/v1` — OpenAPI 기준 **106 operations**. 기존 계약은 `docs/API_Contract_260721.yaml`, HUG 확장은 `docs/HUG_백엔드_구현현황_260723.md`를 따릅니다.
 
-| 도메인 | 주요 엔드포인트 |
-|---|---|
-| 인증 | `POST /auth/signup` `POST /auth/login` `GET /auth/me` `POST /auth/logout` |
-| 사용자 | `GET /users/{id}`, `GET /admin/users` |
-| 매물·등기 | `GET·POST /properties`, `GET /properties/{id}`, `GET·POST /properties/{id}/registry/latest·refresh` |
-| 임대인 | `GET·POST /landlords`, `GET /landlords/{id}` |
-| 계약 | `GET·POST /contracts`, `GET /contracts/{id}`, `GET .../timeline`, `GET .../return-plan`, `POST /return-plans` |
-| 위험진단 | `POST /risk/diagnose` (동기 200 응답), `GET /risk/{case_id}` |
-| 증빙·검증 | `GET·POST /evidence-requests`, `POST /evidence`, `GET /verifications/{evidence_id}`, `POST .../decision` |
-| RAG | `POST /rag/search`, `POST /rag/answer` (출처 카드 포함) |
-| ML | `POST /ml/accident/predict`, `POST /ml/recovery/predict`, `POST /ml/counsel/classify`, `GET /ml/models/info` |
-| 전자계약 | `POST /esign/sessions`, `POST .../join`, `GET /esign/sessions/{id}`, `POST .../terms`, `POST .../sign`, `POST /esign/contracts/{id}/verify` |
-| HUG 대시보드 | 기존 5종 + `GET /hug/dashboard/overview·issuance-incident-trend` |
-| HUG 사고 전 계약 | `GET /hug/contracts`, 단건·일괄 예측, prevention 조회·조치·sweep |
-| HUG 보증이행 | `GET /hug/incidents`, `/performance-claims/{id}` 문서·심사·명도·지급·채권등록·인계 액션 |
-| HUG 채권관리 | `/hug/recovery` 현황·목록·상세·병렬 이벤트·원장·예측이력·종결 |
-| HUG 시연 Seed | `POST /hug/demo/seed`, `GET /hug/demo/manifest` |
-| 사고·상담·알림 | `GET·POST /incidents`, `PATCH .../status`, `GET·POST /counsel-queue`, `GET /notifications`, `PATCH .../read` |
-| 블록체인 | `POST /blockchain/anchor`, `GET /blockchain`, `GET /blockchain/{tx_id}` |
 
-- **Swagger UI**: http://localhost:8000/docs · **ReDoc**: http://localhost:8000/redoc
+| 도메인         | 주요 엔드포인트                                                                                                                                    |
+| ----------- | ------------------------------------------------------------------------------------------------------------------------------------------- |
+| 인증          | `POST /auth/signup` `POST /auth/login` `GET /auth/me` `POST /auth/logout`                                                                   |
+| 사용자         | `GET /users/{id}`, `GET /admin/users`                                                                                                       |
+| 매물·등기       | `GET·POST /properties`, `GET /properties/{id}`, `GET·POST /properties/{id}/registry/latest·refresh`                                         |
+| 임대인         | `GET·POST /landlords`, `GET /landlords/{id}`                                                                                                |
+| 계약          | `GET·POST /contracts`, `GET /contracts/{id}`, `GET .../timeline`, `GET .../return-plan`, `POST /return-plans`                               |
+| 위험진단        | `POST /risk/diagnose` (동기 200 응답), `GET /risk/{case_id}`                                                                                    |
+| 증빙·검증       | `GET·POST /evidence-requests`, `POST /evidence`, `GET /verifications/{evidence_id}`, `POST .../decision`                                    |
+| RAG         | `POST /rag/search`, `POST /rag/answer` (출처 카드 포함)                                                                                           |
+| ML          | `POST /ml/accident/predict`, `POST /ml/recovery/predict`, `POST /ml/counsel/classify`, `GET /ml/models/info`                                |
+| 전자계약        | `POST /esign/sessions`, `POST .../join`, `GET /esign/sessions/{id}`, `POST .../terms`, `POST .../sign`, `POST /esign/contracts/{id}/verify` |
+| HUG 대시보드    | 기존 5종 + `GET /hug/dashboard/overview·issuance-incident-trend`                                                                               |
+| HUG 사고 전 계약 | `GET /hug/contracts`, 단건·일괄 예측, prevention 조회·조치·sweep                                                                                      |
+| HUG 보증이행    | `GET /hug/incidents`, `/performance-claims/{id}` 문서·심사·명도·지급·채권등록·인계 액션                                                                     |
+| HUG 채권관리    | `/hug/recovery` 현황·목록·상세·병렬 이벤트·원장·예측이력·종결                                                                                                  |
+| HUG 시연 Seed | `POST /hug/demo/seed`, `GET /hug/demo/manifest`                                                                                             |
+| 사고·상담·알림    | `GET·POST /incidents`, `PATCH .../status`, `GET·POST /counsel-queue`, `GET /notifications`, `PATCH .../read`                                |
+| 블록체인        | `POST /blockchain/anchor`, `GET /blockchain`, `GET /blockchain/{tx_id}`                                                                     |
+
+
+- **Swagger UI**: [http://localhost:8000/docs](http://localhost:8000/docs) · **ReDoc**: [http://localhost:8000/redoc](http://localhost:8000/redoc)
 - 공통 응답 봉투·오류코드 체계는 `docs/Backend_API_명세서_260714.md` 준수
 
 ---
 
 ## 14. 기술 스택
 
-| 계층 | 기술 |
-|---|---|
-| Frontend | Next.js 16 (App Router) · React 19 · TypeScript · Tailwind CSS · shadcn/ui (Base UI) · TanStack Query 5 · react-hook-form + zod · Recharts · Framer Motion · sonner |
-| Backend | FastAPI 0.115 · Python 3.12 · Pydantic 2 · Motor 3.6 (async MongoDB) · python-jose (JWT) · passlib/bcrypt · httpx |
-| Database | MongoDB Atlas · Atlas Vector Search |
-| AI/ML | OpenAI (text-embedding-3-large 1024d, Chat Completions) · LightGBM · scikit-learn · SHAP · pandas |
-| Blockchain | SHA-256 해시 앵커링 · Mock Chain (기본) · Polygon Amoy 어댑터 (스켈레톤) |
-| 테스트·도구 | pytest + pytest-asyncio + mongomock-motor (92 tests) · ESLint |
+
+| 계층         | 기술                                                                                                                                                                  |
+| ---------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Frontend   | Next.js 16 (App Router) · React 19 · TypeScript · Tailwind CSS · shadcn/ui (Base UI) · TanStack Query 5 · react-hook-form + zod · Recharts · Framer Motion · sonner |
+| Backend    | FastAPI 0.115 · Python 3.12 · Pydantic 2 · Motor 3.6 (async MongoDB) · python-jose (JWT) · passlib/bcrypt · httpx                                                   |
+| Database   | MongoDB Atlas · Atlas Vector Search                                                                                                                                 |
+| AI/ML      | OpenAI (text-embedding-3-large 1024d, Chat Completions) · LightGBM · scikit-learn · SHAP · pandas                                                                   |
+| Blockchain | SHA-256 해시 앵커링 · Mock Chain (기본) · Polygon Amoy 어댑터 (스켈레톤)                                                                                                          |
+| 테스트·도구     | pytest + pytest-asyncio + mongomock-motor (92 tests) · ESLint                                                                                                       |
+
 
 ---
 
@@ -466,7 +501,7 @@ DIVE2026/
 │   │   ├── core/ db/ middleware/ utils/
 │   │   └── main.py
 │   ├── mock_data/ storage_data/ secrets/
-│   ├── scripts/               #   seed_demo_users.py · seed_demo_contracts.py
+│   ├── scripts/               #   seed_demo_users.py · seed_hug_workflow.py
 │   └── tests/                 #   pytest 92건
 ├── scripts/                   # 데이터 파이프라인 (수집·전처리·학습·임베딩)
 │   ├── collect_raw_data.py collect_housta_data.py collect_bad_landlords.py
@@ -507,8 +542,8 @@ cp .env.example .env   # MONGODB_URI, JWT_SECRET_KEY, OPENAI_API_KEY,
 
 ```bash
 python scripts/setup_mongodb.py                         # 기본 컬렉션·인덱스·초기 시드
-backend/.venv/bin/python backend/scripts/seed_demo_users.py   # 데모 계정 5종
-backend/.venv/bin/python backend/scripts/seed_hug_workflow.py # 고정 S1~S7 HUG 업무 시나리오
+backend/.venv/bin/python backend/scripts/seed_demo_users.py   # 시연 계정(§20.1 로스터+배경 인물+sysadmin)
+backend/.venv/bin/python backend/scripts/seed_hug_workflow.py # 고정 S1~S7 시나리오 + 구세대 정리(Seed v1.2)
 ```
 
 ### 3) 백엔드
@@ -545,16 +580,18 @@ cd backend && pytest -q    # Atlas 없이 mongomock으로 92건 전량 실행
 
 ## 17. 보안 및 개인정보 보호
 
-| 영역 | 조치 |
-|---|---|
-| 인증·인가 | JWT Bearer + 5역할 RBAC (엔드포인트별 역할 검사) |
-| 비밀정보 해시 | 비밀번호 bcrypt, 사업자등록번호 해시 저장(`business_registration_number_hash`) |
-| 증빙 무결성 | 제출 파일 SHA-256 해시 저장, `(요청, 해시)` unique로 위·변조/중복 차단 |
-| 개인정보 마스킹 | RAG 응답 스니펫 마스킹·절단(`utils/pii_masking.py`, 전용 테스트 존재), 검색 로그 300자 절단 |
+
+| 영역       | 조치                                                                                 |
+| -------- | ---------------------------------------------------------------------------------- |
+| 인증·인가    | JWT Bearer + 5역할 RBAC (엔드포인트별 역할 검사)                                               |
+| 비밀정보 해시  | 비밀번호 bcrypt, 사업자등록번호 해시 저장(`business_registration_number_hash`)                    |
+| 증빙 무결성   | 제출 파일 SHA-256 해시 저장, `(요청, 해시)` unique로 위·변조/중복 차단                                 |
+| 개인정보 마스킹 | RAG 응답 스니펫 마스킹·절단(`utils/pii_masking.py`, 전용 테스트 존재), 검색 로그 300자 절단                |
 | 악성임대인 명단 | 법정 공개정보라도 명단 나열·검색 미제공 — 매칭 여부(true/false + 근거법령·기준일)만 반환, 시연 시 실명 마스킹, RAG 코퍼스 제외 |
-| 블록체인 | **원문·개인정보 온체인 저장 금지** — SHA-256 해시만 앵커 |
-| 키 관리 | `.env`·`secrets/` gitignore, 문서·코드에 키 값 기록 금지 |
-| 데이터 윤리 | 비식별 데이터 재식별 시도 금지, PII 정규식 5종 전수 스캔 + 사람 검수 전 `pii_removed=false` 보수적 유지 |
+| 블록체인     | **원문·개인정보 온체인 저장 금지** — SHA-256 해시만 앵커                                             |
+| 키 관리     | `.env`·`secrets/` gitignore, 문서·코드에 키 값 기록 금지                                      |
+| 데이터 윤리   | 비식별 데이터 재식별 시도 금지, PII 정규식 5종 전수 스캔 + 사람 검수 전 `pii_removed=false` 보수적 유지           |
+
 
 ---
 
@@ -576,9 +613,9 @@ cd backend && pytest -q    # Atlas 없이 mongomock으로 92건 전량 실행
 3. ~~공시가격 3종 live 수집~~ ✅ 260721 완료 — 전세가율 신호 실계산 활성화
 4. ~~프론트엔드 고도화~~ ✅ 260721 완료 — HUG 채권회수 대시보드 5종 API·전자계약·알림 화면·회수 시뮬레이터
 5. **RAG 코퍼스 확장** — ✅ 완료(260721): 안심전세포털 97청크(누락 10페이지 보강) + 법령 124청크(주택임대차보호법·전세사기특별법). Atlas 적재·1024차원 임베딩·벡터검색 실동작까지 확인. PII 사람 검수는 계속 진행
-6. **사고위험 PU 모델 운영 승격** — 세종을 포함한 지역 coverage 기준을 세우고 보완 수집기로 RTMS 대표 시군구 전 페이지 미라벨 표본을 재수집한 뒤 범위를 전국으로 확장합니다. 최종적으로 HUG의 계약키·사고여부·관찰종료일이 연결된 실제 코호트를 확보해 시간순/임대인·물건 그룹 외부검증, class prior 재추정, Platt/isotonic calibration 후 현재 PoC 서빙 artifact를 운영 모델로 교체합니다(9장 참조).
+6. **사고위험 PU 모델 운영 승격** — 세종을 포함한 지역 coverage 기준을 세우고 보완 수집기로 RTMS 대표 시군구 전 페이지 미라벨 표본을 재수집한 뒤 범위를 전국으로 확장합니다. 최종적으로 HUG의 계약키·사고여부·관찰종료일이 연결된 실제 코호트를 확보해 시간순/임대인·물건 그룹 외부검증, class prior 재추정, Platt/isotonic calibration 후 현재 PoC 서빙 artifact를 운영 모델로 교체합니다(9장 참조). 이 중 **세종 U 재수집·재학습**은 해커톤 범위에서도 실행 가능한 부분으로 20장 P5에 분리했습니다.
 
-> 아래 **19장**은 심사·시연 피드백을 반영한 다음 개발 사이클의 기능 상세 로드맵입니다.
+> 아래 **19장**은 심사·시연 피드백을 반영한 기능 로드맵(구현 이력 포함)이고, **20장**은 260723 확정한 시연 데이터 전략과 차기 우선순위입니다.
 
 ---
 
@@ -627,11 +664,13 @@ cd backend && pytest -q    # Atlas 없이 mongomock으로 92건 전량 실행
 
 지역 데이터는 이미 처리 완료(5.2). 시군구 단위 사고율을 **코로플레스(choropleth)** 로 시각화.
 
-| 데이터(processed/housta) | 행 | 용도 |
-|---|---:|---|
-| `housta_region_risk` | 273 | `adm_cd`·`accident_rate_pct` → **면 색칠(코로플레스)** |
-| `housta_victim_locations` | 416 | 시군구별 피해주택 수 → **버블 오버레이** |
-| `housta_issuance_region_monthly` | 6,907 | 시도×월×주택유형 발급 → 시계열 |
+
+| 데이터(processed/housta)            | 행     | 용도                                             |
+| -------------------------------- | ----- | ---------------------------------------------- |
+| `housta_region_risk`             | 273   | `adm_cd`·`accident_rate_pct` → **면 색칠(코로플레스)** |
+| `housta_victim_locations`        | 416   | 시군구별 피해주택 수 → **버블 오버레이**                      |
+| `housta_issuance_region_monthly` | 6,907 | 시도×월×주택유형 발급 → 시계열                             |
+
 
 - **1순위 코로플레스** — 시군구 경계 GeoJSON(행정안전부/VWorld 무료)에 `adm_cd` 조인, `accident_rate_pct`로 색 농도. 면(폴리곤) 데이터라 점 히트맵보다 정확·오해 없음
 - **2순위 버블** — `victim_locations` 시군구 중심좌표에 피해건수 비례 원 → 인천 미추홀구 등 다발지 강조
@@ -644,12 +683,14 @@ cd backend && pytest -q    # Atlas 없이 mongomock으로 92건 전량 실행
 
 문제: 모델명(LightGBM)·기법명(SHAP)을 UI 라벨에 그대로 노출(`frontend/app/hug/dashboard/page.tsx:350`, `frontend/components/hug/RecoveryPredictCard.tsx:64`). 담당자는 "회수 가능한가·얼마나·왜"가 궁금하지 알고리즘 이름이 궁금한 게 아님. **로직은 그대로, 텍스트만 교체**.
 
-| 현재 (기술 노출) | 제안 (업무 언어) |
-|---|---|
-| 선택 채권 · 요인 분석 (SHAP) | 이 채권, 왜 이 점수인가 — 판단 근거 Top 3 |
-| 신규 채권 회수 예측 LightGBM + SHAP 실계산 | 회수 가능성 예측 — 예상 회수율·회수 소요일 자동 산정 |
-| `priority_score` | 회수 우선순위 점수 (0~100) |
-| `top_factors` / `shap` | 영향 요인 — "▲ 올림 / ▼ 내림" 아이콘 + 한 줄 설명 |
+
+| 현재 (기술 노출)                      | 제안 (업무 언어)                         |
+| ------------------------------- | ---------------------------------- |
+| 선택 채권 · 요인 분석 (SHAP)            | 이 채권, 왜 이 점수인가 — 판단 근거 Top 3       |
+| 신규 채권 회수 예측 LightGBM + SHAP 실계산 | 회수 가능성 예측 — 예상 회수율·회수 소요일 자동 산정    |
+| `priority_score`                | 회수 우선순위 점수 (0~100)                 |
+| `top_factors` / `shap`          | 영향 요인 — "▲ 올림 / ▼ 내림" 아이콘 + 한 줄 설명 |
+
 
 - **요인을 문장으로**: `{label} 값이 {value}라서 회수율을 {direction} 방향으로 {정도} 밀었습니다` 자동 문장화 (label·value·direction·shap 이미 반환됨 → 프론트 조립만)
 - **발산형 막대 바**: 상위 3요인을 좌(내림 빨강)/우(올림 파랑)로 — 숫자보다 직관적
@@ -661,28 +702,114 @@ cd backend && pytest -q    # Atlas 없이 mongomock으로 92건 전량 실행
 전문용어에 마우스 호버 툴팁 / 물음표 아이콘 설명. "누구나 이해할 수 있게 설계했다"는 접근성 메시지. **19.6과 같은 용어 사전을 공유하므로 한 작업으로 처리 권장(반나절 규모).**
 
 - **중앙 용어 사전** — `frontend/lib/glossary.ts` 단일 소스: `{ 용어키: { term, short(호버 1~2줄), long(클릭 상세), 역할대상 } }`. 예: 대위변제·근저당·확정일자·SHAP·LightGBM·앵커링·회수율·배당
-- **`<Term>` 컴포넌트** — 점선 밑줄 + 데스크톱 호버·모바일 탭 팝오버. Radix UI Popover/Tooltip(shadcn 계열 이미 사용 → CSP·외부 의존성 문제 없음)
+- `**<Term>` 컴포넌트** — 점선 밑줄 + 데스크톱 호버·모바일 탭 팝오버. Radix UI Popover/Tooltip(shadcn 계열 이미 사용 → CSP·외부 의존성 문제 없음)
 - **물음표 아이콘 변형** — 섹션 제목 옆 ⓘ/? → `long` 설명 팝오버 (HUG "요인 분석" 등)
 - **접근성** — `aria-describedby`, 키보드 포커스로도 열림
 - 구현: `frontend/lib/glossary.ts`(27개 용어 + 채권구분 매핑 + 자동매칭 표면형) + `components/common/Term.tsx`(`<Term>`·`<TermHelp>` ⓘ·`<GlossaryText>` 데이터 문자열 자동 래핑) + `components/ui/popover.tsx`(Base UI, `openOnHover`로 호버·탭 겸용)
 - 적용 화면: HUG 대시보드(KPI·테이블·채권구분 값·예측 카드) / 임차인 계약 상세(위험 요인·권장 조치·AI 특약 — GlossaryText 자동) / 등기부 뷰어(근저당·압류 배지) / 아이엔 상담 현황(분쟁유형·단계·RAG 근거) / RAG 상담 패널(분류·함께 본 자료)
 - 역할별 우선 용어: 임차인(대위변제·근저당·확정일자·전세보증·선순위) / 임대인(보증가입·사고·구상권) / 아이엔(분쟁 유형·상담 단계·RAG 근거) / HUG(회수율·회수 우선순위·SHAP 요인·배당·채권)
 
+### 19.8 HUG 화면 4개 업무축 개편 ✅ (260723)
+
+`docs/HUG_UIUX_재설계_및_시연데이터전략_260723.md`의 목표 IA를 프론트에 반영. 상세 구현 내역은 12장 프론트엔드 절 참조.
+
+- 사이드바 `통합 대시보드 → 사고 전 계약관리 → 사고접수·보증이행 → 사고 후 채권관리 → 알림` 재편, `/hug/map`은 대시보드 카드 진입으로 이동
+- 신규 라우트 5종(`/hug/contracts`·`[contractId]`, `/hug/incidents/[incidentId]`, `/hug/recovery`·`[claimId]`) + 서비스 4모듈 + 업무 라벨 사전(`lib/hug-labels.ts`)
+- 화면 표기 원칙: PoC·합성·시연·미보정 등 개발 단서와 `basis`/`provenance`/SLA 정책 문구는 UI에 렌더링하지 않음. 서버 자유문자열은 `toWorkText()`로 정화. 위험도는 "사고위험 N% · 상위 M%" 업무 표현만 사용
+- HUG 목록·KPI는 LIVE 업무대장 우선 조회, 비어 있으면 시연 업무대장 자동 폴백(`services/hugDataMode.ts`) — 모드 라벨은 화면에 노출하지 않음
+- 잔여: 임차인·임대인 상대편 화면 연계, 시연 데이터 재구성 등은 **20장 로드맵**으로 이관
+
+---
+
+## 20. 시연 데이터 전략·차기 개발 로드맵 (260723 확정)
+
+> 본 프로젝트는 해커톤 솔루션 시연이 목표다. 배포·운영사 실데이터 적용은 범위에서 제외하고, **반복 가능한 시연**과 **데이터 규모감**에 집중한다.
+
+### 20.1 시연 계정·시나리오 체계 (목표안)
+
+
+| 계정                       | 역할    | 계약   | 시연 스토리                                                        |
+| ------------------------ | ----- | ---- | ------------------------------------------------------------- |
+| `tenant01@example.com`   | 임차인 A | 1건   | **예방 성공**: D-60 위험 감지 → 3자 알림 → 임대인 증빙 → 위험 해소 (S2→S3)        |
+| `tenant02@example.com`   | 임차인 B | 1건   | **사고 처리**: 만기 미반환 → 사고신고 → 이행청구·심사 → 명도 → 대위변제 → 채권등록 (S4→S5) |
+| `landlord01@example.com` | 임대인   | 2~3건 | 위 계약들의 임대인 — 증빙 요청 수신·제출, 반환계획                                |
+| `advisor01@example.com`  | 상담사   | —    | 전체 상담 큐 (비식별 실상담 표본 + 시연 이관 건)                                |
+| `hugadmin01@example.com` | HUG   | 전체   | 4개 업무축 전 화면                                                   |
+
+
+- 시연 객체 고정 ID 네임스페이스: `demo-ct-s*`(계약) → `demo-inc-s*`(사고통지) → `demo-pc-s*`(이행청구) → `demo-rc-s*`(등록채권). S1~S7 상태·건수·digest의 공식 원장은 `GET /hug/demo/manifest`
+- 화면의 계약 표시명은 **주소로 통일**한다. demo 여부는 화면에 표기하지 않으며(필요 시 툴팁), 시연용 지정 목록은 본 절과 manifest에만 기록한다
+
+### 20.2 화면별 데이터 모집단 전략
+
+
+| 화면            | 모집단                      | 소스                                                                                                                                                            |
+| ------------- | ------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 임차인·임대인       | 계정당 계약 1~3건 (스토리 명확성 우선) | 시연 Seed                                                                                                                                                       |
+| 상담사(아이엔)      | 서비스 전체 이용자의 상담 큐         | **실데이터** — 비식별 상담 938건 표본 + 시연 임차인 이관 건                                                                                                                       |
+| HUG 사고 전 계약관리 | 보증가입 전체 계약 규모감           | **실데이터 응용** — RTMS 실거래 표본 100~300건을 가상 보증계약으로 시딩 후 PU 모델 실추론(입력이 시도·주택유형·보증금뿐이라 전량 스코어링 가능). 시연 계약이 우선순위 상위에 오도록 금액·만기 설계                                     |
+| HUG 사고접수·보증이행 | 다양한 단계의 진행 사건 10~30건     | **Mock 필수** — 발제사 파일에 공통 사건 ID가 없어 사건 단위 실데이터 구성 불가                                                                                                           |
+| HUG 사고 후 채권관리 | 관리채권 28,961건 규모감 복원      | **이원화** — KPI·회수 우선순위 목록은 발제사 합성 CSV(28,961건, 기존 priority 로더 재사용)를 표시하고 시연 채권을 점수순 병합. 진행·종결 탭·상세·시뮬레이터는 DB 원장(시연 채권 + 표본)만. 저장 계층의 모집단 분리 원칙은 유지하고 화면 병합만 허용 |
+
+
+### 20.3 시연 리셋 체계 ✅ (260723 — 구현 상세는 20.5 P1)
+
+프론트 종료 이벤트로 DB를 되돌리는 것은 불가하므로(브라우저/Next 종료가 백엔드에 전달되지 않음) 등가 수단으로 구성한다.
+
+1. **백엔드 기동 시 자동 재시딩** — `MOCK_MODE=true`일 때 startup 훅에서 S1~S7 Seed 실행 → "백엔드 재시작 = 시연 초기화"
+2. **purge 옵션** — 현행 Seed는 고정 ID upsert라 시연 중 생성된 무작위 ID 문서(예측 이력·서류 제출 등)가 남는다. `demo-`* 네임스페이스 전체 삭제 후 재생성하는 purge 모드를 추가해야 완전 원복
+3. 시연 직전 원클릭 리셋(스크립트 또는 관리자 숨은 버튼)
+
+### 20.4 알려진 데이터 이슈 (P0에서 해소) ✅ (260723)
+
+- ~~`demo-ct-0003`("서울특별시 마포구 월드컵로 120"): 구세대(§19.2 시기) 잔존 시드~~ → **P0에서 삭제 완료**(구세대 `demo-ct-0001~0007`·`demo-ct-p2-dday` 전량 + 연관 문서 정리). 단 ② **만기 경과(d_day<0) 스테이지가 없다**는 정책 공백 자체는 P4에서 해소(`dday_stage()`는 d_day≤30을 전부 D30 취급)
+- ~~`demo-ct-p2-dday`·`demo-ct-0006`: property 미연결로 화면에 계약 ID가 노출~~ → **P0에서 해소** — 시나리오 전 계약(S1~S7)이 실존 도로명 기반 가상 상세주소 property에 연결됨
+- 시연 중 액션으로 변경된 상태는 Seed 재실행으로 원복되지만, 신규 생성 문서는 20.3의 purge 전까지 잔존
+- (P0 조사에서 확인) `tenant01`에 실호출 진단 플로우로 생성된 `Diagnosed` 계약 3건(260717·260722, 테헤란로 152·센텀중앙로 90)이 잔존 — demo 네임스페이스가 아닌 라이브 실데이터라 P0 정리 대상에서 제외. 사전 진단 시연 소재로 쓸 수 있으며, 스토리 명확성을 위해 지우려면 수동 삭제 필요
+
+### 20.5 차기 개발 우선순위
+
+
+| 순위     | 작업                         | 내용                                                                                                                                                                                                                                                 | 상태  |
+| ------ | -------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --- |
+| **P0** | **Seed v1.2 — 계정·데이터 재구성** | 20.1 계정 체계로 시나리오 계약 직접 연결, 구세대 계약(`demo-ct-0003/0006/0007/p2-dday`)·`workflow.`* 계정 정리, 전 계약 주소 연결                                                                                                                                                 | ✅ (260723) |
+| **P1** | **시연 리셋 체계**               | startup 자동 재시딩 + `demo-`* purge 옵션 + 원클릭 리셋 (20.3)                                                                                                                                                                                                 | ✅ (260723) |
+| **P2** | **규모감 시딩**                 | RTMS 기반 사전 계약 표본(+PU 실추론), 이행 배경 사건, 채권 CSV 병합 표시 (20.2)                                                                                                                                                                                           | ✅ (260723) |
+| **P3** | **임차인·임대인 연계 화면**          | 임차인: 이행 진행 Stepper·청구 서류 제출(`GET /performance-claims/{id}`·`documents/{id}/submit` 당사자 허용 기구현)·예방 알림 확인(acknowledge)·사고신고 안내 배너 / 임대인: D-90/60/30 증빙 bundle 제출(기존 evidence 흐름 연결)·신용보강 완료 등록(백엔드 권한 보완 필요) / 공통: `/contracts/[id]/manage`에 예방·이행 탭 | ✅ (260723) |
+| **P4** | **만기경과 정책**                | `d_day<0` → "만기경과·사고요건 확인" 스테이지 신설(백엔드 `dday_stage` 확장 + 목록 만기경과 탭 + 다음 조치 "미반환 여부 확인·사고신고 안내" + 임차인 사고신고 CTA)                                                                                                                                     | ✅ (260723) |
+| **P5** | **세종 U 재수집·PU 재학습**        | 보완된 `collect_rtms_rent.py`(전 페이지·세종 36110 포함) 재실행 → `build_accident_model_pu.py` 재학습 → artifact 교체. 학습 표본 18,054→확대(세종 P 69,435건 복귀), `NOT_SCORABLE` 지역 축소. §18-6과 동일 항목의 해커톤 범위 버전                                                                | ⏳ (260723 착수 — 수집 중단) |
+
+
+- **임차인 화면 QA 보완(260723)**: ① 계약 확정 이후(관리 국면) 계약 상세의 "전자계약 공동세션 진행" 버튼을 **"전자계약 체결 완료" 비활성**으로 전환(재서명 유도 방지) ② AI 전세상담 답변을 줄바꿈 있는 번호 단계로 생성하도록 RAG 프롬프트 규칙 추가 + 유사사례 상담 원문에 문장·화자 경계 줄바꿈 포맷터(`formatTranscript`) 적용 ③ **계약 표시명 주소 통일** — `ContractResponse.address_summary`(property 일괄 조인) 신설, 내 계약 목록·계약 상세·관리 화면 헤더·사고접수 계약 선택·임대인 홈에 주소 표기(주소 없으면 ID fallback) ④ 사고 접수 화면 우측 목록에 **"내 접수 현황" 제목·설명** 추가(용도 불명확 해소 — 본인이 접수한 사고의 처리 현황 카드) ⑤ 예방 알림 링크를 수신자 역할별 라우트로 수정(임차인·임대인 → `/contracts/{id}/manage`, HUG → `/hug/contracts/{id}`) — 임차인 "바로가기" 권한 오류 해소. 추가로 purge 기준에 `link`/`dedupe_key`의 demo-* 참조를 포함해 contract_id 없는 잔존 알림(구 p2-dday D-day 노티 3건)까지 정리
+- **P5 진행 기록(260723)**: 수집 스크립트는 이미 보완돼 있어(세종 36110 포함·totalCount 기반 전 페이지 수집) 재실행만 필요. 260723 16시 실행에서 서울 강서·관악·강남 3개 지역(누적 49,483행, raw XML 83개 저장) 후 **공공데이터포털 응답 중단**(60분+ 무응답 — 일일 트래픽 쿼터/스로틀링 추정, 초기 중복 실행으로 호출량 2배 소진 영향)으로 중단. **재시도 절차**: 쿼터 리셋 후(익일) ① `backend/.venv/bin/python -u scripts/collect_rtms_rent.py` ② `backend/.venv/bin/python scripts/build_accident_model_pu.py`(최신 `rtms_jeonse_unlabeled_*.csv` 자동 선택, artifact는 `accident_clf_pu_poc_<날짜>.joblib`로 저장되며 백엔드가 glob 최신본을 자동 로드) ③ 백엔드 재시작(자동 재시딩이 새 모델로 PU 실추론). 현행 artifact·metrics는 `*.pre-p5.bak`으로 백업됨. 비교 기준: P 표본 18,054(세종 미포함)·U 18,765(구 first-page 표본)
+- **P4 구현(260723)**: `dday_stage()`에 `d_day<0 → "OVERDUE"` 스테이지 신설(기존 `CONTRACT_MATURITY_PASSED` 트리거와 연결). 예방 케이스 next_action이 만기경과면 **"미반환 여부 확인·사고신고 안내"**, 케이스가 없어도 목록 항목이 같은 안내로 fallback. `/hug/contracts`에 **만기경과 탭·요약 배지** 추가(만기 열은 "경과 N일" 표기 기존 재사용). 임차인 사고신고 CTA는 P3의 manage 이행 탭 만기경과 배너가 담당. 규모감 표본에 만기경과·미신고 계약 4건 포함(시연 소재). pytest 97건 통과, 브라우저 실검증 완료
+- **P3 구현(260723)**: **백엔드** — `GET /hug/contracts/{id}/prevention`을 계약 당사자(임차인·임대인)에 개방(`_assert_prevention_party`), `PATCH /preventive-actions/{id}`를 인증 사용자로 열고 서비스에서 세분 권한(임대인은 자기 계약 대상 조치의 `InProgress`/`Submitted`까지만, 검증·종결은 HUG) 검증. **프론트** — ① `components/contracts/ClaimProgressPanel.tsx`: 이행 대표 경로 6단계 Stepper(보완요청·유보 등 우회 단계는 구간 매핑+안내문) + 요청 서류 체크리스트 + 청구인 파일 제출(클라이언트 SHA-256 → `documents/{id}/submit`) — 임차인 사고 화면과 manage 이행 탭 공용 ② `components/contracts/PreventionPanel.tsx`: 예방 케이스 요약 + D-90/60/30 bundle 항목별 상태·임대인 파일 제출(기존 `POST /evidence` 재사용) + 신용보강 조치 이행 착수/완료 제출 + 이 계약의 예방 알림 목록·업무 확인(acknowledge, 확인 시각 표시) ③ `ContractManagementView`에 **개요·예방·이행 탭** + 만기경과·미신고 임차인 **사고 접수 배너**(이행 탭) ④ 임차인 사고 화면(`/tenant/incidents`)에 이행청구별 Stepper·서류 제출 임베드. 서비스: `performanceClaimService.submitDocument`·`notificationService.acknowledge` 신설. 3역할 브라우저 실검증(임차인 확인 처리→확인일 공유, 임차인 B Stepper 심사중, 임대인 제출 버튼 4종), pytest 96건 통과
+- **P2 구현(260723)**: ① **사전 계약 규모감** — `demo_scale_service.py`가 `rtms_jeonse_controls_*.csv`에서 결정론적 표본 150건을 뽑아 가상 보증계약·property로 시딩(주소는 실거래 시군구·법정동·지번, 만기 D+25~700 분산, provenance `demo_scale_rtms` 명시) 후 `AccidentPredictionService.refresh_batch` 상당의 동시 PU 실추론(134건 전량 성공). 시연 계약(S2 94점)이 최상위 유지되도록 표본은 미해소 조치 없는 일반 계약만 구성(산식 상한 85<94) ② **이행 배경 사건** — 표본 중 고정 16건을 사고통지 3 + 이행청구 13(접수~대위변제 8단계 분산, SLA 기한 분산, 단계 이력 44건)으로 구성. 사건 목록에 property 일괄 조인으로 **주소 표시 통일**(§20.1) ③ **채권 화면 병합** — `/hug/recovery` KPI(관리 28,963건·대위변제 7.1조·예상회수 6.0조·가중 83.8%)와 우선순위 목록에 합성 CSV 참조 포트폴리오(기존 `/hug/dashboard/summary`·`priority` 로더 재사용)를 표시하고 원장 채권을 **전체 포트폴리오 기준 모델 점수**로 병합(진행 배지·클릭 시 요인 문자열 파싱해 근거 패널 재사용). 통합 대시보드 회수 KPI도 동일 병합, 진행·종결 탭·상세·시뮬레이터는 DB 원장만. 저장 계층 분리 유지. 부수: `list_contracts` 연관문서 일괄 프리페치(계약당 6쿼리→컬렉션당 1쿼리), 목록 size 상한 100→500. seed `include_scale`(endpoint 기본 true, CLI `--no-scale`), purge가 스케일 문서까지 원복. pytest 95건 통과, 브라우저 실검증 완료
+- **P1 구현(260723)**: ① **startup 자동 재시딩** — `main.py` lifespan에서 `MOCK_MODE=true`면 purge+seed 실행("백엔드 재시작 = 시연 초기화", 실패해도 기동 계속) ② **purge** — `DemoScenarioService.purge()`가 `is_demo=True` 또는 `_id`/참조 필드(`contract_id` 등 7종)가 `demo-*`인 문서를 25개 컬렉션에서 삭제(시연 액션이 만든 무작위 ID 문서 포함, users는 로스터 유지 위해 제외). `POST /hug/demo/seed`에 `purge` 플래그, CLI `seed_hug_workflow.py --purge` ③ **원클릭 리셋** — HUG 통합 대시보드 우상단 숨은 아이콘 버튼(2단계 클릭 확인, 업무 언어 "기준 상태로 초기화") → purge+seed 후 새로고침. 브라우저 E2E 검증 완료(버튼 → POST 200 → 기준 KPI 원복)
+- **P0 구현(260723)**: `demo_scenario_service.py` Seed v1.2(`hug-workflow-v1.2.0`) — ① `_ACCOUNT_SPECS`(로스터 5계정 + 배경 인물 4계정: tenant91·92/landlord91·92)와 `_CONTRACT_PARTIES`로 계약 소유 직접 연결(tenant01=S2 1건, tenant02=S4 1건, landlord01=S2·S3·S4 3건, 나머지는 배경 인물). 기존 email 계정의 `_id`를 재사용해 email unique index 충돌 없이 upsert ② seed 시마다 `_cleanup_legacy()`가 구세대 계약(`demo-ct-0001~0007`·`p2-dday`)과 연관 문서(증빙·알림·타임라인 등 10여 컬렉션), `workflow.*` 계정, v1.1 manifest를 제거(제거 건수는 manifest `legacy_cleanup`에 기록) ③ 전 계약을 실존 도로명 기반 가상 상세주소 property로 연결 ④ manifest에 `accounts` 원장(email·스토리·계약 목록) 추가. `seed_demo_users.py`는 `_ACCOUNT_SPECS` 재사용으로 개편, 구세대 `seed_demo_contracts.py` 삭제. Atlas 실행 완료(구세대 계약 8·계정 3 등 108문서 정리), pytest 92건 통과
+- P0~~P1은 소규모(하루 내), P2~~P3이 시연 완성도를 결정한다. §19의 미착수 항목(19.3 신뢰도 점수, 19.4 RAG 화면활용)은 P3 이후 여력 시 진행
+- 운영 전제 항목(일일 스케줄러 배포, maker-checker 권한 세분화, 공식 SLA·충당순서 확정, Polygon 실연동, 실코호트 재학습·보정)은 해커톤 범위 밖으로 명시하고 §18 향후 계획에 유지한다
+
 ---
 
 ## 관련 문서
 
-| 문서 | 위치 |
-|---|---|
-| API 계약 명세 (현행) | `docs/API_Contract_260721.yaml` |
-| 구현현황·문서정합 보고서 | `docs/구현현황_문서정합_260721.md` |
-| 정상 대조군 확보 초기안 (과거 case-control 제안) | `docs/정상대조군_확보방안_260721.md` |
-| 사고위험 PU PoC 결과 (주 모델) | `개별수집데이터 및 API/processed/ml/ACCIDENT_MODEL_PU_POC_README.md` |
-| 과거 case-control 결과 (비교 baseline) | `개별수집데이터 및 API/processed/ml/ACCIDENT_MODEL_POC_README.md` |
-| 솔루션 기획안 (생애주기 루프) | `docs/솔루션_재정비_기획안_260718.md` |
-| 백엔드 상세 README | `backend/README.md` |
-| 데이터 사전 (발제사 데이터) | `dive 데이터/README.md` |
-| 데이터 수집·API 가이드 | `docs/데이터수집_및_API가이드_260714.md` |
-| ML 개발 가이드 | `docs/ML개발가이드_260714.md` |
-| 블록체인 설계서 | `docs/Blockchain_설계서_260714.md` |
-| MongoDB 사용 매뉴얼 | `docs/MongoDB_사용_매뉴얼_260714.md` |
+
+| 문서                                 | 위치                                                           |
+| ---------------------------------- | ------------------------------------------------------------ |
+| API 계약 명세 (현행)                     | `docs/API_Contract_260721.yaml`                              |
+| HUG UI/UX 재설계·시연 데이터 전략            | `docs/HUG_UIUX_재설계_및_시연데이터전략_260723.md`                      |
+| HUG 백엔드 구현현황                       | `docs/HUG_백엔드_구현현황_260723.md`                                |
+| 구현현황·문서정합 보고서                      | `docs/구현현황_문서정합_260721.md`                                   |
+| 정상 대조군 확보 초기안 (과거 case-control 제안) | `docs/정상대조군_확보방안_260721.md`                                  |
+| 사고위험 PU PoC 결과 (주 모델)              | `개별수집데이터 및 API/processed/ml/ACCIDENT_MODEL_PU_POC_README.md` |
+| 과거 case-control 결과 (비교 baseline)   | `개별수집데이터 및 API/processed/ml/ACCIDENT_MODEL_POC_README.md`    |
+| 솔루션 기획안 (생애주기 루프)                  | `docs/솔루션_재정비_기획안_260718.md`                                 |
+| 백엔드 상세 README                      | `backend/README.md`                                          |
+| 데이터 사전 (발제사 데이터)                   | `dive 데이터/README.md`                                         |
+| 데이터 수집·API 가이드                     | `docs/데이터수집_및_API가이드_260714.md`                              |
+| ML 개발 가이드                          | `docs/ML개발가이드_260714.md`                                     |
+| 블록체인 설계서                           | `docs/Blockchain_설계서_260714.md`                              |
+| MongoDB 사용 매뉴얼                     | `docs/MongoDB_사용_매뉴얼_260714.md`                              |
+
+

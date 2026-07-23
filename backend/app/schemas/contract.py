@@ -22,6 +22,8 @@ class ContractCreateRequest(BaseModel):
 class ContractResponse(BaseModel):
     contract_id: str
     property_id: str
+    # 화면 표시명은 주소로 통일한다(§20.1) — property를 조인해 내려준다.
+    address_summary: str | None = None
     tenant_user_id: str
     landlord_user_id: str | None = None
     landlord_id: str | None = None

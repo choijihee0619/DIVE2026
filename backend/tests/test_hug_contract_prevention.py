@@ -451,3 +451,92 @@ async def test_prediction_failure_is_persisted_and_does_not_stop_sweep(
     assert failed_prediction["failure_reason"][0] == "MODEL_INFERENCE_FAILED"
     assert healthy_prediction["prediction_status"] == "SUCCESS"
     assert await mock_db.incidents.count_documents({}) == 0
+
+
+@pytest.mark.asyncio
+async def test_prevention_party_access_and_landlord_credit_submission(client, mock_db):
+    """§20.5 P3 — 예방 현황 당사자 열람 + 임대인 조치 완료 제출 권한."""
+    from app.services.demo_scenario_service import DemoScenarioService
+
+    await DemoScenarioService(mock_db).seed(use_model=False)
+
+    async def login(email: str) -> dict[str, str]:
+        response = await client.post(
+            "/api/v1/auth/login", json={"email": email, "password": "P@ssw0rd!"}
+        )
+        assert response.status_code == 200, response.text
+        return auth_headers(response.json()["data"]["access_token"])
+
+    landlord_headers = await login("landlord01@example.com")
+    tenant_headers = await login("tenant01@example.com")
+    other_tenant_headers = await login("tenant02@example.com")
+
+    # 당사자(임차인 A·임대인)는 S2 예방 현황을 열람한다.
+    for headers in (landlord_headers, tenant_headers):
+        response = await client.get(
+            "/api/v1/hug/contracts/demo-ct-s2/prevention", headers=headers
+        )
+        assert response.status_code == 200, response.text
+        assert response.json()["data"]["case"]["priority_score"] == 94.0
+    # 무관한 임차인 B는 거부된다.
+    denied = await client.get(
+        "/api/v1/hug/contracts/demo-ct-s2/prevention", headers=other_tenant_headers
+    )
+    assert denied.status_code == 403
+
+    # 임대인은 자기 계약 조치의 완료 제출(Overdue→Submitted)까지만 가능하다.
+    submitted = await client.patch(
+        "/api/v1/preventive-actions/demo-pa-s2",
+        json={"status": "Submitted", "note": "임대인 완료 제출"},
+        headers=landlord_headers,
+    )
+    assert submitted.status_code == 200, submitted.text
+    assert submitted.json()["data"]["status"] == "Submitted"
+
+    completed = await client.patch(
+        "/api/v1/preventive-actions/demo-pa-s2",
+        json={"status": "Completed"},
+        headers=landlord_headers,
+    )
+    assert completed.status_code == 403
+    # 무관 사용자는 어떤 전이도 불가.
+    denied_patch = await client.patch(
+        "/api/v1/preventive-actions/demo-pa-s2",
+        json={"status": "Verifying"},
+        headers=other_tenant_headers,
+    )
+    assert denied_patch.status_code == 403
+
+
+@pytest.mark.asyncio
+async def test_maturity_overdue_stage_and_next_action(client, mock_db):
+    """§20.5 P4 — d_day<0은 OVERDUE 스테이지와 사고신고 안내 next_action을 갖는다."""
+    from app.services.prevention_service import dday_stage
+
+    assert dday_stage(-1) == "OVERDUE"
+    assert dday_stage(0) == "D30"
+    assert dday_stage(45) == "D60"
+
+    await mock_db.contracts.insert_one(
+        {
+            "_id": "overdue-live-contract",
+            "property_id": None,
+            "tenant_user_id": "tenant-x",
+            "landlord_user_id": "landlord-x",
+            "contract_status": "Monitoring",
+            "deposit": 100_000_000,
+            "contract_start_date": "2024-07-01",
+            "contract_end_date": "2026-06-30",
+            "created_at": "2026-07-01T00:00:00+09:00",
+            "updated_at": "2026-07-01T00:00:00+09:00",
+        }
+    )
+    listing = await HugContractService(mock_db).list_contracts(
+        page=1, size=10, as_of_date=date(2026, 7, 23), data_mode="LIVE"
+    )
+    item = next(
+        entry for entry in listing["items"] if entry["contract_id"] == "overdue-live-contract"
+    )
+    assert item["d_day"] < 0
+    assert item["d_day_stage"] == "OVERDUE"
+    assert item["next_action"] == "미반환 여부 확인·사고신고 안내"

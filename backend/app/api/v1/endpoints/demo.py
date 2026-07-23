@@ -29,8 +29,11 @@ async def seed_hug_demo_scenarios(
     request_id: str = Depends(get_request_id),
 ):
     _assert_demo_mode()
+    request = payload or DemoSeedRequest()
     result = await DemoScenarioService(db).seed(
-        use_model=(payload or DemoSeedRequest()).use_model
+        use_model=request.use_model,
+        purge=request.purge,
+        include_scale=request.include_scale,
     )
     return success_response(result, request_id)
 

@@ -9,6 +9,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
 import { incidentService } from "@/services/incidentService";
+import { ClaimProgressPanel } from "@/components/contracts/ClaimProgressPanel";
 import { ApiError } from "@/services/apiClient";
 import { useContractList } from "@/hooks/useContractList";
 import {
@@ -142,7 +143,7 @@ export default function TenantIncidentsPage() {
                     <option value="">선택 안 함</option>
                     {(contracts ?? []).map((contract) => (
                       <option key={contract.contract_id} value={contract.contract_id}>
-                        {contract.contract_id} · {formatDeposit(contract.deposit)}
+                        {contract.address_summary ?? contract.contract_id} · {formatDeposit(contract.deposit)}
                       </option>
                     ))}
                   </select>
@@ -196,6 +197,12 @@ export default function TenantIncidentsPage() {
 
         {/* 내 접수 현황 */}
         <motion.div variants={fadeUp} className="flex flex-col gap-4">
+          <div>
+            <h2 className="text-base font-extrabold">내 접수 현황</h2>
+            <p className="mt-0.5 text-xs text-muted-foreground">
+              내가 접수한 사고의 처리 단계와 보증이행 진행 상황입니다.
+            </p>
+          </div>
           {errorMessage ? <p className="text-sm text-destructive">{errorMessage}</p> : null}
           {incidents === null ? (
             <Skeleton className="h-40 w-full rounded-2xl" />
@@ -232,6 +239,13 @@ export default function TenantIncidentsPage() {
                 </CardHeader>
                 <CardContent className="flex flex-col gap-3">
                   <p className="text-sm text-muted-foreground">{incident.description}</p>
+                  {/* 이행 진행 Stepper·청구 서류 제출(§20.5 P3) — 이행청구가 열리면 표시 */}
+                  {incident.performance_claim_id ? (
+                    <div className="rounded-xl border border-line p-3.5">
+                      <p className="mb-2 text-xs font-bold text-muted-foreground">보증이행 진행 현황</p>
+                      <ClaimProgressPanel claimId={incident.performance_claim_id} canSubmit />
+                    </div>
+                  ) : null}
                   <TimelineList
                     items={incident.timeline.map((entry) => ({
                       time: entry.at.slice(0, 16).replace("T", " "),

@@ -6,6 +6,7 @@
 
 from __future__ import annotations
 
+import asyncio
 import hashlib
 import json
 from datetime import date
@@ -13,19 +14,21 @@ from pathlib import Path
 from typing import Any
 
 from motor.motor_asyncio import AsyncIOMotorDatabase
+from pymongo import ReplaceOne
 from starlette.concurrency import run_in_threadpool
 
 from app.core.config import get_settings
 from app.core.exceptions import ResourceNotFoundError
 from app.schemas.provenance import source_metadata
 from app.services import ml_service
+from app.services.demo_scale_service import build_scale_documents, load_rtms_rows
 from app.services.recovery_service import recovery_model_metadata
 
 DEMO_AS_OF_DATE = "2026-07-23"
 DEMO_AS_OF_TS = "2026-07-23T09:00:00+09:00"
-DEMO_TEMPLATE_VERSION = "hug-workflow-v1.1.0"
+DEMO_TEMPLATE_VERSION = "hug-workflow-v1.2.0"
 DEMO_SEED = 260723
-MANIFEST_ID = "demo-manifest-hug-workflow-v1-1"
+MANIFEST_ID = "demo-manifest-hug-workflow-v1-2"
 
 _SCENARIO_LABELS = {
     "S1": "정상 모니터링",
@@ -36,6 +39,119 @@ _SCENARIO_LABELS = {
     "S6": "경매·부분회수 진행",
     "S7": "전액회수 종결",
 }
+
+# §20.1 시연 계정 체계. (key, email, role, display_name, story, is_background)
+# 로스터 5계정은 실제 로그인 시연 대상, 배경 계정은 S1·S5~S7 규모감 계약의 당사자다.
+# 기존 DB에 같은 email 계정이 있으면 그 _id를 재사용하고, 없으면 "demo-user-{key}"로 만든다.
+_ACCOUNT_SPECS = (
+    ("tenant01", "tenant01@example.com", "tenant", "김하나",
+     "임차인 A — 예방 성공(S2→S3): D-위험 감지 → 3자 알림 → 임대인 증빙 → 위험 해소", False),
+    ("tenant02", "tenant02@example.com", "tenant", "이도윤",
+     "임차인 B — 사고 처리(S4→S5): 만기 미반환 → 사고신고 → 이행청구·심사 → 대위변제", False),
+    ("landlord01", "landlord01@example.com", "landlord", "박성호",
+     "임대인 — 시나리오 계약(S2·S3·S4)의 임대인, 증빙 요청 수신·제출·반환계획", False),
+    ("advisor01", "advisor01@example.com", "advisor", "최서연",
+     "상담사 — 전체 상담 큐", False),
+    ("hugadmin01", "hugadmin01@example.com", "hug_admin", "한지원",
+     "HUG 담당자 — 4개 업무축 전 화면", False),
+    ("tenant91", "tenant91@example.com", "tenant", "박준영",
+     "배경 임차인 — 규모감 계약 당사자(로그인 시연 없음)", True),
+    ("tenant92", "tenant92@example.com", "tenant", "윤소민",
+     "배경 임차인 — 규모감 계약 당사자(로그인 시연 없음)", True),
+    ("landlord91", "landlord91@example.com", "landlord", "서정호",
+     "배경 임대인 — 규모감 계약 당사자(로그인 시연 없음)", True),
+    ("landlord92", "landlord92@example.com", "landlord", "문가영",
+     "배경 임대인 — 규모감 계약 당사자(로그인 시연 없음)", True),
+)
+
+DEFAULT_USER_IDS = {spec[0]: f"demo-user-{spec[0]}" for spec in _ACCOUNT_SPECS}
+
+# 시나리오별 (임차인 key, 임대인 key). §20.1: tenant01/tenant02는 스토리 명확성을 위해
+# 각 1건만 소유하고, landlord01은 로스터 계약 3건(S2·S3·S4)의 임대인이다.
+_CONTRACT_PARTIES = {
+    "S1": ("tenant91", "landlord91"),
+    "S2": ("tenant01", "landlord01"),
+    "S3": ("tenant92", "landlord01"),
+    "S4": ("tenant02", "landlord01"),
+    "S5": ("tenant91", "landlord91"),
+    "S6": ("tenant92", "landlord92"),
+    "S7": ("tenant91", "landlord92"),
+}
+
+# 전 계약 주소 연결(§20.5 P0). 실존 도로명 기반의 가상 상세주소로, 화면 표시명은 주소로 통일한다.
+_PROPERTY_ADDRESSES = {
+    "S1": "서울특별시 강서구 마곡중앙로 59, 402호",
+    "S2": "인천광역시 미추홀구 인주대로 416, 201호",
+    "S3": "부산광역시 남구 수영로 312, 502호",
+    "S4": "대전광역시 서구 둔산로 201, 303호",
+    "S5": "경기도 수원시 팔달구 정조로 771, 201호",
+    "S6": "서울특별시 관악구 남부순환로 1820, 301호",
+    "S7": "인천광역시 부평구 부평대로 168, 502호",
+}
+
+# Seed v1.2 이전 세대 산출물. seed 시 매번 정리해 시연 DB를 §20.1 체계로 수렴시킨다.
+_LEGACY_USER_IDS = ("demo-user-tenant", "demo-user-landlord", "demo-hug-admin")
+_LEGACY_USER_EMAILS = (
+    "workflow.tenant@example.com",
+    "workflow.landlord@example.com",
+    "workflow.hug@example.com",
+)
+_LEGACY_CONTRACT_IDS = tuple(f"demo-ct-{index:04d}" for index in range(1, 8)) + (
+    "demo-ct-p2-dday",
+)
+_LEGACY_MANIFEST_IDS = ("demo-manifest-hug-workflow-v1-1",)
+_LEGACY_CONTRACT_SCOPED_COLLECTIONS = (
+    "timeline_events",
+    "evidence_requests",
+    "evidence_bundles",
+    "prevention_cases",
+    "preventive_actions",
+    "accident_predictions",
+    "notifications",
+    "return_plans",
+    "incidents",
+    "contract_versions",
+)
+
+# §20.3 purge 대상. 고정 Seed 문서뿐 아니라 시연 중 액션으로 생성된 무작위 ID 문서까지
+# (is_demo 상속 또는 demo-* 참조로) 지워 완전 원복한다. users는 로스터 계정 유지를 위해
+# 제외한다(seed가 replace-upsert로 원복). demo_seed_manifests도 seed가 교체하므로 제외.
+_PURGE_COLLECTIONS = (
+    "properties",
+    "contracts",
+    "accident_predictions",
+    "prevention_cases",
+    "preventive_actions",
+    "evidence_bundles",
+    "evidence_requests",
+    "evidences",
+    "verifications",
+    "incidents",
+    "performance_claims",
+    "claim_documents",
+    "subrogation_payments",
+    "performance_claim_events",
+    "notifications",
+    "recovery_claims",
+    "recovery_predictions",
+    "recovery_events",
+    "recovery_ledger",
+    "auction_cases",
+    "legal_cases",
+    "timeline_events",
+    "return_plans",
+    "contract_versions",
+    "risk_assessments",
+)
+_PURGE_REFERENCE_FIELDS = (
+    "contract_id",
+    "property_id",
+    "incident_id",
+    "performance_claim_id",
+    "recovery_claim_id",
+    "prevention_case_id",
+    "evidence_request_id",
+)
 
 _MODEL_INPUTS = {
     "S5": {
@@ -137,6 +253,7 @@ def _prediction_doc(
     source_type: str,
     model_meta: dict[str, Any],
     current_balance: int,
+    predicted_by: str,
 ) -> dict[str, Any]:
     inp = _MODEL_INPUTS[scenario_id]
     snapshot = {
@@ -179,7 +296,7 @@ def _prediction_doc(
         "prediction_status": "SUCCESS" if source_type == "model_poc" else "CACHED_DEMO",
         "delta_from_previous": None,
         "previous_prediction_id": None,
-        "predicted_by": "demo-hug-admin",
+        "predicted_by": predicted_by,
         "predicted_at": DEMO_AS_OF_TS,
         "idempotency_key": f"seed:{DEMO_TEMPLATE_VERSION}:{scenario_id}",
         "provenance": provenance,
@@ -195,14 +312,22 @@ def build_demo_documents(
     *,
     prediction_source_type: str = "cached_demo_prediction",
     model_meta: dict[str, Any] | None = None,
+    user_ids: dict[str, str] | None = None,
 ) -> dict[str, list[dict[str, Any]]]:
-    """DB 접근 없는 결정론적 시연 문서 빌더. 테스트와 CLI가 동일 정의를 사용한다."""
+    """DB 접근 없는 결정론적 시연 문서 빌더. 테스트와 CLI가 동일 정의를 사용한다.
+
+    user_ids는 §20.1 계정 key → users._id 매핑이다. 생략하면 고정 fallback ID를 써서
+    결정론이 유지되고, seed()는 기존 DB 계정의 _id를 재사용하도록 매핑을 주입한다.
+    """
 
     prediction_results = prediction_results or _CACHED_RESULTS
     model_meta = model_meta or {
         "model_version": "recovery_models_20260720",
         "artifact_sha256": {},
     }
+    resolved_ids = {**DEFAULT_USER_IDS, **(user_ids or {})}
+    uid = resolved_ids.__getitem__
+    hugadmin = uid("hugadmin01")
     collections: dict[str, list[dict[str, Any]]] = {}
 
     # S1~S7은 HUG 화면뿐 아니라 임차인·임대인 권한으로도 연결 조회할 수 있어야 한다.
@@ -213,7 +338,7 @@ def build_demo_documents(
     collections["users"] = [
         _with_source(
             {
-                "_id": user_id,
+                "_id": uid(key),
                 "email": email,
                 "password_hash": demo_password_hash,
                 "role": role,
@@ -224,11 +349,7 @@ def build_demo_documents(
             },
             "S1",
         )
-        for user_id, email, role, display_name in (
-            ("demo-user-tenant", "workflow.tenant@example.com", "tenant", "업무시연 임차인"),
-            ("demo-user-landlord", "workflow.landlord@example.com", "landlord", "업무시연 임대인"),
-            ("demo-hug-admin", "workflow.hug@example.com", "hug_admin", "업무시연 HUG 담당자"),
-        )
+        for key, email, role, display_name, _story, _background in _ACCOUNT_SPECS
     ]
 
     properties = []
@@ -242,14 +363,14 @@ def build_demo_documents(
         "S6": ("RecoveryInProgress", 320_000_000, "2023-08-29", "2025-08-28"),
         "S7": ("Closed", 180_000_000, "2022-12-21", "2024-12-20"),
     }
-    regions = ["서울 강서구", "인천 미추홀구", "부산 남구", "대전 서구", "경기 수원시", "서울 관악구", "인천 부평구"]
-    for index, (scenario_id, (status, deposit, start, end)) in enumerate(contract_specs.items()):
+    for scenario_id, (status, deposit, start, end) in contract_specs.items():
         sid = scenario_id.lower()
+        tenant_key, landlord_key = _CONTRACT_PARTIES[scenario_id]
         properties.append(
             _with_source(
                 {
                     "_id": f"demo-prop-{sid}",
-                    "address": {"road_address": f"{regions[index]} 시연로 {10 + index}", "adm_cd": None},
+                    "address": {"road_address": _PROPERTY_ADDRESSES[scenario_id], "adm_cd": None},
                     "housing_type": "MULTI_HOUSEHOLD",
                     "coordinate": None,
                     "source_system": "demo_scenario",
@@ -264,8 +385,8 @@ def build_demo_documents(
                 {
                     "_id": f"demo-ct-{sid}",
                     "property_id": f"demo-prop-{sid}",
-                    "tenant_user_id": "demo-user-tenant",
-                    "landlord_user_id": "demo-user-landlord",
+                    "tenant_user_id": uid(tenant_key),
+                    "landlord_user_id": uid(landlord_key),
                     "landlord_id": None,
                     "contract_status": status,
                     "deposit": deposit,
@@ -319,7 +440,7 @@ def build_demo_documents(
                       "priority_score": 94.0,
                       "priority_components": {"risk_percentile": 48.5, "deposit_exposure": 20.0,
                                               "maturity_urgency": 12.0, "unresolved_actions": 13.5},
-                      "owner_user_id": "demo-hug-admin", "owner_center": "인천관리센터",
+                      "owner_user_id": hugadmin, "owner_center": "인천관리센터",
                       "next_action": "기한초과 증빙 확인 및 임차인 권리보전 상담",
                       "due_at": "2026-07-22T18:00:00+09:00", "policy_version": "prevention-demo-v1",
                       "created_at": "2026-07-10T09:00:00+09:00", "updated_at": DEMO_AS_OF_TS}, "S2"),
@@ -327,7 +448,7 @@ def build_demo_documents(
                       "status": "Mitigated", "triggers": [], "priority_score": 22.0,
                       "priority_components": {"risk_percentile": 10.0, "deposit_exposure": 7.0,
                                               "maturity_urgency": 5.0, "unresolved_actions": 0.0},
-                      "owner_user_id": "demo-hug-admin", "owner_center": "부산관리센터",
+                      "owner_user_id": hugadmin, "owner_center": "부산관리센터",
                       "next_action": "정상 모니터링", "due_at": None, "policy_version": "prevention-demo-v1",
                       "mitigated_at": "2026-07-14T15:00:00+09:00", "created_at": "2026-07-01T09:00:00+09:00",
                       "updated_at": "2026-07-14T15:00:00+09:00"}, "S3"),
@@ -335,20 +456,20 @@ def build_demo_documents(
     collections["preventive_actions"] = [
         _with_source({"_id": "demo-pa-s2", "action_id": "demo-pa-s2", "prevention_case_id": "demo-pc-s2",
                       "contract_id": "demo-ct-s2", "action_type": "EVIDENCE_REQUEST",
-                      "actor_role": "hug_admin", "actor_user_id": "demo-hug-admin", "target_role": "landlord",
+                      "actor_role": "hug_admin", "actor_user_id": hugadmin, "target_role": "landlord",
                       "status": "Overdue", "requested_at": "2026-07-10T09:00:00+09:00",
                       "due_at": "2026-07-22T18:00:00+09:00",
                       "completed_at": None, "note": "D90 필수 증빙 제출 요청", "details": {"checkpoint": "D90"},
                       "dedupe_key": "demo-action-s2-evidence", "audit_log": [{"from": None, "to": "Overdue",
-                      "actor_user_id": "demo-hug-admin", "at": DEMO_AS_OF_TS}], "updated_at": DEMO_AS_OF_TS}, "S2"),
+                      "actor_user_id": hugadmin, "at": DEMO_AS_OF_TS}], "updated_at": DEMO_AS_OF_TS}, "S2"),
         _with_source({"_id": "demo-pa-s3", "action_id": "demo-pa-s3", "prevention_case_id": "demo-pc-s3",
                       "contract_id": "demo-ct-s3", "action_type": "CREDIT_ENHANCEMENT_REQUEST",
-                      "actor_role": "landlord", "actor_user_id": "demo-user-landlord", "target_role": "landlord",
+                      "actor_role": "landlord", "actor_user_id": uid("landlord01"), "target_role": "landlord",
                       "status": "Completed",
                       "requested_at": "2026-07-01T09:00:00+09:00", "due_at": "2026-07-15T18:00:00+09:00",
                       "completed_at": "2026-07-14T14:30:00+09:00", "note": "근저당 감액 증빙 검증 완료",
                       "details": {"mitigation": "mortgage_reduction"}, "dedupe_key": "demo-action-s3-credit",
-                      "audit_log": [{"from": "Verifying", "to": "Completed", "actor_user_id": "demo-hug-admin",
+                      "audit_log": [{"from": "Verifying", "to": "Completed", "actor_user_id": hugadmin,
                       "at": "2026-07-14T14:30:00+09:00"}], "updated_at": "2026-07-14T14:30:00+09:00"}, "S3"),
     ]
     collections["evidence_bundles"] = [
@@ -454,7 +575,8 @@ def build_demo_documents(
             {
                 "_id": f"demo-evidence-{request_id[8:]}",
                 "evidence_request_id": request_id,
-                "uploader_id": "demo-user-landlord",
+                # 증빙 제출 시나리오(S2·S3)의 임대인은 모두 landlord01이다.
+                "uploader_id": uid("landlord01"),
                 "file_name": f"{item_key}.pdf",
                 "content_type": "application/pdf",
                 "size_bytes": 1024,
@@ -476,7 +598,7 @@ def build_demo_documents(
                 "evidence_id": f"demo-evidence-{request_id[8:]}",
                 "evidence_request_id": request_id,
                 "verification_status": "Verified",
-                "reviewer_user_id": "demo-hug-admin",
+                "reviewer_user_id": hugadmin,
                 "reviewer_comment": "시연 시나리오 검증 완료",
                 "resubmission_required": False,
                 "blockchain_tx_id": None,
@@ -496,9 +618,10 @@ def build_demo_documents(
     for scenario_id in ("S4", "S5", "S6", "S7"):
         sid = scenario_id.lower()
         spec = contract_specs[scenario_id]
+        scenario_tenant = uid(_CONTRACT_PARTIES[scenario_id][0])
         incidents.append(
             _with_source(
-                {"_id": f"demo-inc-{sid}", "reporter_user_id": "demo-user-tenant",
+                {"_id": f"demo-inc-{sid}", "reporter_user_id": scenario_tenant,
                  "incident_type": "DEPOSIT_NOT_RETURNED", "description": f"{_SCENARIO_LABELS[scenario_id]} 시연용 보증금 미반환 신고",
                  "contract_id": f"demo-ct-{sid}", "property_id": f"demo-prop-{sid}", "deposit_amount": spec[1],
                  "occurred_date": spec[3], "status": incident_statuses[scenario_id],
@@ -514,7 +637,7 @@ def build_demo_documents(
             _with_source(
                 {"_id": f"demo-perf-{sid}", "performance_claim_id": f"demo-perf-{sid}",
                  "incident_id": f"demo-inc-{sid}", "contract_id": f"demo-ct-{sid}",
-                 "reporter_user_id": "demo-user-tenant",
+                 "reporter_user_id": scenario_tenant,
                  "official_accident_type": "CONTRACT_END_NONRETURN",
                  "workflow_type": "JEONSE_RETURN_NONRETURN",
                  "workflow_version": "JEONSE_RETURN_V1",
@@ -525,7 +648,7 @@ def build_demo_documents(
                  "decision": "Approved" if scenario_id != "S4" else None,
                  "decision_reason": "시연 승인" if scenario_id != "S4" else None,
                  "handover_required": True, "moveout_due_at": "2026-05-30T18:00:00+09:00",
-                 "assignee_user_id": "demo-hug-admin",
+                 "assignee_user_id": hugadmin,
                  "sla_policy_code": "DEMO_INTERNAL_V1",
                  "sla_policy_basis": "시연용 내부 목표기한이며 HUG 공식 SLA가 아님",
                  "claim_sla_started_at": "2026-05-02T09:00:00+09:00",
@@ -550,6 +673,7 @@ def build_demo_documents(
     claim_documents: list[dict[str, Any]] = []
     for scenario_id, document_types in claim_document_types.items():
         sid = scenario_id.lower()
+        scenario_tenant = uid(_CONTRACT_PARTIES[scenario_id][0])
         for index, document_type in enumerate(document_types, start=1):
             document_id = f"demo-claim-doc-{sid}-{index}"
             submitted_at = f"2026-05-{2 + index:02d}T10:00:00+09:00"
@@ -572,16 +696,16 @@ def build_demo_documents(
                                 "document_hash": hashlib.sha256(document_id.encode("utf-8")).hexdigest(),
                                 "object_uri": f"demo://performance-claim/{document_id}.pdf",
                                 "note": "시연용 제출 문서",
-                                "submitter_user_id": "demo-user-tenant",
+                                "submitter_user_id": scenario_tenant,
                                 "submitted_at": submitted_at,
                             }
                         ],
-                        "requested_by_user_id": "demo-hug-admin",
+                        "requested_by_user_id": hugadmin,
                         "requested_at": "2026-05-02T09:00:00+09:00",
                         "submitted_at": submitted_at,
-                        "submitter_user_id": "demo-user-tenant",
+                        "submitter_user_id": scenario_tenant,
                         "verified_at": verified_at,
-                        "reviewer_user_id": "demo-hug-admin",
+                        "reviewer_user_id": hugadmin,
                         "review_reason": "필수서류 진위 및 요건 확인 완료",
                         "updated_at": verified_at,
                     },
@@ -598,7 +722,7 @@ def build_demo_documents(
                 "payment_reference": f"DEMO-PAY-{scenario_id}-260531",
                 "paid_amount": contract_specs[scenario_id][1],
                 "paid_at": "2026-05-31",
-                "recorded_by_user_id": "demo-hug-admin",
+                "recorded_by_user_id": hugadmin,
                 "reason": "시연 시나리오 대위변제 완료",
                 "created_at": "2026-05-31T14:00:00+09:00",
             },
@@ -658,7 +782,7 @@ def build_demo_documents(
                         "action": action,
                         "before_stage": before_stage,
                         "after_stage": after_stage,
-                        "actor_user_id": "demo-hug-admin",
+                        "actor_user_id": hugadmin,
                         "actor_role": "hug_admin",
                         "request_id": f"demo:{scenario_id}:{index}",
                         "reason": f"{_SCENARIO_LABELS[scenario_id]} 시연 이력",
@@ -670,13 +794,17 @@ def build_demo_documents(
             )
     collections["performance_claim_events"] = performance_events
 
+    # link는 수신자 역할이 접근 가능한 라우트여야 한다 — 임차인·임대인은 공동 관리 화면, HUG는 업무 화면.
     prevention_notification_specs = (
-        ("demo-notification-s2-tenant", "demo-user-tenant", "tenant",
-         "보증금 미반환 위험신호가 감지되었습니다", "임차인 권리보전 안내와 필수 확인사항을 확인하세요."),
-        ("demo-notification-s2-landlord", "demo-user-landlord", "landlord",
-         "보증금 반환 증빙 기한이 지났습니다", "반환재원 및 신용보강 증빙을 즉시 제출해 주세요."),
-        ("demo-notification-s2-hug", "demo-hug-admin", "hug_admin",
-         "고위험 계약 사전조치가 필요합니다", "D90 증빙 기한초과 계약을 확인하고 후속조치를 기록하세요."),
+        ("demo-notification-s2-tenant", uid("tenant01"), "tenant",
+         "보증금 미반환 위험신호가 감지되었습니다", "임차인 권리보전 안내와 필수 확인사항을 확인하세요.",
+         "/contracts/demo-ct-s2/manage"),
+        ("demo-notification-s2-landlord", uid("landlord01"), "landlord",
+         "보증금 반환 증빙 기한이 지났습니다", "반환재원 및 신용보강 증빙을 즉시 제출해 주세요.",
+         "/contracts/demo-ct-s2/manage"),
+        ("demo-notification-s2-hug", hugadmin, "hug_admin",
+         "고위험 계약 사전조치가 필요합니다", "D90 증빙 기한초과 계약을 확인하고 후속조치를 기록하세요.",
+         "/hug/contracts/demo-ct-s2"),
     )
     collections["notifications"] = [
         _with_source(
@@ -687,7 +815,7 @@ def build_demo_documents(
                 "title": title,
                 "body": body,
                 "severity": "critical",
-                "link": "/hug/contracts/demo-ct-s2/prevention",
+                "link": link,
                 "is_read": False,
                 "contract_id": "demo-ct-s2",
                 "prevention_case_id": "demo-pc-s2",
@@ -705,7 +833,7 @@ def build_demo_documents(
             },
             "S2",
         )
-        for notification_id, user_id, target_role, title, body in prevention_notification_specs
+        for notification_id, user_id, target_role, title, body, link in prevention_notification_specs
     ]
 
     current_balances = {"S5": 210_000_000, "S6": 223_000_000, "S7": 0}
@@ -724,12 +852,13 @@ def build_demo_documents(
             source_type=prediction_source_type,
             model_meta=model_meta,
             current_balance=current_balances[scenario_id],
+            predicted_by=hugadmin,
         )
         prediction_docs.append(pred)
         closure = None
         if closed:
             closure = {"reason": "FULL_RECOVERY", "note": "시연 전액회수", "residual_balance_won": 0,
-                       "closed_by": "demo-hug-admin", "closed_by_role": "hug_admin",
+                       "closed_by": hugadmin, "closed_by_role": "hug_admin",
                        "closed_at": "2026-07-10T16:00:00+09:00", "idempotency_key": "seed-close-s7"}
         claim = _with_source(
             {"_id": f"demo-rc-{sid}", "performance_claim_id": f"demo-perf-{sid}", "contract_id": f"demo-ct-{sid}",
@@ -766,16 +895,16 @@ def build_demo_documents(
         events.append(_with_source({"_id": f"demo-rce-{sid}-registered", "recovery_claim_id": f"demo-rc-{sid}",
                                     "event_type": "RecoveryClaimRegistered", "status_axis": "recovery_stage",
                                     "before": None, "after": "Registered", "note": "구상채권 등록",
-                                    "actor_user_id": "demo-hug-admin", "actor_role": "hug_admin",
+                                    "actor_user_id": hugadmin, "actor_role": "hug_admin",
                                     "occurred_at": "2026-06-01T09:00:00+09:00", "idempotency_key": f"seed-register-{sid}"}, scenario_id))
     events.extend([
         _with_source({"_id": "demo-rce-s6-auction", "recovery_claim_id": "demo-rc-s6", "event_type": "AuctionProgressed",
                       "status_axis": "auction_status", "before": "Filed", "after": "InProgress", "note": "경매 진행",
-                      "actor_user_id": "demo-hug-admin", "actor_role": "hug_admin", "occurred_at": "2026-06-15T09:00:00+09:00",
+                      "actor_user_id": hugadmin, "actor_role": "hug_admin", "occurred_at": "2026-06-15T09:00:00+09:00",
                       "idempotency_key": "seed-auction-s6"}, "S6"),
         _with_source({"_id": "demo-rce-s7-close", "recovery_claim_id": "demo-rc-s7", "event_type": "RecoveryClaimClosed",
                       "status_axis": "recovery_stage", "before": "Distribution", "after": "Closing", "note": "전액회수 종결",
-                      "actor_user_id": "demo-hug-admin", "actor_role": "hug_admin", "occurred_at": "2026-07-10T16:00:00+09:00",
+                      "actor_user_id": hugadmin, "actor_role": "hug_admin", "occurred_at": "2026-07-10T16:00:00+09:00",
                       "idempotency_key": "seed-close-s7"}, "S7"),
     ])
     collections["recovery_events"] = events
@@ -788,7 +917,7 @@ def build_demo_documents(
                              "allocations": allocations, "allocation_policy": "EXPLICIT_MANUAL_POC",
                              "balance_before": before, "balance_after": after, "note": "시연 고정 원장",
                              "reference_type": "DEMO_SEED", "reference_id": f"{scenario_id}-{suffix}",
-                             "actor_user_id": "demo-hug-admin", "actor_role": "hug_admin", "occurred_at": occurred_at,
+                             "actor_user_id": hugadmin, "actor_role": "hug_admin", "occurred_at": occurred_at,
                              "idempotency_key": f"seed-ledger-{sid}-{suffix}"}, scenario_id)
 
     z = {"principal": 0, "legal_cost": 0, "delay_damage": 0, "enforcement_cost": 0, "total": 0}
@@ -852,6 +981,84 @@ class DemoScenarioService:
     def __init__(self, db: AsyncIOMotorDatabase):
         self._db = db
 
+    async def _resolve_account_ids(self) -> dict[str, str]:
+        """§20.1 계정 key → users._id. 같은 email 계정이 이미 있으면 그 _id를 재사용해
+        email unique index 충돌 없이 기존 세션·참조를 보존한다."""
+        ids: dict[str, str] = {}
+        for key, email, _role, _name, _story, _background in _ACCOUNT_SPECS:
+            existing = await self._db.users.find_one({"email": email}, {"_id": 1})
+            ids[key] = str(existing["_id"]) if existing else DEFAULT_USER_IDS[key]
+        return ids
+
+    async def _cleanup_legacy(self) -> dict[str, int]:
+        """Seed v1.2 이전 세대(demo-ct-000x·p2-dday 계약, workflow.* 계정) 정리.
+
+        고정 ID 목록만 지우므로 반복 실행에 안전하고, 실계약·실사용자에는 손대지 않는다.
+        """
+        removed: dict[str, int] = {}
+
+        def note(name: str, count: int) -> None:
+            if count:
+                removed[name] = removed.get(name, 0) + count
+
+        users = await self._db.users.delete_many(
+            {"$or": [
+                {"_id": {"$in": list(_LEGACY_USER_IDS)}},
+                {"email": {"$in": list(_LEGACY_USER_EMAILS)}},
+            ]}
+        )
+        note("users", users.deleted_count)
+
+        legacy_contracts = list(_LEGACY_CONTRACT_IDS)
+        request_ids = [
+            doc["_id"]
+            async for doc in self._db.evidence_requests.find(
+                {"contract_id": {"$in": legacy_contracts}}, {"_id": 1}
+            )
+        ]
+        if request_ids:
+            evidences = await self._db.evidences.delete_many(
+                {"evidence_request_id": {"$in": request_ids}}
+            )
+            note("evidences", evidences.deleted_count)
+            verifications = await self._db.verifications.delete_many(
+                {"evidence_request_id": {"$in": request_ids}}
+            )
+            note("verifications", verifications.deleted_count)
+        for collection_name in _LEGACY_CONTRACT_SCOPED_COLLECTIONS:
+            result = await self._db[collection_name].delete_many(
+                {"contract_id": {"$in": legacy_contracts}}
+            )
+            note(collection_name, result.deleted_count)
+        contracts = await self._db.contracts.delete_many(
+            {"_id": {"$in": legacy_contracts}}
+        )
+        note("contracts", contracts.deleted_count)
+        manifests = await self._db.demo_seed_manifests.delete_many(
+            {"_id": {"$in": list(_LEGACY_MANIFEST_IDS)}}
+        )
+        note("demo_seed_manifests", manifests.deleted_count)
+        return removed
+
+    async def purge(self) -> dict[str, int]:
+        """demo 네임스페이스 완전 삭제(§20.3). 시연 액션이 만든 무작위 ID 문서까지 제거한다.
+
+        기준: is_demo=True(시연 provenance 상속 문서 포함) 또는 _id/참조 필드가 demo-* 인
+        문서. 라이브 문서는 is_demo=False이고 demo-* 참조가 없으므로 건드리지 않는다.
+        """
+        demo_prefix = {"$regex": "^demo-"}
+        criteria: list[dict[str, Any]] = [{"is_demo": True}, {"_id": demo_prefix}]
+        criteria.extend({field: demo_prefix} for field in _PURGE_REFERENCE_FIELDS)
+        # 알림 등 일부 문서는 contract_id 없이 link/dedupe_key로만 demo 객체를 참조한다.
+        criteria.append({"link": {"$regex": "/demo-"}})
+        criteria.append({"dedupe_key": {"$regex": "demo-"}})
+        removed: dict[str, int] = {}
+        for collection_name in _PURGE_COLLECTIONS:
+            result = await self._db[collection_name].delete_many({"$or": criteria})
+            if result.deleted_count:
+                removed[collection_name] = result.deleted_count
+        return removed
+
     async def _prediction_results(self, use_model: bool) -> tuple[dict[str, dict[str, Any]], str, dict[str, Any]]:
         metadata = recovery_model_metadata()
         if not use_model:
@@ -867,12 +1074,73 @@ class DemoScenarioService:
             return _CACHED_RESULTS, "cached_demo_prediction", metadata
         return results, "model_poc", metadata
 
-    async def seed(self, *, use_model: bool = True) -> dict[str, Any]:
+    async def _seed_scale(self, account_ids: dict[str, str]) -> dict[str, Any]:
+        """§20.2 규모감 시딩 — RTMS 표본 가상 계약 + 배경 이행 사건 + PU 실추론."""
+        loaded = load_rtms_rows()
+        if loaded is None:
+            return {"status": "skipped", "reason": "rtms_jeonse_controls CSV 없음"}
+        rows, source_dataset = loaded
+        collections = build_scale_documents(
+            rows, user_ids=account_ids, source_dataset=source_dataset
+        )
+        counts: dict[str, int] = {}
+        for collection_name, documents in collections.items():
+            if not documents:
+                continue
+            await self._db[collection_name].bulk_write(
+                [
+                    ReplaceOne({"_id": document["_id"]}, document, upsert=True)
+                    for document in documents
+                ],
+                ordered=False,
+            )
+            counts[collection_name] = len(documents)
+
+        # PU 사고위험 실추론 — 사전 국면 계약만 대상이며, 동시 실행으로 시딩 시간을 줄인다.
+        from app.services.accident_prediction_service import AccidentPredictionService
+
+        service = AccidentPredictionService(self._db)
+        pre_ids = [
+            document["_id"]
+            for document in collections["contracts"]
+            if document["contract_status"] in {"Monitoring", "ContractFinalized"}
+        ]
+        semaphore = asyncio.Semaphore(10)
+
+        async def _refresh(contract_id: str) -> bool:
+            async with semaphore:
+                result = await service.refresh_or_record_failure(contract_id)
+                return result.prediction_status != "FAILED"
+
+        results = await asyncio.gather(
+            *(_refresh(contract_id) for contract_id in pre_ids), return_exceptions=True
+        )
+        succeeded = sum(1 for value in results if value is True)
+        failed = len(results) - succeeded
+        return {
+            "status": "seeded",
+            "source_dataset": source_dataset,
+            "sample_size": len(rows),
+            "collection_counts": counts,
+            "prediction": {"requested": len(pre_ids), "succeeded": succeeded, "failed": failed},
+        }
+
+    async def seed(
+        self,
+        *,
+        use_model: bool = True,
+        purge: bool = False,
+        include_scale: bool = False,
+    ) -> dict[str, Any]:
+        purge_counts = await self.purge() if purge else None
+        legacy_cleanup = await self._cleanup_legacy()
+        account_ids = await self._resolve_account_ids()
         results, prediction_source, model_meta = await self._prediction_results(use_model)
         collections = build_demo_documents(
             results,
             prediction_source_type=prediction_source,
             model_meta=model_meta,
+            user_ids=account_ids,
         )
         counts: dict[str, int] = {}
         ids: dict[str, list[str]] = {}
@@ -884,6 +1152,19 @@ class DemoScenarioService:
             counts[collection_name] = len(documents)
             ids[collection_name] = sorted(str(document["_id"]) for document in documents)
 
+        # §20.2 규모감 시딩은 고정 시나리오 digest에 포함하지 않고 별도 요약으로 기록한다.
+        scale_summary = (
+            await self._seed_scale(account_ids)
+            if include_scale
+            else {"status": "disabled"}
+        )
+
+        contracts_by_account: dict[str, list[str]] = {}
+        for scenario_id, (tenant_key, landlord_key) in _CONTRACT_PARTIES.items():
+            for key in (tenant_key, landlord_key):
+                contracts_by_account.setdefault(key, []).append(
+                    f"demo-ct-{scenario_id.lower()}"
+                )
         manifest = {
             "_id": MANIFEST_ID,
             "template_version": DEMO_TEMPLATE_VERSION,
@@ -892,6 +1173,23 @@ class DemoScenarioService:
             "seed": DEMO_SEED,
             "scenario_ids": sorted(_SCENARIO_LABELS),
             "scenario_labels": _SCENARIO_LABELS,
+            # §20.1 시연 계정 원장: demo 여부는 화면에 표기하지 않고 여기(와 README)에만 기록한다.
+            "accounts": [
+                {
+                    "key": key,
+                    "user_id": account_ids[key],
+                    "email": email,
+                    "role": role,
+                    "display_name": display_name,
+                    "story": story,
+                    "is_background": background,
+                    "contract_ids": sorted(contracts_by_account.get(key, [])),
+                }
+                for key, email, role, display_name, story, background in _ACCOUNT_SPECS
+            ],
+            "legacy_cleanup": legacy_cleanup,
+            "purge_counts": purge_counts,
+            "scale": scale_summary,
             "collection_counts": counts,
             "document_ids": ids,
             "document_digest_sha256": _canonical_digest(collections),

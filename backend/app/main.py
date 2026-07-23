@@ -32,6 +32,23 @@ logger = logging.getLogger(__name__)
 async def lifespan(app: FastAPI):
     await MongoDB.connect()
     await ensure_indexes(MongoDB.db)
+    if settings.mock_mode:
+        # §20.3 시연 리셋: 백엔드 재시작 = 시연 초기화. purge 후 S1~S7 고정 Seed를 재생성해
+        # 시연 중 생성된 무작위 ID 문서까지 원복한다. 실패해도 기동은 계속한다.
+        from app.services.demo_scenario_service import DemoScenarioService
+
+        try:
+            manifest = await DemoScenarioService(MongoDB.db).seed(
+                use_model=True, purge=True, include_scale=True
+            )
+            logger.info(
+                "Demo reseed complete: template=%s purge=%s scale=%s",
+                manifest["template_version"],
+                manifest.get("purge_counts"),
+                (manifest.get("scale") or {}).get("status"),
+            )
+        except Exception:  # noqa: BLE001 - 시연 초기화 실패가 서비스 기동을 막으면 안 된다.
+            logger.exception("Demo reseed failed; continuing startup")
     logger.info("Startup complete: %s (%s)", settings.app_name, settings.app_env)
     yield
     await MongoDB.close()

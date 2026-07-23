@@ -12,6 +12,8 @@ SourceType = Literal[
     "public_aggregate",
     "provided_synthetic",
     "demo_scenario",
+    "demo_scale_rtms",
+    "demo_scale_background",
     "model_poc",
     "user_submitted",
     "cached_demo_prediction",
