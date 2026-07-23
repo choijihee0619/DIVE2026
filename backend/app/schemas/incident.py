@@ -56,7 +56,10 @@ class IncidentResponse(BaseModel):
     deposit_amount: int | None = None
     occurred_date: date | None = None
     status: IncidentStatus
+    performance_claim_id: str | None = None
+    current_stage: str = "AccidentNotified"
     timeline: list[IncidentTimelineEntry]
     next_steps: list[str]
+    source: dict | None = None
     created_at: str
     updated_at: str

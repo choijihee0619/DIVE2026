@@ -14,6 +14,9 @@ class EvidenceRequestCreateRequest(BaseModel):
     evidence_type: EvidenceType
     risk_assessment_id: str | None = None
     due_date: date | None = None
+    bundle_id: str | None = None
+    item_key: str | None = None
+    checkpoint: str | None = None
 
 
 class EvidenceRequestResponse(BaseModel):
@@ -25,6 +28,9 @@ class EvidenceRequestResponse(BaseModel):
     due_date: str | None = None
     verification_status: str
     latest_evidence_id: str | None = None
+    bundle_id: str | None = None
+    item_key: str | None = None
+    checkpoint: str | None = None
     created_at: str
     updated_at: str
 

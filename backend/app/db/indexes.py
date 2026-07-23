@@ -20,7 +20,25 @@ async def ensure_indexes(db: AsyncIOMotorDatabase) -> None:
         try:
             await db[collection].create_index(keys, **kwargs)
         except OperationFailure as exc:
-            logger.warning("index skipped %s: %s", collection, exc)
+            # 같은 키 패턴의 인덱스를 옵션만 바꿔 재정의하면(sparse→partial,
+            # sparse 제거 등) 동일 자동 이름으로 IndexOptionsConflict(85/86)가
+            # 난다. 키 패턴이 같은 경우에만 기존 인덱스를 드롭하고 재생성한다.
+            if getattr(exc, "code", None) in {85, 86}:
+                index_name = kwargs.get("name") or "_".join(
+                    f"{field}_{direction}" for field, direction in keys
+                )
+                existing = (await db[collection].index_information()).get(index_name)
+                if existing and list(existing.get("key", [])) == list(keys):
+                    logger.warning(
+                        "replacing legacy index options %s.%s", collection, index_name
+                    )
+                    await db[collection].drop_index(index_name)
+                    await db[collection].create_index(keys, **kwargs)
+                    return
+            if kwargs.get("unique"):
+                logger.error("critical unique index creation failed %s: %s", collection, exc)
+                raise
+            logger.warning("non-critical index skipped %s: %s", collection, exc)
 
     await safe_index("users", [("email", ASCENDING)], unique=True, sparse=True)
     await safe_index("users", [("role", ASCENDING)])
@@ -57,10 +75,26 @@ async def ensure_indexes(db: AsyncIOMotorDatabase) -> None:
 
     await safe_index("incidents", [("reporter_user_id", ASCENDING), ("created_at", DESCENDING)])
     await safe_index("incidents", [("status", ASCENDING)])
+    await safe_index(
+        "incidents",
+        [("contract_id", ASCENDING)],
+        name="incidents_active_contract_unique",
+        unique=True,
+        partialFilterExpression={
+            "contract_id": {"$type": "string"},
+            "status": {"$in": ["Received", "Reviewing", "TransferredToRecovery"]},
+        },
+    )
     await safe_index("counsel_queue", [("status", ASCENDING), ("priority_rank", ASCENDING), ("created_at", ASCENDING)])
     await safe_index("counsel_queue", [("requester_user_id", ASCENDING)])
     await safe_index("notifications", [("user_id", ASCENDING), ("created_at", DESCENDING)])
     await safe_index("notifications", [("user_id", ASCENDING), ("is_read", ASCENDING)])
+    await safe_index(
+        "notifications",
+        [("user_id", ASCENDING), ("dedupe_key", ASCENDING)],
+        unique=True,
+        partialFilterExpression={"dedupe_key": {"$type": "string"}},
+    )
     await safe_index("esign_sessions", [("contract_id", ASCENDING)])
     await safe_index("esign_sessions", [("session_code", ASCENDING)])
 
@@ -74,3 +108,135 @@ async def ensure_indexes(db: AsyncIOMotorDatabase) -> None:
 
     await safe_index("timeline_events", [("contract_id", ASCENDING), ("occurred_at", DESCENDING)])
     await safe_index("return_plans", [("contract_id", ASCENDING)], unique=True, sparse=True)
+
+    # HUG 사고 전 예측·예방 업무
+    await safe_index(
+        "accident_predictions", [("contract_id", ASCENDING), ("predicted_at", DESCENDING)]
+    )
+    await safe_index(
+        "accident_predictions",
+        [("contract_id", ASCENDING), ("feature_fingerprint", ASCENDING)],
+        unique=True,
+        partialFilterExpression={"feature_fingerprint": {"$type": "string"}},
+    )
+    await safe_index(
+        "prevention_cases",
+        [("contract_id", ASCENDING), ("status", ASCENDING), ("updated_at", DESCENDING)],
+    )
+    await safe_index(
+        "prevention_cases",
+        [("contract_id", ASCENDING), ("policy_version", ASCENDING)],
+        unique=True,
+        partialFilterExpression={"policy_version": {"$type": "string"}},
+    )
+    await safe_index(
+        "preventive_actions",
+        [("prevention_case_id", ASCENDING), ("status", ASCENDING), ("due_at", ASCENDING)],
+    )
+    await safe_index("preventive_actions", [("dedupe_key", ASCENDING)], unique=True, sparse=True)
+    await safe_index(
+        "evidence_bundles",
+        [("contract_id", ASCENDING), ("checkpoint", ASCENDING), ("policy_version", ASCENDING)],
+        unique=True,
+    )
+    await safe_index(
+        "evidence_requests",
+        [("bundle_id", ASCENDING), ("item_key", ASCENDING)],
+        unique=True,
+        partialFilterExpression={
+            "bundle_id": {"$type": "string"},
+            "item_key": {"$type": "string"},
+        },
+    )
+
+    # 보증이행 청구 상태머신·감사
+    await safe_index("performance_claims", [("incident_id", ASCENDING)], unique=True)
+    await safe_index("performance_claims", [("stage", ASCENDING), ("claim_sla_due_at", ASCENDING)])
+    await safe_index(
+        "claim_documents",
+        [("performance_claim_id", ASCENDING), ("verification_status", ASCENDING)],
+    )
+    await safe_index(
+        "claim_documents",
+        [("performance_claim_id", ASCENDING), ("document_type", ASCENDING)],
+        unique=True,
+    )
+    await safe_index(
+        "claim_document_submissions",
+        [("performance_claim_id", ASCENDING), ("document_hash", ASCENDING)],
+        unique=True,
+    )
+    await safe_index(
+        "performance_claim_events",
+        [("performance_claim_id", ASCENDING), ("occurred_at", DESCENDING)],
+    )
+    await safe_index(
+        "subrogation_payments",
+        [("payment_reference", ASCENDING)],
+        unique=True,
+    )
+
+    # 사고 후 채권관리 병렬 상태·원장·예측이력
+    await safe_index("recovery_claims", [("performance_claim_id", ASCENDING)])
+    # 두 필드 모두 등록 시 필수값이므로 compound sparse가 필요 없다. sparse는
+    # 키 일부만 있어도 누락 키를 null로 인덱싱해 §4의 원칙과 어긋난다.
+    await safe_index(
+        "recovery_claims",
+        [("performance_claim_id", ASCENDING), ("claim_type", ASCENDING)],
+        unique=True,
+    )
+    await safe_index(
+        "recovery_claims",
+        [("is_closed", ASCENDING), ("recovery_stage", ASCENDING), ("updated_at", DESCENDING)],
+    )
+    await safe_index(
+        "recovery_events", [("recovery_claim_id", ASCENDING), ("occurred_at", DESCENDING)]
+    )
+    await safe_index(
+        "recovery_events",
+        [("recovery_claim_id", ASCENDING), ("idempotency_key", ASCENDING)],
+        unique=True,
+        partialFilterExpression={"idempotency_key": {"$type": "string"}},
+    )
+    await safe_index(
+        "recovery_ledger", [("recovery_claim_id", ASCENDING), ("occurred_at", DESCENDING)]
+    )
+    await safe_index(
+        "recovery_ledger",
+        [("recovery_claim_id", ASCENDING), ("idempotency_key", ASCENDING)],
+        unique=True,
+        partialFilterExpression={"idempotency_key": {"$type": "string"}},
+    )
+    await safe_index(
+        "recovery_ledger",
+        [("recovery_claim_id", ASCENDING), ("sequence", ASCENDING)],
+        unique=True,
+        partialFilterExpression={"sequence": {"$type": "int"}},
+    )
+    await safe_index(
+        "recovery_predictions",
+        [("recovery_claim_id", ASCENDING), ("predicted_at", DESCENDING)],
+    )
+    await safe_index(
+        "recovery_predictions",
+        [("recovery_claim_id", ASCENDING), ("idempotency_key", ASCENDING)],
+        unique=True,
+        partialFilterExpression={"idempotency_key": {"$type": "string"}},
+    )
+    await safe_index(
+        "legal_cases", [("recovery_claim_id", ASCENDING), ("updated_at", DESCENDING)]
+    )
+    await safe_index(
+        "legal_cases",
+        [("recovery_claim_id", ASCENDING), ("case_number", ASCENDING)],
+        unique=True,
+    )
+    await safe_index(
+        "auction_cases", [("recovery_claim_id", ASCENDING), ("updated_at", DESCENDING)]
+    )
+    await safe_index(
+        "auction_cases",
+        [("recovery_claim_id", ASCENDING), ("case_number", ASCENDING)],
+        unique=True,
+    )
+    await safe_index("demo_seed_manifests", [("template_version", ASCENDING)], unique=True)

@@ -2,6 +2,7 @@
 
 - GET   /notifications            : 내 알림 목록 (+unread_count)
 - PATCH /notifications/{id}/read  : 읽음 처리
+- PATCH /notifications/{id}/acknowledge : 업무 확인 처리
 - PATCH /notifications/read-all   : 전체 읽음 처리
 - POST  /notifications/demo-seed  : MOCK_MODE 한정, 데모용 샘플 알림 3종 생성
 """
@@ -49,6 +50,19 @@ async def mark_read(
     request_id: str = Depends(get_request_id),
 ):
     result = await NotificationService(db).mark_read(current_user.user_id, notification_id)
+    return success_response(result, request_id)
+
+
+@router.patch("/{notification_id}/acknowledge")
+async def acknowledge_notification(
+    notification_id: str,
+    current_user: CurrentUser = Depends(get_current_user),
+    db: AsyncIOMotorDatabase = Depends(get_db),
+    request_id: str = Depends(get_request_id),
+):
+    result = await NotificationService(db).acknowledge(
+        current_user.user_id, notification_id
+    )
     return success_response(result, request_id)
 
 

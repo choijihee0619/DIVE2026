@@ -10,14 +10,29 @@
 from __future__ import annotations
 
 from fastapi import APIRouter, Depends
+from motor.motor_asyncio import AsyncIOMotorDatabase
 from starlette.concurrency import run_in_threadpool
 
-from app.api.deps import CurrentUser, get_request_id, require_roles
+from app.api.deps import CurrentUser, get_db, get_request_id, require_roles
 from app.core.responses import success_response
+from app.schemas.hug_contract import AccidentPredictRequest
 from app.schemas.ml import CounselClassifyRequest, RecoveryPredictRequest
 from app.services import ml_service
+from app.services.accident_prediction_service import AccidentPredictionService
 
 router = APIRouter(prefix="/ml", tags=["ML"])
+
+
+@router.post("/accident/predict")
+async def predict_accident_poc(
+    payload: AccidentPredictRequest,
+    current_user: CurrentUser = Depends(require_roles("hug_admin", "system_admin")),
+    db: AsyncIOMotorDatabase = Depends(get_db),
+    request_id: str = Depends(get_request_id),
+):
+    """계약 원장의 권위 있는 입력으로 PU 사고위험 PoC를 추론하고 이력을 저장한다."""
+    result = await AccidentPredictionService(db).refresh_or_record_failure(payload.contract_id)
+    return success_response(result, request_id)
 
 
 @router.post("/recovery/predict")

@@ -8,6 +8,14 @@ from app.repositories.base_repository import BaseRepository
 class IncidentRepository(BaseRepository):
     collection_name = "incidents"
 
+    async def find_active_by_contract(self, contract_id: str) -> dict[str, Any] | None:
+        return await self.collection.find_one(
+            {
+                "contract_id": contract_id,
+                "status": {"$in": ["Received", "Reviewing", "TransferredToRecovery"]},
+            }
+        )
+
     async def list_paginated_filtered(
         self,
         skip: int,

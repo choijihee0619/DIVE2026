@@ -7,13 +7,17 @@
 
 from __future__ import annotations
 
+from typing import Any
+
 from motor.motor_asyncio import AsyncIOMotorDatabase
+from pymongo.errors import DuplicateKeyError
 
 from app.core.config import get_settings
 from app.core.exceptions import ResourceNotFoundError, ValidationAppError
 from app.repositories.notification_repository import NotificationRepository
 from app.schemas.common import build_pagination
 from app.schemas.notification import NotificationResponse
+from app.schemas.provenance import source_metadata
 from app.utils.datetime_utils import new_uuid, now_kst_iso
 
 DEMO_NOTIFICATIONS = [
@@ -54,12 +58,29 @@ class NotificationService:
         severity: str = "info",
         link: str | None = None,
         dedupe_key: str | None = None,
+        contract_id: str | None = None,
+        prevention_case_id: str | None = None,
+        action_id: str | None = None,
+        trigger_code: str | None = None,
+        target_role: str | None = None,
+        due_at: str | None = None,
+        metadata: dict[str, Any] | None = None,
+        source: dict[str, Any] | None = None,
     ) -> dict | None:
         # dedupe_key가 있으면 동일 키 알림을 다시 만들지 않는다(D-90/60/30 스윕 재실행 대비, 19.2).
         if dedupe_key:
             existing = await self._repo.collection.find_one({"user_id": user_id, "dedupe_key": dedupe_key})
             if existing:
                 return None
+        now = now_kst_iso()
+        notification_source = source or source_metadata(
+            data_mode="LIVE",
+            source_type="user_submitted",
+            source_dataset="platform_notifications",
+            as_of_date=now[:10],
+            basis="플랫폼 업무 이벤트에서 생성된 사용자 알림",
+            is_demo=False,
+        )
         doc = {
             "_id": new_uuid(),
             "user_id": user_id,
@@ -69,11 +90,35 @@ class NotificationService:
             "severity": severity,
             "link": link,
             "is_read": False,
-            "created_at": now_kst_iso(),
+            "contract_id": contract_id,
+            "prevention_case_id": prevention_case_id,
+            "action_id": action_id,
+            "trigger_code": trigger_code,
+            "target_role": target_role,
+            "due_at": due_at,
+            "delivery_status": "delivered",
+            "delivered_at": now,
+            "read_at": None,
+            "acknowledged_at": None,
+            "metadata": metadata or {},
+            "source": notification_source,
+            "provenance": notification_source,
+            "source_type": notification_source["source_type"],
+            "basis": notification_source["basis"],
+            "is_demo": notification_source["is_demo"],
+            "scenario_id": notification_source.get("scenario_id"),
+            "created_at": now,
         }
         if dedupe_key:
             doc["dedupe_key"] = dedupe_key
-        await self._repo.insert(doc)
+        try:
+            await self._repo.insert(doc)
+        except DuplicateKeyError:
+            if dedupe_key:
+                # check-then-insert 사이 동시 요청은 partial unique index가 최종
+                # 직렬화한다. 먼저 생성된 알림을 성공으로 보고 중복은 생략한다.
+                return None
+            raise
         return doc
 
     async def list(self, user_id: str, page: int, size: int, unread_only: bool) -> dict:
@@ -86,14 +131,26 @@ class NotificationService:
         }
 
     async def mark_read(self, user_id: str, notification_id: str) -> dict:
-        ok = await self._repo.mark_read(user_id, notification_id)
+        read_at = now_kst_iso()
+        ok = await self._repo.mark_read(user_id, notification_id, read_at)
         if not ok:
             raise ResourceNotFoundError("알림을 찾을 수 없습니다.")
-        return {"notification_id": notification_id, "is_read": True}
+        return {"notification_id": notification_id, "is_read": True, "read_at": read_at}
 
     async def mark_all_read(self, user_id: str) -> dict:
-        modified = await self._repo.mark_all_read(user_id)
+        modified = await self._repo.mark_all_read(user_id, now_kst_iso())
         return {"marked_read": modified}
+
+    async def acknowledge(self, user_id: str, notification_id: str) -> dict:
+        acknowledged_at = now_kst_iso()
+        ok = await self._repo.acknowledge(user_id, notification_id, acknowledged_at)
+        if not ok:
+            raise ResourceNotFoundError("알림을 찾을 수 없습니다.")
+        return {
+            "notification_id": notification_id,
+            "is_read": True,
+            "acknowledged_at": acknowledged_at,
+        }
 
     async def demo_seed(self, user_id: str) -> dict:
         if not get_settings().mock_mode:
@@ -113,5 +170,17 @@ def _to_response(doc: dict) -> NotificationResponse:
         link=doc.get("link"),
         severity=doc.get("severity", "info"),
         is_read=doc.get("is_read", False),
+        contract_id=doc.get("contract_id"),
+        prevention_case_id=doc.get("prevention_case_id"),
+        action_id=doc.get("action_id"),
+        trigger_code=doc.get("trigger_code"),
+        target_role=doc.get("target_role"),
+        due_at=doc.get("due_at"),
+        delivery_status=doc.get("delivery_status", "created"),
+        delivered_at=doc.get("delivered_at"),
+        read_at=doc.get("read_at"),
+        acknowledged_at=doc.get("acknowledged_at"),
+        metadata=doc.get("metadata", {}),
+        source=doc.get("source") or doc.get("provenance"),
         created_at=doc["created_at"],
     )

@@ -19,7 +19,9 @@ async def create_evidence_request(
     db: AsyncIOMotorDatabase = Depends(get_db),
     request_id: str = Depends(get_request_id),
 ):
-    result = await EvidenceService(db).create_request(payload)
+    result = await EvidenceService(db).create_request(
+        payload, current_user.user_id, current_user.role
+    )
     return success_response(result, request_id, status_code=201)
 
 
@@ -34,18 +36,24 @@ async def list_evidence_requests(
     db: AsyncIOMotorDatabase = Depends(get_db),
     request_id: str = Depends(get_request_id),
 ):
-    items, pagination = await EvidenceService(db).list_requests(page, size, case_id, contract_id)
+    items, pagination = await EvidenceService(db).list_requests(
+        page, size, case_id, contract_id, current_user.user_id, current_user.role
+    )
     return success_response({"items": items, "pagination": pagination.model_dump()}, request_id)
 
 
 @router.get("/evidence-requests/{evidence_request_id}")
 async def get_evidence_request(
     evidence_request_id: str,
-    current_user: CurrentUser = Depends(require_roles("tenant", "landlord", "advisor")),
+    current_user: CurrentUser = Depends(
+        require_roles("tenant", "landlord", "advisor", "verifier", "hug_admin", "system_admin")
+    ),
     db: AsyncIOMotorDatabase = Depends(get_db),
     request_id: str = Depends(get_request_id),
 ):
-    result = await EvidenceService(db).get_request(evidence_request_id)
+    result = await EvidenceService(db).get_request(
+        evidence_request_id, current_user.user_id, current_user.role
+    )
     return success_response(result, request_id)
 
 
@@ -57,18 +65,24 @@ async def submit_evidence(
     db: AsyncIOMotorDatabase = Depends(get_db),
     request_id: str = Depends(get_request_id),
 ):
-    result = await EvidenceService(db).submit_evidence(evidence_request_id, current_user.user_id, file)
+    result = await EvidenceService(db).submit_evidence(
+        evidence_request_id, current_user.user_id, file, current_user.role
+    )
     return success_response(result, request_id, status_code=201)
 
 
 @router.get("/verifications/{evidence_id}")
 async def get_verification(
     evidence_id: str,
-    current_user: CurrentUser = Depends(require_roles("landlord", "advisor", "verifier")),
+    current_user: CurrentUser = Depends(
+        require_roles("landlord", "advisor", "verifier", "hug_admin", "system_admin")
+    ),
     db: AsyncIOMotorDatabase = Depends(get_db),
     request_id: str = Depends(get_request_id),
 ):
-    result = await EvidenceService(db).get_verification(evidence_id)
+    result = await EvidenceService(db).get_verification(
+        evidence_id, current_user.user_id, current_user.role
+    )
     return success_response(result, request_id)
 
 
@@ -76,7 +90,9 @@ async def get_verification(
 async def decide_verification(
     evidence_id: str,
     payload: VerificationDecisionRequest,
-    current_user: CurrentUser = Depends(require_roles("advisor")),
+    current_user: CurrentUser = Depends(
+        require_roles("advisor", "verifier", "hug_admin", "system_admin")
+    ),
     db: AsyncIOMotorDatabase = Depends(get_db),
     request_id: str = Depends(get_request_id),
 ):

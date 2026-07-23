@@ -45,8 +45,20 @@ export interface RegionRiskRow {
   accident_rate_pct: number;
 }
 
+/** region-risk 응답의 시군구 상세 행(코로플레스 조인 키 adm_cd 포함, §19.5). */
+export interface RegionSigunguRow {
+  adm_cd: string;
+  sido: string;
+  sigungu: string;
+  accident_cnt: number;
+  accident_amt_won: number;
+  accident_rate_pct: number;
+}
+
 export interface RegionRiskData {
   sido_summary: RegionRiskRow[];
+  sigungu: RegionSigunguRow[];
+  basis?: string;
 }
 
 export interface IssuancePoint {

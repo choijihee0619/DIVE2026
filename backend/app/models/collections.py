@@ -57,6 +57,12 @@ class ContractDocument(TypedDict):
     landlord_type: str
     housing_type: str
     risk_assessment_id: NotRequired[str | None]
+    product_name: NotRequired[str]
+    guarantee_amount: NotRequired[int]
+    guarantee_status: NotRequired[str]
+    assigned_center: NotRequired[str | None]
+    assignee_user_id: NotRequired[str | None]
+    source: NotRequired[dict[str, Any]]
     created_at: str
     updated_at: str
 
@@ -143,3 +149,98 @@ class BlockchainTransactionDocument(TypedDict):
     is_mock: bool
     created_at: str
     confirmed_at: NotRequired[str | None]
+
+
+class AccidentPredictionDocument(TypedDict):
+    _id: str
+    contract_id: str
+    prediction_status: str
+    pu_risk_score: float | None
+    risk_percentile: float | None
+    accident_probability: float | None
+    calibration_status: str
+    model_version: str
+    model_sha256: str
+    feature_fingerprint: str
+    feature_snapshot: dict[str, Any]
+    top_factors: list[dict[str, Any]]
+    predicted_at: str
+    valid_until: str
+    source: dict[str, Any]
+
+
+class PreventionCaseDocument(TypedDict):
+    _id: str
+    contract_id: str
+    status: str
+    triggers: list[dict[str, Any]]
+    priority_score: float
+    priority_components: dict[str, float]
+    owner_user_id: NotRequired[str | None]
+    due_at: NotRequired[str | None]
+    policy_version: str
+    created_at: str
+    updated_at: str
+
+
+class PreventiveActionDocument(TypedDict):
+    _id: str
+    prevention_case_id: str
+    contract_id: str
+    action_type: str
+    status: str
+    target_role: str
+    due_at: NotRequired[str | None]
+    audit_log: list[dict[str, Any]]
+    created_at: str
+    updated_at: str
+
+
+class PerformanceClaimDocument(TypedDict):
+    _id: str
+    incident_id: str
+    contract_id: str
+    workflow_type: str
+    workflow_version: str
+    stage: str
+    claim_amount: int
+    approved_amount: NotRequired[int | None]
+    paid_amount: NotRequired[int]
+    claim_sla_due_at: str
+    stage_entered_at: str
+    source: dict[str, Any]
+    created_at: str
+    updated_at: str
+
+
+class RecoveryClaimDocument(TypedDict):
+    _id: str
+    performance_claim_id: str
+    incident_id: NotRequired[str | None]
+    contract_id: str
+    claim_type: str
+    product_name: str
+    principal: int
+    balance: int
+    recovery_stage: str
+    collection_route: str
+    legal_status: str
+    auction_status: str
+    repayment_plan_status: str
+    balance_status: str
+    is_closed: bool
+    source: dict[str, Any]
+    created_at: str
+    updated_at: str
+
+
+class RecoveryLedgerDocument(TypedDict):
+    _id: str
+    recovery_claim_id: str
+    entry_type: str
+    amount_won: int
+    allocations: dict[str, int]
+    balance_before: dict[str, int]
+    balance_after: dict[str, int]
+    actor_user_id: str
+    occurred_at: str

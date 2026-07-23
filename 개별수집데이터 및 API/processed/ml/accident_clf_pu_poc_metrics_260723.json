@@ -1,0 +1,199 @@
+{
+  "trained_at": "2026-07-23",
+  "model": "accident_clf_pu_poc",
+  "algorithm": "LightGBM bagging PU + Elkan-Noto diagnostic",
+  "model_hyperparameters": {
+    "objective": "binary",
+    "n_estimators": 300,
+    "learning_rate": 0.04,
+    "num_leaves": 15,
+    "max_depth": 5,
+    "min_child_samples": 50,
+    "subsample": 0.85,
+    "colsample_bytree": 0.9,
+    "reg_alpha": 0.5,
+    "reg_lambda": 1.0,
+    "n_jobs": -1,
+    "verbose": -1
+  },
+  "training_script": {
+    "file": "build_accident_model_pu.py",
+    "sha256": "b0986da664ccc41f829d12719d1c709040b290adc006ac783405cbc403616334"
+  },
+  "seed": 42,
+  "n_bags": 10,
+  "features": [
+    "sido",
+    "housing_type",
+    "log_deposit"
+  ],
+  "dependency_versions": {
+    "python": "3.12.5",
+    "numpy": "2.4.6",
+    "pandas": "3.0.3",
+    "scikit-learn": "1.9.0",
+    "lightgbm": "4.7.0",
+    "joblib": "1.5.3"
+  },
+  "data_audit": {
+    "positive_raw": 95122,
+    "unlabeled_raw": 18765,
+    "positive_model_support": 18054,
+    "unlabeled_model_support": 18765,
+    "positive_source_counts_raw": {
+      "전세사고_주택가액대비임대보증금_합성": 69435,
+      "임대보증_사고현황_합성": 25687
+    },
+    "positive_source_counts_model_support": {
+      "임대보증_사고현황_합성": 18054
+    },
+    "shared_sido": [
+      "경기도",
+      "경상남도",
+      "경상북도",
+      "대구광역시",
+      "대전광역시",
+      "부산광역시",
+      "서울특별시",
+      "인천광역시"
+    ],
+    "unlabeled_source": "rtms_jeonse_controls_260721.csv",
+    "unlabeled_source_kind": "legacy_first_page_sample",
+    "unlabeled_collection": {
+      "manifest": null,
+      "collection_complete": null,
+      "period": {
+        "start": "202502",
+        "end": "202506"
+      }
+    },
+    "input_sources": {
+      "positives": [
+        {
+          "file": "interim_hug_20260714_전세사고_주택가액대비임대보증금.parquet",
+          "sha256": "6d146657e86e16be9d06d8576ac2741a58c7a83ffa94ed5bf530496368d78c0f"
+        },
+        {
+          "file": "interim_hug_20260714_임대보증_사고현황.parquet",
+          "sha256": "382d6efd0f1449cfd01a2e6587923da022793037e5586328c82f0d145223d59a"
+        }
+      ],
+      "unlabeled": {
+        "file": "rtms_jeonse_controls_260721.csv",
+        "sha256": "52754c1dbe5c4cec68720b3fa52b32a14c4ff0d773b2e598a8c25f996a3fe076"
+      }
+    },
+    "positive_reference_year_range": [
+      2021,
+      2027
+    ],
+    "unlabeled_reference_year_range": [
+      2025,
+      2025
+    ],
+    "deposit_amount_training_support": {
+      "min": 2000000,
+      "max": 5500000000,
+      "p001": 10000000,
+      "p999": 1900000000,
+      "unit": "KRW"
+    },
+    "positive_exact_feature_duplicate_rate": 0.7413,
+    "unlabeled_exact_feature_duplicate_rate": 0.7861
+  },
+  "split": {
+    "positive": {
+      "train": 12501,
+      "calibration": 2729,
+      "test": 2824,
+      "group_overlap_count": 0
+    },
+    "unlabeled": {
+      "train": 13194,
+      "calibration": 2547,
+      "test": 3024,
+      "group_overlap_count": 0
+    },
+    "global_group_overlap_count": 0
+  },
+  "proxy_metrics": {
+    "pu_proxy_roc_auc": 0.9108,
+    "pu_proxy_pr_auc": 0.9025,
+    "ranking": {
+      "top_10pct": {
+        "unlabeled_threshold": 0.646013,
+        "unlabeled_selected_rate": 0.1081,
+        "known_positive_recall": 0.7167,
+        "proxy_lift": 6.63
+      },
+      "top_20pct": {
+        "unlabeled_threshold": 0.603666,
+        "unlabeled_selected_rate": 0.2014,
+        "known_positive_recall": 0.7975,
+        "proxy_lift": 3.96
+      }
+    },
+    "mean_bag_score_std": 0.026175,
+    "mean_pairwise_bag_correlation": 0.989423,
+    "en_clip_rate": 0.3376,
+    "metric_semantics": "P-vs-U proxy diagnostics; confirmed negative 기반 실제 성능이 아님"
+  },
+  "c_estimates": [
+    0.727175,
+    0.736417,
+    0.728331,
+    0.739679,
+    0.732231,
+    0.739194,
+    0.730141,
+    0.73532,
+    0.736157,
+    0.729622
+  ],
+  "c_mean": 0.733427,
+  "c_std": 0.00429,
+  "reference_prior": 0.016,
+  "reference_prior_source": "housta_region_risk_20260720.csv",
+  "reference_prior_sha256": "122ff25feb83cfa6c642e5475bd967543b7d1b1e9ceee2e2473d836ac0c61ae8",
+  "reference_prior_basis": "보증사고 '25.8월 최근3개월 평균",
+  "prior_logit_shift": -3.62772926,
+  "prior_alignment": {
+    "calibration_mean": 0.016000000000000004,
+    "test_mean": 0.018562953683713832,
+    "test_gap": 0.002562953683713832
+  },
+  "historical_case_control_baseline": {
+    "file": "accident_clf_poc_metrics_260721.json",
+    "proxy_roc_auc": 0.9208,
+    "proxy_pr_auc": 0.9121,
+    "semantics": "RTMS를 확정 negative로 둔 과거 case-control 비교 baseline"
+  },
+  "probability_metrics_not_reported": [
+    "brier",
+    "ece",
+    "accuracy"
+  ],
+  "prediction_contract": {
+    "primary_output": "pu_risk_score + risk_percentile",
+    "probability_output": "prior_aligned_estimate",
+    "calibration_status": "AGGREGATE_PRIOR_ALIGNED_UNVALIDATED",
+    "invalid_input_behavior": "NOT_SCORABLE",
+    "automatic_decision_allowed": false
+  },
+  "limitations": [
+    "P는 합성 사고군이며 임의 표집(SCAR) 가정을 충족한다고 검증되지 않았다.",
+    "U는 HUG 보증가입 모집단이 아닌 RTMS 전체 전세실거래로 실제 사고가 일부 포함될 수 있다.",
+    "P와 U의 지역·주택유형·보증금 분포가 달라 모델이 사고위험과 데이터 출처 차이를 함께 학습할 수 있다.",
+    "P의 기준연도는 보증종료연도, U는 거래연도라 현 데이터로 시간순 외부검증을 할 수 없다.",
+    "원본 P 95,122건 중 공통 지역 support에 남은 18,054건만 학습했으며, 세종에 집중된 전세가율 사고원천 69,435건은 U에 세종 표본이 없어 전량 제외됐다.",
+    "RTMS 기존 파일은 일부 시군구·월의 첫 페이지 중심 표본이라 전국 대표성이 없다.",
+    "HOUSTA 1.6%는 공개 집계 기준의 참조 prior이며 RTMS 개별계약의 동일 코호트 사고율이 아니다.",
+    "확정 정상 라벨이 없어 proxy ROC/PR을 실제 HUG 성능으로 해석할 수 없다."
+  ],
+  "artifact_file": "accident_clf_pu_poc_260723.joblib",
+  "artifact_sha256": "dbcae7bdad1228819dbb8c267941ba5719e66008926dc2abf15362af3f8d9537",
+  "metrics_file": "accident_clf_pu_poc_metrics_260723.json",
+  "report_file": "ACCIDENT_MODEL_PU_POC_README.md",
+  "smoke_prediction_rows": 5,
+  "invalid_input_smoke_rows": 5
+}

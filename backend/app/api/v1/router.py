@@ -7,16 +7,20 @@ from app.api.v1.endpoints import (
     blockchain,
     contracts,
     counsel_queue,
+    demo,
     esign,
     evidence,
     health,
     hug,
+    hug_contracts,
     incidents,
     landlords,
     ml,
     notifications,
+    performance_claims,
     properties,
     rag,
+    recovery,
     risk,
     users,
 )
@@ -35,7 +39,11 @@ api_router.include_router(rag.router)
 api_router.include_router(blockchain.router)
 api_router.include_router(ml.router)
 api_router.include_router(hug.router)
+api_router.include_router(hug_contracts.router)
+api_router.include_router(demo.router)
 api_router.include_router(incidents.router)
+api_router.include_router(performance_claims.router)
+api_router.include_router(recovery.router)
 api_router.include_router(counsel_queue.router)
 api_router.include_router(esign.router)
 api_router.include_router(notifications.router)

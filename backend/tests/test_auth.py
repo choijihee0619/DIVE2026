@@ -53,3 +53,29 @@ async def test_role_permission_denied(client):
     )
     assert resp.status_code == 403
     assert resp.json()["error"]["error_code"] == "ERROR-005"
+
+
+async def test_public_signup_rejects_privileged_role(client):
+    resp = await client.post(
+        "/api/v1/auth/signup",
+        json={
+            "email": "public-admin@example.com",
+            "password": "P@ssw0rd!",
+            "display_name": "권한상승 시도",
+            "role": "hug_admin",
+        },
+    )
+    assert resp.status_code == 422
+
+
+async def test_existing_token_is_rejected_after_role_change(client, mock_db):
+    token = await signup_and_login(client, "role-changed@example.com", role="hug_admin")
+    await mock_db.users.update_one(
+        {"email": "role-changed@example.com"}, {"$set": {"role": "tenant"}}
+    )
+
+    response = await client.get(
+        "/api/v1/hug/recovery/summary", headers=auth_headers(token)
+    )
+    assert response.status_code == 401, response.text
+    assert response.json()["error"]["error_code"] == "ERROR-004"

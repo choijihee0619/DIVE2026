@@ -16,17 +16,26 @@ class NotificationRepository(BaseRepository):
             query["is_read"] = False
         return await super().list_paginated(query, skip, limit, sort=[("created_at", -1)])
 
-    async def mark_read(self, user_id: str, notification_id: str) -> bool:
+    async def mark_read(self, user_id: str, notification_id: str, read_at: str) -> bool:
         result = await self.collection.update_one(
-            {"_id": notification_id, "user_id": user_id}, {"$set": {"is_read": True}}
+            {"_id": notification_id, "user_id": user_id},
+            {"$set": {"is_read": True, "read_at": read_at}},
         )
         return result.matched_count > 0
 
-    async def mark_all_read(self, user_id: str) -> int:
+    async def mark_all_read(self, user_id: str, read_at: str) -> int:
         result = await self.collection.update_many(
-            {"user_id": user_id, "is_read": False}, {"$set": {"is_read": True}}
+            {"user_id": user_id, "is_read": False},
+            {"$set": {"is_read": True, "read_at": read_at}},
         )
         return result.modified_count
+
+    async def acknowledge(self, user_id: str, notification_id: str, acknowledged_at: str) -> bool:
+        result = await self.collection.update_one(
+            {"_id": notification_id, "user_id": user_id},
+            {"$set": {"acknowledged_at": acknowledged_at, "is_read": True, "read_at": acknowledged_at}},
+        )
+        return result.matched_count > 0
 
     async def unread_count(self, user_id: str) -> int:
         return await self.collection.count_documents({"user_id": user_id, "is_read": False})

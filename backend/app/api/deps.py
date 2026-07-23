@@ -58,10 +58,13 @@ async def get_current_user(
     user = await user_repo.get_by_id(user_id)
     if not user or not user.get("is_active", True):
         raise InvalidTokenError("사용자를 찾을 수 없거나 비활성화되었습니다.")
+    current_role = user.get("role")
+    if not current_role or current_role != role:
+        raise InvalidTokenError("사용자 권한이 변경되었습니다. 다시 로그인해 주세요.")
 
     return CurrentUser(
         user_id=user_id,
-        role=role,
+        role=current_role,
         display_name=user.get("display_name", ""),
         email=user.get("email"),
     )

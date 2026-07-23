@@ -10,15 +10,40 @@
 from __future__ import annotations
 
 from fastapi import APIRouter, Depends, Query
+from motor.motor_asyncio import AsyncIOMotorDatabase
 from starlette.concurrency import run_in_threadpool
 
-from app.api.deps import CurrentUser, get_request_id, require_roles
+from app.api.deps import CurrentUser, get_db, get_request_id, require_roles
 from app.core.responses import success_response
 from app.services import hug_dashboard_service as svc
 
 router = APIRouter(prefix="/hug/dashboard", tags=["HUG-Dashboard"])
 
 _hug_only = require_roles("hug_admin", "system_admin")
+
+
+@router.get("/overview")
+async def dashboard_overview(
+    current_user: CurrentUser = Depends(_hug_only),
+    db: AsyncIOMotorDatabase = Depends(get_db),
+    request_id: str = Depends(get_request_id),
+):
+    """업무대장·합성 참조·공공 집계를 분리한 통합 KPI."""
+
+    return success_response(await svc.overview(db), request_id)
+
+
+@router.get("/issuance-incident-trend")
+async def dashboard_issuance_incident_trend(
+    year_from: int | None = Query(default=None, ge=2013, le=2100),
+    year_to: int | None = Query(default=None, ge=2013, le=2100),
+    current_user: CurrentUser = Depends(_hug_only),
+    request_id: str = Depends(get_request_id),
+):
+    """월별 요청에 대해 실제 공개범위인 연도 단위 fallback을 명시해 반환."""
+
+    result = await run_in_threadpool(svc.issuance_incident_trend, year_from, year_to)
+    return success_response(result, request_id)
 
 
 @router.get("/summary")

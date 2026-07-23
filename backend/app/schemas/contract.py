@@ -15,6 +15,8 @@ class ContractCreateRequest(BaseModel):
     landlord_type: LandlordType
     housing_type: HousingType
     landlord_id: str | None = None
+    product_name: str = "전세보증금반환보증"
+    guarantee_amount: int | None = Field(default=None, gt=0)
 
 
 class ContractResponse(BaseModel):
@@ -30,6 +32,12 @@ class ContractResponse(BaseModel):
     landlord_type: str
     housing_type: str
     risk_assessment_id: str | None = None
+    product_name: str = "전세보증금반환보증"
+    guarantee_amount: int | None = None
+    guarantee_status: str = "ACTIVE"
+    assigned_center: str | None = None
+    assignee_user_id: str | None = None
+    source: dict | None = None
     created_at: str
     updated_at: str
 
